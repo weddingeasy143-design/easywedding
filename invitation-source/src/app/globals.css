@@ -1,0 +1,407 @@
+@import "tailwindcss" source(none);
+@source "../";
+@source "../../adapters";
+
+@theme {
+  /* Royal Indian × Modern Luxury palette (REFERENCE LOCK) */
+  --color-ivory: #fff7e8;
+  --color-ivory-deep: #f7ecd4;
+  --color-cream: #fdf3dd;
+  --color-maroon: #8d1730;
+  --color-maroon-deep: #6d1025;
+  --color-wine: #6d1025;
+  --color-gold: #c99a3d;
+  --color-gold-light: #e8c876;
+  --color-gold-deep: #a67c2a;
+  --color-bark: #5e2f21;
+  --color-bark-soft: #8a5240;
+
+  /* Event theme accents (controlled, per spec) */
+  --color-haldi: #f5b301;
+  --color-haldi-deep: #d99a00;
+  --color-mehendi: #1e7a4f;
+  --color-mehendi-deep: #145c3b;
+  --color-navy: #1f3a5f;
+  --color-navy-deep: #152a47;
+
+  --font-script: "Great Vibes", "Allura", cursive;
+  --font-display: "Cormorant Garamond", "Playfair Display", serif;
+  --font-sans: "Inter", "Montserrat", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-ivory);
+  color: var(--color-bark);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-maroon);
+  color: var(--color-ivory);
+}
+
+/* ---------- Ornamental primitives ---------- */
+
+/* Antique-gold double frame used around invitation cards */
+.royal-frame {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 65%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+
+/* Fine gold divider with center motif */
+.gold-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-gold-deep);
+}
+.gold-divider::before,
+.gold-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--color-gold) 70%, transparent)
+  );
+}
+.gold-divider::after {
+  background: linear-gradient(
+    to left,
+    transparent,
+    color-mix(in srgb, var(--color-gold) 70%, transparent)
+  );
+}
+
+/* Premium maroon pill CTA */
+.btn-royal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(180deg, var(--color-maroon) 0%, var(--color-wine) 100%);
+  color: var(--color-ivory);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 55%, transparent);
+  border-radius: 9999px;
+  padding: 0.85rem 2.25rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  box-shadow:
+    0 6px 20px -6px color-mix(in srgb, var(--color-maroon) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+.btn-royal:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow:
+    0 12px 28px -8px color-mix(in srgb, var(--color-maroon) 60%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+}
+.btn-royal:active {
+  transform: translateY(0);
+}
+
+.btn-royal-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--color-maroon);
+  border: 1px solid color-mix(in srgb, var(--color-maroon) 60%, transparent);
+  border-radius: 9999px;
+  padding: 0.8rem 2rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  transition: all 0.25s ease;
+}
+.btn-royal-outline:hover {
+  background: color-mix(in srgb, var(--color-maroon) 8%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Subtle gold shimmer sweep (never flashing) */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+.text-shimmer-gold {
+  background: linear-gradient(
+    100deg,
+    var(--color-gold-deep) 20%,
+    var(--color-gold-light) 40%,
+    var(--color-gold-deep) 60%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 7s linear infinite;
+}
+
+/* Falling petals */
+@keyframes petal-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.9;
+  }
+  92% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(var(--petal-drift, 6vw), 108vh, 0) rotate(340deg);
+    opacity: 0;
+  }
+}
+.petal {
+  position: fixed;
+  top: 0;
+  pointer-events: none;
+  z-index: 1;
+  animation: petal-fall linear infinite;
+  will-change: transform, opacity;
+}
+
+/* Soft ambient glow */
+.glow-warm {
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-gold-light) 26%, transparent),
+    transparent 65%
+  );
+}
+
+/* ---- Magical FX: Ganesh idol sheen, twinkles, foil shine, light rays ---- */
+@keyframes idol-sheen {
+  0% {
+    transform: translateX(-170%) skewX(-18deg);
+  }
+  60%,
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+.idol-sheen {
+  animation: idol-sheen 5.2s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.65) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(24deg);
+  }
+}
+.twinkle-star {
+  animation: twinkle 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 220, 140, 0.9));
+}
+
+@keyframes foil-shine {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(360%) skewX(-18deg);
+  }
+}
+.foil-shine {
+  animation: foil-shine 2.8s ease-in-out infinite;
+}
+
+/* Royal mandap invite — gold shimmer text + diya flicker */
+@keyframes mandap-shimmer {
+  0%, 100% { text-shadow: 0 0 12px rgba(255,220,150,0.3), 0 2px 8px rgba(0,0,0,0.5); }
+  50% { text-shadow: 0 0 24px rgba(255,220,150,0.6), 0 2px 8px rgba(0,0,0,0.5); }
+}
+.mandap-shimmer {
+  animation: mandap-shimmer 3s ease-in-out infinite;
+}
+@keyframes diya-flicker {
+  0%, 100% { opacity: 0.7; }
+  25% { opacity: 1; }
+  50% { opacity: 0.8; }
+  75% { opacity: 0.95; }
+}
+
+/* Elegant wedding-themed desktop backdrop — replaces solid dark brown */
+.wedding-desktop-bg {
+  background-color: #2b1215;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201, 153, 61, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(201, 153, 61, 0.08) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23c9993d' stroke-opacity='0.07' stroke-width='1'%3E%3Cpath d='M60 10c15 20 15 40 0 50-15-10-15-30 0-50z'/%3E%3Cpath d='M60 110c-15-20-15-40 0-50 15 10 15 30 0 50z'/%3E%3Ccircle cx='60' cy='60' r='8'/%3E%3Cpath d='M10 60c20-15 40-15 50 0-10 15-30 15-50 0z'/%3E%3Cpath d='M110 60c-20 15-40 15-50 0 10-15 30-15 50 0z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, auto, 120px 120px;
+}
+
+/* Magical wedding date reveal — golden shimmer sweep + sparkle */
+@keyframes date-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+.magical-date {
+  background: linear-gradient(
+    100deg,
+    #7c1226 20%,
+    #c9993d 40%,
+    #fff3d6 50%,
+    #c9993d 60%,
+    #7c1226 80%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: date-shimmer 3.5s ease-in-out infinite;
+}
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(90deg); }
+}
+.date-sparkle {
+  animation: sparkle-twinkle 2.2s ease-in-out infinite;
+}
+@keyframes date-reveal-pop {
+  0% { opacity: 0; transform: scale(0.6); filter: blur(8px); }
+  60% { opacity: 1; transform: scale(1.08); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* ── Opening card: fast magical date reveal (~2.5s total) ──
+   Sparkle burst → date materializes with golden glow → quick sweep → shimmer
+   Layout never shifts */
+@keyframes oc-magic-burst {
+  0% { opacity: 0; transform: scale(0.3); }
+  30% { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+.oc-magic-burst {
+  animation: oc-magic-burst 0.9s ease-out forwards;
+}
+@keyframes oc-date-materialize {
+  0% { opacity: 0; transform: scale(0.85); text-shadow: 0 0 30px rgba(201,153,61,0.9); }
+  60% { opacity: 1; transform: scale(1.03); text-shadow: 0 0 18px rgba(201,153,61,0.5); }
+  100% { opacity: 1; transform: scale(1); text-shadow: 0 0 0 rgba(201,153,61,0); }
+}
+@keyframes oc-golden-sweep {
+  0% { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateX(320%) skewX(-18deg); opacity: 0; }
+}
+.oc-date-shimmer-text {
+  background: linear-gradient(
+    100deg,
+    #8d1730 25%,
+    #c9993d 42%,
+    #fff3d6 50%,
+    #c9993d 58%,
+    #8d1730 75%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.oc-date-magic {
+  opacity: 0;
+  animation:
+    oc-date-materialize 1.2s ease-out 0.4s forwards,
+    date-shimmer 4s ease-in-out 2s infinite;
+}
+.oc-golden-sweep {
+  animation: oc-golden-sweep 1.2s ease-in-out 1s forwards;
+}
+
+@keyframes rays-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rays-spin {
+  animation: rays-spin 14s linear infinite;
+}
+
+/* Paper texture feel for ivory sections */
+.paper-grain {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--color-bark) 4%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* Scroll reveal defaults (JS adds .revealed) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .petal {
+    display: none;
+  }
+  .text-shimmer-gold {
+    animation: none;
+  }
+  .idol-sheen,
+  .twinkle-star,
+  .foil-shine,
+  .rays-spin {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Photo fit mode: "contain" shows the full photo without cropping.
+   Applied via <html data-photo-fit="contain"> from admin settings. */
+html[data-photo-fit="contain"] main img.object-cover,
+html[data-photo-fit="contain"] img.photo-fit {
+  object-fit: contain !important;
+  background-color: #faf6ee;
+}
