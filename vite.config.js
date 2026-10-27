@@ -1,0 +1,11 @@
+import {defineConfig} from 'vite';
+import {Miniflare} from 'miniflare';
+import {readFile,readdir} from 'node:fs/promises';
+export default defineConfig({root:'public',publicDir:false,server:{host:'0.0.0.0',port:4173,strictPort:true,allowedHosts:['terminal.local'],fs:{allow:['..']}},plugins:[{name:'wedding-preview-api',async configureServer(server){
+ server.middlewares.use((req,res,next)=>{if(req.url==='/'||req.url?.startsWith('/?'))req.url='/landing.html'+req.url.slice(1);next();});
+ const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'server/worker.js',compatibilityDate:'2025-09-17',d1Databases:{DB:'wedcanvas-preview'},r2Buckets:{BUCKET:'wedcanvas-photos'},d1Persist:'.sites-runtime/d1',r2Persist:'.sites-runtime/r2'});
+ const db=await mf.getD1Database('DB');await db.exec('CREATE TABLE IF NOT EXISTS _preview_migrations (name TEXT PRIMARY KEY)');
+ for(const file of (await readdir('drizzle')).filter(x=>x.endsWith('.sql')).sort()){const applied=await db.prepare('SELECT name FROM _preview_migrations WHERE name=?').bind(file).first();if(!applied){const sql=await readFile('drizzle/'+file,'utf8');for(const stmt of sql.split('--> statement-breakpoint').map(x=>x.trim()).filter(Boolean))await db.prepare(stmt).run();await db.prepare('INSERT INTO _preview_migrations(name) VALUES(?)').bind(file).run();}}
+ server.middlewares.use('/api',async(req,res,next)=>{try{const headers=new Headers();for(const [k,v] of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(', '):v);const origin='http://'+req.headers.host;headers.set('Origin',origin);headers.set('oai-authenticated-user-id','local-preview-only');headers.set('oai-authenticated-user-email','preview@wedcanvas.local');headers.set('oai-authenticated-user-full-name','Local preview');let body;if(!['GET','HEAD'].includes(req.method)){const chunks=[];for await(const chunk of req)chunks.push(chunk);body=Buffer.concat(chunks)}const response=await mf.dispatchFetch(origin+'/api'+req.url,{method:req.method,headers,body});res.statusCode=response.status;response.headers.forEach((v,k)=>res.setHeader(k,v));res.end(Buffer.from(await response.arrayBuffer()));}catch(e){res.statusCode=503;res.end(JSON.stringify({error:'Preview storage is unavailable: '+e.message}));}});
+ server.httpServer?.on('close',()=>mf.dispose());
+ }}]});

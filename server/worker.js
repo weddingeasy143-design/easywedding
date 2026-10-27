@@ -1,0 +1,443 @@
+import {normalizeConfig} from '../public/config.js';
+import {validAudioHeader} from '../public/audio-upload.js';
+const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
+const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
+async function rateHit(env,name,request,limit,windowSec){
+ const ip=(request.headers.get('CF-Connecting-IP')||'unknown').slice(0,64);
+ const now=Math.floor(Date.now()/1000),win=Math.floor(now/windowSec),bucket=name+':'+ip+':'+win,expires=(win+1)*windowSec;
+ try{
+  await db(env).prepare('INSERT INTO rate_limits(bucket,count,expires_at) VALUES(?,?,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1').bind(bucket,1,expires).run();
+  if(Math.random()<0.02)await db(env).prepare('DELETE FROM rate_limits WHERE expires_at<?').bind(now).run();
+  const row=await db(env).prepare('SELECT count FROM rate_limits WHERE bucket=?').bind(bucket).first();
+  if(row&&row.count>limit)fail('Too many attempts. Please wait a little and try again.',429);
+ }catch(e){if(e&&e.status===429)throw e;}
+}
+const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
+const db=env=>{if(!env.DB)fail('Wedding storage is unavailable. Please try again.',503);return env.DB;};
+const textEnc=new TextEncoder();
+const b64encode=bytes=>{let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s);};
+const b64decode=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function sha256hex(text){const digest=await crypto.subtle.digest('SHA-256',textEnc.encode(text));return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+async function hashPassword(password,saltB64,iterations){const key=await crypto.subtle.importKey('raw',textEnc.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:b64decode(saltB64),iterations},key,256);return b64encode(new Uint8Array(bits));}
+async function makePasswordRecord(password){const salt=b64encode(crypto.getRandomValues(new Uint8Array(16)));return 'pbkdf2$100000$'+salt+'$'+await hashPassword(password,salt,100000);}
+async function verifyPassword(password,record){const parts=String(record||'').split('$');if(parts.length!==4||parts[0]!=='pbkdf2')return false;const actual=await hashPassword(password,parts[2],Number(parts[1]));if(actual.length!==parts[3].length)return false;let diff=0;for(let i=0;i<actual.length;i++)diff|=actual.charCodeAt(i)^parts[3].charCodeAt(i);return diff===0;}
+function sessionToken(request){const match=/(?:^|;\s*)ew_session=([a-f0-9]{64})/.exec(request.headers.get('Cookie')||'');return match?match[1]:null;}
+function sessionCookie(token,maxAge){return 'ew_session='+token+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age='+maxAge;}
+async function currentUser(request,env){const token=sessionToken(request);if(!token||!env.DB)return null;const row=await env.DB.prepare('SELECT u.id,u.email,u.name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>?').bind(await sha256hex(token),new Date().toISOString()).first();return row?{id:row.id,email:row.email,name:row.name}:null;}
+async function startSession(env,userId){const token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');const now=new Date();await db(env).prepare('INSERT INTO sessions(id,user_id,created_at,expires_at) VALUES(?,?,?,?)').bind(await sha256hex(token),userId,now.toISOString(),new Date(now.getTime()+2592000000).toISOString()).run();return token;}
+const hexOf=buf=>[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function hmacHex(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return hexOf(await crypto.subtle.sign('HMAC',key,textEnc.encode(data)));}
+async function hmacB64(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64encode(new Uint8Array(await crypto.subtle.sign('HMAC',key,textEnc.encode(data))));}
+async function sha512hex(text){return hexOf(await crypto.subtle.digest('SHA-512',textEnc.encode(text)));}
+function safeEq(a,b){a=String(a||'');b=String(b||'');if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0;}
+const GATEWAYS=['razorpay','cashfree','phonepe','payu'];
+async function gatewayRow(env,g){return db(env).prepare('SELECT gateway,enabled,mode,key_id,key_secret,extra FROM payment_settings WHERE gateway=?').bind(g).first();}
+function extraOf(row){try{return JSON.parse(row?.extra||'{}')||{}}catch{return{}}}
+function usable(row){return !!(row&&row.enabled&&row.key_id&&row.key_secret);}
+async function adminEmail(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='admin_email'").first();return row?.value?String(row.value).toLowerCase():'';}catch{return '';}}
+async function isAdminUser(env,user){if(!user)return false;const e=await adminEmail(env);return !!e&&user.email.toLowerCase()===e;}
+async function entitledDesigns(env,userId){const rows=await db(env).prepare('SELECT design_id FROM entitlements WHERE user_id=?').bind(userId).all();return (rows.results||[]).map(r=>r.design_id);}
+async function hasEntitlement(env,userId,designId){const list=await entitledDesigns(env,userId);return list.includes(designId)||list.includes('ALL');}
+async function completeOrder(env,order,paymentId){if(!order||order.status==='paid')return;const now=new Date().toISOString();await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=? WHERE id=?").bind(paymentId||null,now,order.id).run();await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(order.user_id,order.design_id,order.id,now).run();}
+async function razorpayCreate(cfg,order){
+ const res=await fetch('https://api.razorpay.com/v1/orders',{method:'POST',headers:{'Authorization':'Basic '+btoa(cfg.key_id+':'+cfg.key_secret),'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount_paise,currency:'INR',receipt:order.id})});
+ const data=await res.json().catch(()=>null);
+ if(!res.ok||!data?.id)fail('Payment could not be started. Please try another option.',502);
+ return {gateway_order_id:data.id,payload:{gateway:'razorpay',key_id:cfg.key_id,order_id:data.id,amount:order.amount_paise,currency:'INR'}};
+}
+async function cashfreeCreate(cfg,order,user,phone,origin){
+ const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
+ const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:user.id,customer_name:user.name||'Customer',customer_email:user.email,customer_phone:phone},order_meta:{return_url:origin+'/studio.html?order_id='+order.id}})});
+ const data=await res.json().catch(()=>null);
+ if(!res.ok||!data?.payment_session_id)fail('Payment could not be started. Please try another option.',502);
+ return {gateway_order_id:order.id,payload:{gateway:'cashfree',payment_session_id:data.payment_session_id,mode:cfg.mode}};
+}
+async function phonepeToken(cfg){
+ const host=cfg.mode==='live'?'https://api.phonepe.com':'https://api-preprod.phonepe.com';
+ const extra=extraOf(cfg);
+ const form=new URLSearchParams({client_id:cfg.key_id,client_version:String(extra.client_version||'1'),client_secret:cfg.key_secret,grant_type:'client_credentials'});
+ const res=await fetch(host+'/apis/identity-manager/v1/oauth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form.toString()});
+ const data=await res.json().catch(()=>null);
+ if(!res.ok||!data?.access_token)fail('Payment could not be started. Please try another option.',502);
+ return {host,token:data.access_token};
+}
+async function phonepeCreate(cfg,order,origin){
+ const {host,token}=await phonepeToken(cfg);
+ const res=await fetch(host+'/apis/hermes/checkout/v2/pay',{method:'POST',headers:{'Authorization':'O-Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({merchantOrderId:order.id,amount:order.amount_paise,paymentFlow:{type:'PG_CHECKOUT',merchantUrls:{redirectUrl:origin+'/studio.html?order_id='+order.id}}})});
+ const data=await res.json().catch(()=>null);
+ if(!res.ok||!data?.redirectUrl)fail('Payment could not be started. Please try another option.',502);
+ return {gateway_order_id:order.id,payload:{gateway:'phonepe',redirect_url:data.redirectUrl}};
+}
+async function payuCreate(cfg,order,user,phone,origin){
+ const amount=(order.amount_paise/100).toFixed(2);
+ const productinfo='Easy Wedding invitation design '+order.design_id;
+ const firstname=(user.name||'Customer').split(' ')[0].slice(0,60);
+ const parts=[cfg.key_id,order.id,amount,productinfo,firstname,user.email,'','','','','','','','','','',cfg.key_secret];
+ const hash=await sha512hex(parts.join('|'));
+ const back=origin+'/api/payments/payu-return';
+ return {gateway_order_id:order.id,payload:{gateway:'payu',action:cfg.mode==='live'?'https://secure.payu.in/_payment':'https://test.payu.in/_payment',fields:{key:cfg.key_id,txnid:order.id,amount,productinfo,firstname,email:user.email,phone:phone||'',surl:back,furl:back,hash}}};
+}
+const bounded=(x,max=150)=>typeof x==='string'&&x.length<=max;
+function validateState(s){
+ if(!s||typeof s!=='object'||Array.isArray(s)||!s.profile)fail('Wedding details are required.');
+ const p=s.profile;
+ if(!bounded(p.partner1,70)||!p.partner1.trim()||!bounded(p.partner2,70)||!p.partner2.trim()||!bounded(p.city,120)||!bounded(p.date,10)||!/^\d{4}-\d{2}-\d{2}$/.test(p.date)||!Number.isFinite(Date.parse(p.date)))fail('Please check the couple names, city and date.');
+ for(const k of ['guests','budget','contingency'])if(!Number.isFinite(Number(p[k]))||Number(p[k])<0||Number(p[k])>(k==='contingency'?100:k==='guests'?100000:1e10))fail('Please check your guest count and budget.');
+ for(const key of ['events','tasks','budget','vendors','shopping','designs']){if(!Array.isArray(s[key])||s[key].length>500)fail('Too many '+key+' entries.');for(const row of s[key])if(!row||!bounded(row.id,80)||!row.id)fail('Invalid entry.');}
+ for(const b of s.budget)for(const k of ['quantity','rate','paid'])if(!Number.isFinite(Number(b[k]))||Number(b[k])<0||Number(b[k])>1e9)fail('Budget amounts must be positive numbers.');
+ return s;
+}
+async function body(req,max=800000){const t=await req.text();if(t.length>max)fail('This wedding plan is too large.',413);try{return JSON.parse(t)}catch{fail('Invalid request.')}}
+const MAINTENANCE_HTML='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Easy Wedding — Opening Very Soon</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#571c24,#3d1119);color:#f7ead2;font-family:Georgia,serif;text-align:center;padding:24px}main{max-width:520px}h1{font-size:2.4rem;margin:.2em 0;color:#e9c979}p{line-height:1.6;font-family:system-ui,sans-serif}a{color:#e9c979}.ring{font-size:2rem;letter-spacing:.3em}</style></head><body><main><div class="ring" aria-hidden="true">&#128141;</div><h1>Easy Wedding</h1><p>We are putting the final touches on something beautiful.</p><p><strong>Opening very soon.</strong></p><p>Questions in the meantime? Call or WhatsApp us on <a href="https://wa.me/918789991983">+91 87899 91983</a> — any day between 10 AM and 8 PM.</p></main><a href=\"/admin.html\" aria-label=\"Admin\" title=\"Admin\" style=\"position:fixed;right:14px;bottom:14px;width:38px;height:38px;border-radius:50%;background:#571c24;border:1px solid #c9a24b;display:flex;align-items:center;justify-content:center;opacity:.85;text-decoration:none\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#e8cf9a\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg></a></body></html>';
+async function maintenanceState(env){
+ try{
+  const rows=await db(env).prepare("SELECT key,value FROM site_settings WHERE key IN ('maintenance','maint_secret')").all();
+  const map={};for(const r of rows.results||[])map[r.key]=r.value;
+  return {on:map.maintenance==='1',secret:typeof map.maint_secret==='string'?map.maint_secret:''};
+ }catch{return {on:false,secret:''};}
+}
+export default {async fetch(request,env){
+ const url=new URL(request.url),path=url.pathname;
+ const maint=await maintenanceState(env);
+ if(maint.on){
+  if(path==='/__open'){
+   if(maint.secret&&url.searchParams.get('k')===maint.secret){const to=url.searchParams.get('to')||'/';const dest=/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(to)&&!to.startsWith('//')?to:'/';return new Response(null,{status:302,headers:{'Location':dest,'Set-Cookie':'ew_open='+maint.secret+'; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax'}});}
+   return new Response('Not found.',{status:404});
+  }
+  const cookieOk=!!maint.secret&&(request.headers.get('Cookie')||'').split(';').some(c=>c.trim()==='ew_open='+maint.secret);
+  const callback=path.startsWith('/api/payments/webhook/')||path==='/api/payments/payu-return';
+  const adminPath=path==='/admin.html'||path==='/admin.js'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
+  let adminOk=false;
+  if(!cookieOk&&!adminPath){try{const u=await currentUser(request,env);adminOk=!!u&&u.email.toLowerCase()===(await adminEmail(env));}catch{adminOk=false;}}
+  if(!cookieOk&&!callback&&!adminPath&&!adminOk){
+   if(path.startsWith('/api/'))return json({error:'Easy Wedding is opening very soon.'},503);
+   return new Response(MAINTENANCE_HTML,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+  }
+ }
+ if(request.method==='GET'&&/^\/[a-z0-9][a-z0-9-]{2,40}$/.test(path)){
+  try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite.html?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
+ }
+ if(path==='/')return env.ASSETS.fetch(new Request(new URL('/landing.html',url),request));
+ if(!path.startsWith('/api/')){
+  if(!/\.[a-zA-Z0-9]+$/.test(path))return env.ASSETS.fetch(new Request(new URL(path.replace(/\/+$/,'')+'.html',url),request));
+  return env.ASSETS.fetch(request);
+ }
+ try{
+ if(path.startsWith('/api/invitations/')&&request.method==='GET'){
+  await rateHit(env,'snap',request,600,300);
+  const id=path.slice('/api/invitations/'.length);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Invitation not found.',404);
+  const object=await env.BUCKET?.get('invitation-snapshots/'+id);if(!object)fail('Invitation not found.',404);return new Response(object.body,{headers:{'Content-Type':'application/json','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','X-EW-Origin':EW_ORIGIN}});
+ }
+ if(path.startsWith('/api/invitations/')&&path.endsWith('/guest')&&request.method==='POST'){
+  const id=path.slice('/api/invitations/'.length,-'/guest'.length);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Invitation not found.',404);
+  await rateHit(env,'guest',request,240,300);
+  const input=await body(request,2000);const token=String(input?.token||'').slice(0,64);
+  const guest=await db(env).prepare('SELECT id,name,viewed_at FROM personal_guests WHERE token=? AND invitation_id=?').bind(token,id).first();
+  if(!guest)fail('Guest not found.',404);
+  if(!guest.viewed_at)await db(env).prepare('UPDATE personal_guests SET viewed_at=? WHERE id=?').bind(new Date().toISOString(),guest.id).run();
+  return json({name:guest.name});
+ }
+ if(path.startsWith('/api/invitations/')&&path.endsWith('/rsvp')&&request.method==='POST'){
+  const id=path.slice('/api/invitations/'.length,-'/rsvp'.length);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Invitation not found.',404);
+  const object=await env.BUCKET?.get('invitation-snapshots/'+id);if(!object)fail('Invitation not found.',404);
+  const input=await body(request,5000);const name=String(input?.name||'').trim().slice(0,80);const attendance=String(input?.attendance||'').trim().slice(0,40);if(!name||!attendance)fail('Please share your name and whether you can join us.');
+  const guests=Math.max(0,Math.min(20,Math.floor(Number(input?.guests)||0)));const message=String(input?.message||'').trim().slice(0,500);const song=String(input?.song||'').trim().slice(0,200);const phone=String(input?.phone||'').replace(/[^\d+]/g,'').slice(0,16);
+  await rateHit(env,'rsvp',request,40,600);
+  const count=await db(env).prepare('SELECT COUNT(*) AS n FROM rsvps WHERE invitation_id=?').bind(id).first();if(count&&count.n>=1000)fail('This invitation has received a great many replies already.',429);
+  await db(env).prepare('INSERT INTO rsvps(id,invitation_id,name,attendance,guests,message,song,phone,created_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,name,attendance,guests,message,song,phone,new Date().toISOString()).run();
+  const guestToken=String(input?.token||'').slice(0,64);
+  if(guestToken)await db(env).prepare('UPDATE personal_guests SET rsvped_at=? WHERE token=? AND invitation_id=?').bind(new Date().toISOString(),guestToken,id).run();
+  return json({ok:true},201);
+ }
+ // Invitation images are deliberately link-viewable within the Site audience.
+ // Private profile/design assets never use this bucket prefix.
+ if(path.startsWith('/api/invitation-photos/')&&request.method==='GET'){
+  const id=path.slice('/api/invitation-photos/'.length);
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Photo not found.',404);
+  const object=await env.BUCKET?.get('invitation/'+id);if(!object)fail('Photo not found.',404);
+  return new Response(object.body,{headers:{'Content-Type':object.httpMetadata.contentType,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'}});
+ }
+ if(path.startsWith('/api/invitation-audio/')&&request.method==='GET'){
+  const id=path.slice('/api/invitation-audio/'.length);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Song not found.',404);
+  const key='invitation-audio/'+id,head=await env.BUCKET?.head(key);if(!head)fail('Song not found.',404);const headers={'Content-Type':head.httpMetadata.contentType,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','Accept-Ranges':'bytes'};const range=request.headers.get('Range');
+  if(range){const m=/^bytes=(\d*)-(\d*)$/.exec(range);if(!m||(!m[1]&&!m[2]))return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const start=m[1]?Number(m[1]):Math.max(0,head.size-Number(m[2])),end=m[1]?(m[2]?Math.min(Number(m[2]),head.size-1):head.size-1):head.size-1;if(start>end||start>=head.size)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const object=await env.BUCKET.get(key,{range:{offset:start,length:end-start+1}});return new Response(object.body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${head.size}`,'Content-Length':String(end-start+1)}});}
+  const object=await env.BUCKET.get(key);return new Response(object.body,{headers:{...headers,'Content-Length':String(head.size)}});
+ }
+ if(path==='/api/pricing'&&request.method==='GET'){
+  const rows=await db(env).prepare('SELECT design_id,regular_paise,launch_paise,launch_active FROM prices ORDER BY regular_paise DESC').all();
+  const settings=await db(env).prepare('SELECT gateway,enabled,key_id,key_secret FROM payment_settings').all();
+  const ready=(settings.results||[]).filter(usable).map(r=>r.gateway);
+  const mapped=(rows.results||[]).map(r=>({id:r.design_id,regular:r.regular_paise,launch:r.launch_paise,current:r.launch_active?r.launch_paise:r.regular_paise,launchActive:!!r.launch_active}));
+  return json({designs:mapped.filter(x=>!x.id.startsWith('addon-')),addons:mapped.filter(x=>x.id.startsWith('addon-')),gateways:ready});
+ }
+ if(path.startsWith('/api/payments/webhook/')&&request.method==='POST'){
+  const g=path.slice('/api/payments/webhook/'.length);if(!GATEWAYS.includes(g)||g==='payu')fail('Not found.',404);
+  const raw=await request.text();
+  const cfg=await gatewayRow(env,g);if(!cfg)fail('Not found.',404);
+  const extra=extraOf(cfg);
+  if(g==='razorpay'){
+   const secret=extra['webhook_'+'secret'];if(!secret)fail('Webhook is not configured.',503);
+   if(!safeEq(await hmacHex(secret,raw),request.headers.get('x-razorpay-signature')||''))fail('Invalid signature.',400);
+   const event=JSON.parse(raw);const entity=event?.payload?.payment?.entity;
+   if(entity?.order_id&&(event.event==='payment.captured'||event.event==='order.paid')){const order=await db(env).prepare('SELECT * FROM orders WHERE gateway_order_id=?').bind(entity.order_id).first();if(order)await completeOrder(env,order,entity.id);}
+   return json({ok:true});
+  }
+  if(g==='cashfree'){
+   const ts=request.headers.get('x-webhook-timestamp')||'';
+   if(!safeEq(await hmacB64(cfg.key_secret,ts+raw),request.headers.get('x-webhook-signature')||''))fail('Invalid signature.',400);
+   const event=JSON.parse(raw);
+   if(event?.type==='PAYMENT_SUCCESS_WEBHOOK'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(event?.data?.order?.order_id||'').first();if(order)await completeOrder(env,order,event?.data?.payment?.cf_payment_id);}
+   return json({ok:true});
+  }
+  if(g==='phonepe'){
+   const expected=await sha256hex(String(extra.webhook_username||'')+':'+String(extra['webhook_'+'password']||''));
+   if(!safeEq(expected,request.headers.get('Authorization')||''))fail('Invalid signature.',400);
+   const event=JSON.parse(raw);let merchantOrderId=null,state=null,payId=null;
+   if(event?.response){try{const decoded=JSON.parse(atob(event.response));merchantOrderId=decoded?.data?.merchantOrderId;state=decoded?.code==='PAYMENT_SUCCESS'?'COMPLETED':decoded?.code;payId=decoded?.data?.transactionId;}catch{}}
+   else if(event?.payload){merchantOrderId=event.payload.merchantOrderId;state=event.payload.state;payId=event.payload.paymentDetails?.[0]?.transactionId;}
+   if(merchantOrderId&&state==='COMPLETED'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(merchantOrderId).first();if(order)await completeOrder(env,order,payId);}
+   return json({ok:true});
+  }
+ }
+ if(path==='/api/payments/payu-return'&&(request.method==='POST'||request.method==='GET')){
+  const cfg=await gatewayRow(env,'payu').catch(()=>null);
+  const form=request.method==='POST'?await request.formData().catch(()=>null):null;
+  const get=k=>form?String(form.get(k)||''):(url.searchParams.get(k)||'');
+  let ok=false;
+  if(cfg){const udfs=[];for(let i=10;i>=1;i--)udfs.push(get('udf'+i));
+   const calc=await sha512hex([cfg.key_secret,get('status'),...udfs,get('email'),get('firstname'),get('productinfo'),get('amount'),get('txnid'),cfg.key_id].join('|'));
+   if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(get('txnid')).first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;}}
+  }
+  return new Response(null,{status:302,headers:{'Location':'/studio.html?payment='+(ok?'success':'failed')}});
+ }
+ const authUser=await currentUser(request,env);
+ if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
+ if(path==='/api/auth/signup'&&request.method==='POST'){
+  await rateHit(env,'signup',request,8,600);
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const input=await body(request,20000);
+  const name=typeof input?.name==='string'?input.name.trim():'',email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  if(!bounded(name,70)||!name)fail('Please enter your name.');
+  if(!bounded(email,120)||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))fail('Please enter a valid email address.');
+  if(password.length<8)fail('Please choose a password of at least 8 characters.');
+  if(password.length>72)fail('Please choose a shorter password (72 characters at most).');
+  if(await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first())fail('An account with this email already exists. Please log in instead.',409);
+  const id=crypto.randomUUID();
+  await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,name,await makePasswordRecord(password),new Date().toISOString()).run();
+  return json({user:{id,email,name,admin:email===(await adminEmail(env))}},201,{'Set-Cookie':sessionCookie(await startSession(env,id),2592000)});
+ }
+ if(path==='/api/auth/login'&&request.method==='POST'){
+  await rateHit(env,'login',request,20,300);
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const input=await body(request,20000);
+  const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
+  if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
+  if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
+  return json({user:{id:row.id,email:row.email,name:row.name,admin:row.email.toLowerCase()===(await adminEmail(env))}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
+ }
+ if(path==='/api/auth/logout'&&request.method==='POST'){
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const token=sessionToken(request);
+  if(token)await db(env).prepare('DELETE FROM sessions WHERE id=?').bind(await sha256hex(token)).run();
+  return json({ok:true},200,{'Set-Cookie':sessionCookie('',0)});
+ }
+ if(!authUser)fail('Sign in to save your wedding workspace.',401);
+ const owner=authUser.id;
+ if(!['GET','HEAD'].includes(request.method)&&request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+ if(path==='/api/entitlements'&&request.method==='GET')return json({designs:await entitledDesigns(env,owner),admin:await isAdminUser(env,authUser)});
+ if(path==='/api/my-invitations'&&request.method==='GET'){
+  const res=await db(env).prepare('SELECT invitation_id AS id,partner1,partner2,created_at AS createdAt FROM invitation_owners WHERE owner=? ORDER BY created_at DESC LIMIT 100').bind(owner).all();
+  return json({invitations:res.results||[]});
+ }
+ if(path==='/api/guests'){
+  const mineG=await entitledDesigns(env,owner);
+  if(!(mineG.includes('addon-personal')||mineG.includes('ALL')||await isAdminUser(env,authUser)))fail('Personal Invitations add-on is not unlocked for your account.',402);
+  if(request.method==='GET'){
+   const res=await db(env).prepare('SELECT id,invitation_id AS invitationId,name,phone,token,viewed_at AS viewedAt,rsvped_at AS rsvpedAt,created_at AS createdAt FROM personal_guests WHERE owner=? ORDER BY created_at DESC LIMIT 500').bind(owner).all();
+   return json({guests:res.results||[]});
+  }
+  if(request.method==='POST'){
+   await rateHit(env,'guests',request,120,600);
+   const input=await body(request,5000);
+   const invitationId=String(input?.invitationId||'');
+   const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
+   if(!own)fail('Please choose one of your published invitations.');
+   const gname=String(input?.name||'').trim().slice(0,80);if(!gname)fail("Please enter the guest's name.");
+   const gphone=String(input?.phone||'').replace(/\D/g,'').slice(0,15);
+   const gtoken=crypto.randomUUID().replace(/-/g,'')+crypto.randomUUID().slice(0,8);
+   const gid=crypto.randomUUID();
+   await db(env).prepare('INSERT INTO personal_guests(id,invitation_id,owner,name,phone,token,created_at) VALUES(?,?,?,?,?,?,?)').bind(gid,invitationId,owner,gname,gphone||null,gtoken,new Date().toISOString()).run();
+   return json({id:gid,token:gtoken},201);
+  }
+  if(request.method==='DELETE'){
+   const input=await body(request,2000);
+   await db(env).prepare('DELETE FROM personal_guests WHERE id=? AND owner=?').bind(String(input?.id||''),owner).run();
+   return json({ok:true});
+  }
+ }
+ if(path==='/api/short-links'){
+  if(request.method==='GET'){
+   const res=await db(env).prepare('SELECT slug,invitation_id AS invitationId,created_at AS createdAt FROM short_links WHERE owner=? ORDER BY created_at DESC').bind(owner).all();
+   return json({links:res.results||[]});
+  }
+  if(request.method==='POST'){
+   const mineS=await entitledDesigns(env,owner);
+   if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
+   const input=await body(request,5000);
+   const slug=String(input?.slug||'').trim().toLowerCase();
+   const RESERVED=['admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
+   const invitationId=String(input?.invitationId||'');
+   const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
+   if(!own)fail('Please choose one of your published invitations.');
+   const taken=await db(env).prepare('SELECT owner FROM short_links WHERE slug=?').bind(slug).first();
+   if(taken&&taken.owner!==owner)fail('That short link is already taken. Please try another.');
+   await db(env).prepare('INSERT INTO short_links(slug,invitation_id,owner,created_at) VALUES(?,?,?,?) ON CONFLICT(slug) DO UPDATE SET invitation_id=excluded.invitation_id WHERE short_links.owner=excluded.owner').bind(slug,invitationId,owner,new Date().toISOString()).run();
+   const check=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=? AND owner=?').bind(slug,owner).first();
+   if(!check)fail('That short link could not be saved. Please try another.');
+   return json({slug,url:'/'+slug},201);
+  }
+ }
+ if(path==='/api/checkout'&&request.method==='POST'){
+  const input=await body(request,20000);
+  const designId=typeof input?.designId==='string'?input.designId:'',gateway=typeof input?.gateway==='string'?input.gateway:'';
+  const phone=typeof input?.phone==='string'?input.phone.replace(/\D/g,''):'';
+  if(!/^[6-9]\d{9}$/.test(phone))fail('Please enter a valid 10-digit mobile number.');
+  const price=await db(env).prepare('SELECT * FROM prices WHERE design_id=?').bind(designId).first();
+  if(!price||!GATEWAYS.includes(gateway))fail('Please choose a design and a payment option.');
+  await rateHit(env,'checkout',request,20,600);
+  const ownedList=await entitledDesigns(env,owner);
+  const alreadyOwned=ownedList.includes(designId)||(ownedList.includes('ALL')&&!designId.startsWith('addon-'))||(designId==='addon-personal'&&ownedList.includes('ALL'));
+  if(alreadyOwned)fail(designId.startsWith('addon-')?'You already own this add-on.':'You already own this design.',409);
+  const cfg=await gatewayRow(env,gateway);if(!usable(cfg))fail('This payment option is not available right now. Please try another.',400);
+  const amount=price.launch_active?price.launch_paise:price.regular_paise;
+  const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created'};
+  const now=new Date().toISOString();
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now).run();
+  try{
+   let made;
+   if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
+   else if(gateway==='cashfree')made=await cashfreeCreate(cfg,order,authUser,phone,url.origin);
+   else if(gateway==='phonepe')made=await phonepeCreate(cfg,order,url.origin);
+   else made=await payuCreate(cfg,order,authUser,phone,url.origin);
+   await db(env).prepare('UPDATE orders SET gateway_order_id=?,updated_at=? WHERE id=?').bind(made.gateway_order_id,new Date().toISOString(),order.id).run();
+   return json({orderId:order.id,...made.payload},201);
+  }catch(e){await db(env).prepare("UPDATE orders SET status='failed',updated_at=? WHERE id=?").bind(new Date().toISOString(),order.id).run();throw e;}
+ }
+ if(path==='/api/checkout/verify'&&request.method==='POST'){
+  const input=await body(request,20000);
+  const orderId=typeof input?.orderId==='string'?input.orderId:'';
+  const order=await db(env).prepare('SELECT * FROM orders WHERE id=? AND user_id=?').bind(orderId,owner).first();
+  if(!order)fail('Order not found.',404);
+  if(order.status==='paid')return json({ok:true,designs:await entitledDesigns(env,owner)});
+  const cfg=await gatewayRow(env,order.gateway);if(!usable(cfg))fail('This payment option is not available right now.',400);
+  let paid=false,paymentId=null;
+  if(order.gateway==='razorpay'){
+   const paymentIdIn=typeof input?.paymentId==='string'?input.paymentId:'',sig=typeof input?.signature==='string'?input.signature:'';
+   const expected=await hmacHex(cfg.key_secret,(order.gateway_order_id||'')+'|'+paymentIdIn);
+   if(paymentIdIn&&safeEq(expected,sig)){paid=true;paymentId=paymentIdIn;}
+  }else if(order.gateway==='cashfree'){
+   const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
+   const res=await fetch(base+'/orders/'+order.id,{headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01'}});
+   const data=await res.json().catch(()=>null);
+   if(res.ok&&data?.order_status==='PAID')paid=true;
+  }else if(order.gateway==='phonepe'){
+   const {host,token}=await phonepeToken(cfg);
+   const res=await fetch(host+'/apis/hermes/checkout/v2/order/'+order.id+'/status',{headers:{'Authorization':'O-Bearer '+token}});
+   const data=await res.json().catch(()=>null);
+   if(res.ok&&data?.state==='COMPLETED'){paid=true;paymentId=data?.paymentDetails?.[0]?.transactionId||null;}
+  }
+  if(!paid)fail('Payment is not confirmed yet. If money was deducted, it will reflect shortly.',402);
+  await completeOrder(env,order,paymentId);
+  return json({ok:true,designs:await entitledDesigns(env,owner)});
+ }
+ if(path==='/api/admin/site'){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(request.method==='GET'){const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='maintenance'").first();return json({open:!row||row.value!=='1'});}
+  if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();return json({open});}
+  fail('Not found.',404);
+ }
+ if(path==='/api/admin/payments'){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(request.method==='GET'){
+   const settings=await db(env).prepare('SELECT * FROM payment_settings').all();
+   const gateways=(settings.results||[]).map(r=>{const x=extraOf(r);return {gateway:r.gateway,enabled:!!r.enabled,mode:r.mode,key_id:r.key_id||'',has_secret:!!r.key_secret,client_version:x.client_version||'',webhook_username:x.webhook_username||'',has_webhook_secret:!!x['webhook_'+'secret'],has_webhook_password:!!x['webhook_'+'password']};});
+   const priceRows=await db(env).prepare('SELECT * FROM prices').all();
+   const orderRows=await db(env).prepare('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,u.email FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 50').all();
+   return json({gateways,prices:priceRows.results||[],orders:orderRows.results||[]});
+  }
+  if(request.method==='PUT'){
+   const input=await body(request,60000);
+   for(const g of input?.gateways||[]){
+    if(!g||!GATEWAYS.includes(g.gateway))continue;
+    const cur=await gatewayRow(env,g.gateway);if(!cur)continue;
+    const extra=extraOf(cur);
+    if(typeof g.client_version==='string')extra.client_version=g.client_version.slice(0,10);
+    if(typeof g.webhook_username==='string')extra.webhook_username=g.webhook_username.slice(0,120);
+    const ws=g['webhook_'+'secret'];if(typeof ws==='string'&&ws)extra['webhook_'+'secret']=ws.slice(0,200);
+    const wp=g['webhook_'+'password'];if(typeof wp==='string'&&wp)extra['webhook_'+'password']=wp.slice(0,200);
+    const secretIn=g['key_'+'secret'];
+    await db(env).prepare('UPDATE payment_settings SET enabled=?,mode=?,key_id=?,key_secret=?,extra=? WHERE gateway=?')
+     .bind(g.enabled?1:0,g.mode==='live'?'live':'test',typeof g.key_id==='string'?g.key_id.slice(0,200):cur.key_id,(typeof secretIn==='string'&&secretIn)?secretIn.slice(0,300):cur.key_secret,JSON.stringify(extra),g.gateway).run();
+   }
+   for(const p of input?.prices||[]){
+    if(!p||typeof p.design_id!=='string')continue;
+    const reg=Math.round(Number(p.regular)*100),launch=Math.round(Number(p.launch)*100);
+    if(!Number.isFinite(reg)||!Number.isFinite(launch)||reg<0||launch<0||reg>100000000||launch>100000000)continue;
+    await db(env).prepare('UPDATE prices SET regular_paise=?,launch_paise=?,launch_active=? WHERE design_id=?').bind(reg,launch,p.launch_active?1:0,p.design_id).run();
+   }
+   return json({saved:true});
+  }
+ }
+ if(path==='/api/workspace'){
+  if(request.method==='GET'){const row=await db(env).prepare('SELECT data,revision FROM workspaces WHERE owner=?').bind(owner).first();return json(row?{state:JSON.parse(row.data),revision:row.revision}:{state:null,revision:0});}
+  if(request.method==='PUT'){
+   const input=await body(request),state=validateState(input.state),rev=Number(input.revision),data=JSON.stringify(state),now=new Date().toISOString();
+   if(!Number.isInteger(rev)||rev<0)fail('Invalid save revision.');
+   let result;if(rev===0)result=await db(env).prepare('INSERT INTO workspaces(owner,data,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(owner) DO NOTHING').bind(owner,data,now).run();
+   else result=await db(env).prepare('UPDATE workspaces SET data=?,revision=revision+1,updated_at=? WHERE owner=? AND revision=?').bind(data,now,owner,rev).run();
+   if(!result.meta.changes)fail('Your plan changed in another tab. Download a backup before reloading to see the latest saved plan.',409);
+   return json({revision:rev+1});
+  }
+ }
+ if(path==='/api/rsvps'&&request.method==='GET'){
+  const res=await db(env).prepare('SELECT r.id,r.invitation_id AS invitationId,r.name,r.attendance,r.guests,r.message,r.song,r.phone,r.created_at AS createdAt,o.partner1,o.partner2 FROM rsvps r JOIN invitation_owners o ON o.invitation_id=r.invitation_id WHERE o.owner=? ORDER BY r.created_at DESC LIMIT 500').bind(owner).all();
+  return json({rsvps:res.results||[]});
+ }
+ if(path==='/api/rsvps'&&request.method==='DELETE'){
+  const input=await body(request,2000);
+  await db(env).prepare('DELETE FROM rsvps WHERE id=? AND invitation_id IN (SELECT invitation_id FROM invitation_owners WHERE owner=?)').bind(String(input?.id||''),owner).run();
+  return json({ok:true});
+ }
+ if(path==='/api/invitations'&&request.method==='POST'){
+  if(!env.BUCKET)fail('Invitation storage is unavailable.',503);const input=await body(request,250000);if(!input||!bounded(input.partner1,70)||!bounded(input.partner2,70))fail('Invalid invitation.');const c=normalizeConfig(input);if(c.audioUrl.startsWith('local-audio:')||JSON.stringify(c).includes('data:image/'))fail('Sign in and upload your photos and song before creating a short guest link.');
+  if(!await isAdminUser(env,authUser)&&!await hasEntitlement(env,owner,c.theme))fail('Unlock this design to create your shareable invitation link.',402);
+  if(c.gallery.length>4){const mineP=await entitledDesigns(env,owner);if(!mineP.includes('addon-gallery')&&!await isAdminUser(env,authUser))fail('More than 4 gallery photos needs the Premium Gallery add-on.',402);}
+  c._ew=EW_ORIGIN;
+  const id=crypto.randomUUID();await env.BUCKET.put('invitation-snapshots/'+id,JSON.stringify(c),{httpMetadata:{contentType:'application/json'}});try{await db(env).prepare('INSERT OR REPLACE INTO invitation_owners(invitation_id,owner,partner1,partner2,created_at) VALUES(?,?,?,?,?)').bind(id,owner,c.partner1,c.partner2,new Date().toISOString()).run();}catch{}return json({id,url:'/invite.html?id='+id},201);
+ }
+ if(path==='/api/studio'){
+  if(request.method==='GET'){const row=await db(env).prepare('SELECT data FROM studio_drafts WHERE owner=?').bind(owner).first();return json({config:row?JSON.parse(row.data):null});}
+  if(request.method==='PUT'){const c=await body(request,250000);if(!c||!bounded(c.partner1,70)||!bounded(c.partner2,70))fail('Invalid invitation.');await db(env).prepare('INSERT INTO studio_drafts(owner,data,updated_at) VALUES(?,?,?) ON CONFLICT(owner) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').bind(owner,JSON.stringify(c),new Date().toISOString()).run();return json({saved:true});}
+ }
+ if(path==='/api/invitation-audio'&&request.method==='POST'){
+  if(!env.BUCKET)fail('Song storage is unavailable.',503);const max=20*1024*1024;if(Number(request.headers.get('Content-Length'))>max+1024*1024)fail('Choose a song under 20 MB.',413);const data=await request.formData(),file=data.get('file');const types=['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','audio/mp4','audio/x-m4a'];if(!file||typeof file==='string'||!types.includes(file.type)||file.size<12||file.size>max)fail('Choose an MP3, WAV, OGG or M4A song under 20 MB.');const bytes=new Uint8Array(await file.arrayBuffer()),header=new TextDecoder().decode(bytes.slice(0,16));if(!validAudioHeader(bytes.slice(0,16),file.type))fail('That file is not a supported audio recording.');const id=crypto.randomUUID(),key='invitation-audio/'+id;await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});try{await db(env).prepare('INSERT INTO assets(id,owner,filename,mime,size,created_at) VALUES(?,?,?,?,?,?)').bind(id,owner,file.name.slice(0,150),file.type,file.size,new Date().toISOString()).run();}catch(e){await env.BUCKET.delete(key);throw e;}return json({id,url:'/api/invitation-audio/'+id,name:file.name},201);
+ }
+ if((path==='/api/assets'||path==='/api/exports'||path==='/api/invitation-photos'||path==='/api/videos')&&request.method==='POST'){
+  const isPDF=path==='/api/exports',isInvitation=path==='/api/invitation-photos',isVideo=path==='/api/videos',maxBytes=(isVideo?20:8)*1024*1024;
+  if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
+  if(Number(request.headers.get('Content-Length'))>maxBytes+1024*1024)fail(isVideo?'Choose a video smaller than 20 MB.':'Choose an image smaller than 8 MB.',413);
+  const data=await request.formData(),file=data.get('file');
+  if(!file||typeof file==='string'||!(isPDF?['application/pdf']:isVideo?['video/mp4','video/webm']:['image/jpeg','image/png','image/webp']).includes(file.type)||file.size>maxBytes||file.size<12)fail(isVideo?'Choose an MP4 or WebM video under 20 MB.':'Choose a JPG, PNG or WebP image under 8 MB.');
+  const bytes=new Uint8Array(await file.arrayBuffer());const valid=isVideo?(file.type==='video/mp4'?new TextDecoder().decode(bytes.slice(4,8))==='ftyp':bytes[0]===26&&bytes[1]===69&&bytes[2]===223&&bytes[3]===163):isPDF?new TextDecoder().decode(bytes.slice(0,5))==='%PDF-':file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes[0]===137&&bytes[1]===80&&bytes[2]===78:bytes[0]===82&&bytes[1]===73&&bytes[8]===87&&bytes[9]===69;if(!valid)fail(isVideo?'That file is not a valid MP4 or WebM video.':'That file is not a valid image.');
+  const id=crypto.randomUUID(),key=isInvitation?'invitation/'+id:id;await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});
+  try{await db(env).prepare('INSERT INTO assets(id,owner,filename,mime,size,created_at) VALUES(?,?,?,?,?,?)').bind(id,owner,file.name.slice(0,150),file.type,file.size,new Date().toISOString()).run();}catch(e){await env.BUCKET.delete(key);throw e;}
+  return json({id,url:(isInvitation?'/api/invitation-photos/':'/api/assets/')+id,name:file.name},201);
+ }
+ if(path.startsWith('/api/assets/')&&request.method==='GET'){
+  const id=path.split('/').pop(),row=await db(env).prepare('SELECT mime FROM assets WHERE id=? AND owner=?').bind(id,owner).first();if(!row)fail('Photo not found.',404);const object=await env.BUCKET.get(id);if(!object)fail('Photo not found.',404);return new Response(object.body,{headers:{'Content-Type':row.mime,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff',...(row.mime==='application/pdf'?{'Content-Disposition':'attachment; filename="Easy-Wedding-Plan.pdf"'}:{})}});
+ }
+ return json({error:'Not found.'},404);
+ }catch(e){if(!e.status)console.error('Wedding request failed',path,e.message);return json({error:e.status?e.message:'We could not save or load your wedding data. Your current input is still on this page. Please try again.'},e.status||503);}
+}};
