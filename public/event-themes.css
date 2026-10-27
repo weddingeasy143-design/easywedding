@@ -1,0 +1,46 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+.event-theme{--paper:#fff5d9;--ink:#66381b;--gold:#a55313;--wine:#924519;--line:#cba45977;background:#edcc76}
+.event-theme .hero{min-height:760px;aspect-ratio:2/3;overflow:hidden}
+.event-theme .hero-art{object-fit:cover;height:100%;width:100%;animation:event-breathe 14s ease-in-out infinite alternate}
+.event-theme .hero-copy{inset:25% 12% auto;padding:28px 12px;background:#fff9e9df;backdrop-filter:blur(4px);border:1px solid #bc943f99;box-shadow:0 12px 50px #3e240f22;border-radius:180px 180px 4px 4px;color:var(--ink)}
+.event-theme .hero h1{font-size:clamp(57px,13vw,85px);line-height:1.08;margin:22px 0}
+.event-theme .hero .eyebrow{font-size:15px;line-height:1.5;letter-spacing:.09em;color:var(--gold)}
+.event-theme .hero-date,.event-theme .hero-location{color:inherit}.event-theme .hero-location{font-size:16px}.event-theme .scroll-cue{margin-top:20px}
+.event-theme .envelope-inner{background-image:var(--event-art)}
+.event-theme .paper-panel{background-image:linear-gradient(#ffc84055,#f4a63322),url('assets/envelope.webp')}
+.event-theme .opening,.event-theme .welcome,.event-theme .closing{background-color:var(--paper)}
+.event-theme .closing{background-image:none}.event-theme .venue-illustration{background-image:var(--event-art)}
+.event-theme .section{padding-top:55px;padding-bottom:55px}.event-theme .paper-card{clip-path:none;border:1px solid var(--line);border-radius:3px;background:var(--paper);box-shadow:0 12px 40px #422a0e0c}
+.event-theme .paper-card:before{border:0}.event-theme .body-copy{font-size:19px}.event-theme .section .eyebrow{font-size:12px}
+.event-theme .timeline{margin-top:25px}.event-theme .timeline time{font-size:15px}.event-theme .timeline h3{font-size:24px}.event-theme .timeline p{font-size:17px}
+.event-theme .venue-image-wrap{border-radius:130px 130px 6px 6px;border:6px solid var(--paper);outline:1px solid var(--line)}
+#invitation>.couple-photo-wrap{width:78%;max-width:365px;height:auto;aspect-ratio:4/5;margin:45px auto 10px;border:7px solid var(--paper);outline:1px solid var(--line);box-shadow:0 14px 35px #22130624;border-radius:180px 180px 5px 5px;overflow:hidden}
+#invitation>.couple-photo-wrap img{width:100%;height:100%;object-fit:cover}
+[data-theme=mehndi]{--paper:#0c3a2d;--ink:#ffefd1;--gold:#e2c580;--wine:#efce88;--line:#d4bb6b55;background:#08291f}
+[data-theme=mehndi] .hero-copy{background:#073b2fde;border:1px solid #cfb16c;border-radius:180px 180px 0 0;inset:25% 14% auto}
+[data-theme=mehndi] .paper-panel{background-image:linear-gradient(#14583bc9,#14583baa),url('assets/envelope.webp')}
+[data-theme=mehndi] .opening-prompt,[data-theme=mehndi] .envelope-address,[data-theme=mehndi] .opening-eyebrow,[data-theme=mehndi] .opening-footer{color:#ffedbf}
+[data-theme=mehndi] .welcome:after{display:none}[data-theme=mehndi] .scratch-tile{background:#184d3b}[data-theme=mehndi] .notes-card,[data-theme=mehndi] .countdown-block{color:#fff0d2}
+[data-theme=reception]{--paper:#121f34;--ink:#f9ecd4;--gold:#e3be83;--wine:#edc686;--line:#dec09255;background:#0d1726}
+[data-theme=reception] .hero-copy{inset:28% 10% auto;border-radius:0;background:#142039e8;border:1px solid #c7ab74;padding:25px 22px;text-align:left}
+[data-theme=reception] .hero h1{font-family:var(--serif);font-size:65px;text-transform:uppercase;letter-spacing:.01em}
+[data-theme=reception] .hero h1 i{font:35px var(--script);display:block}[data-theme=reception] .hero .scroll-cue{align-items:flex-start}
+[data-theme=reception] .paper-panel{background-image:linear-gradient(#162945c9,#162945b0),url('assets/envelope.webp')}
+[data-theme=reception] .opening-prompt,[data-theme=reception] .envelope-address,[data-theme=reception] .opening-eyebrow,[data-theme=reception] .opening-footer{color:#ffe9b8}
+[data-theme=reception] .script-heading{font-family:var(--serif);font-size:42px}[data-theme=reception] .welcome:after{display:none}[data-theme=reception] .scratch-tile{background:#263652}
+[data-theme=reception] #invitation>.couple-photo-wrap,[data-theme=reception] .venue-image-wrap{border-radius:0}
+[data-theme=sangeet]{--paper:#312042;--ink:#fff1ff;--gold:#dfb3ef;--wine:#e4b8f7;--line:#d0a3e166;background:#21132f}
+[data-theme=sangeet] .hero-art{filter:hue-rotate(22deg)}[data-theme=sangeet] .hero-copy{background:#30203fde;inset:28% 12% auto;border-radius:8px;border:1px solid #e6aaff}
+[data-theme=sangeet] .hero h1{transform:rotate(-4deg)}[data-theme=sangeet] .paper-panel{background-image:linear-gradient(#4b255da9,#4b255d88),url('assets/envelope.webp')}
+[data-theme=sangeet] .opening-prompt,[data-theme=sangeet] .envelope-address,[data-theme=sangeet] .opening-eyebrow,[data-theme=sangeet] .opening-footer{color:#ffe2ff}
+[data-theme=sangeet] .welcome:after{display:none}[data-theme=sangeet] .scratch-tile{background:#4e3561}
+.event-theme .family-line,.event-theme .venue-address,.event-theme .small-copy,.event-theme .timeline p{color:var(--ink)}
+@keyframes event-breathe{from{transform:scale(1)}to{transform:scale(1.055)}}
+@media(prefers-reduced-motion:reduce){.event-theme .hero-art{animation:none}}
+@media(max-width:380px){.event-theme .hero{min-height:700px}.event-theme .hero-copy{left:9%;right:9%;top:23%}}
+/* Keep the paper front artwork attached to its 3D fold. */
+.event-theme .paper-panel{background:none}.event-theme .paper-panel::before{background-image:linear-gradient(#ffcb4755,#f2a12d22),url('assets/envelope.webp')}
+[data-theme=mehndi] .paper-panel::before{background-image:linear-gradient(#14583bd9,#14583baa),url('assets/envelope.webp')}
+[data-theme=reception] .paper-panel::before{background-image:linear-gradient(#162945dc,#162945bb),url('assets/envelope.webp')}
+[data-theme=sangeet] .paper-panel::before{background-image:linear-gradient(#4b255dce,#4b255da0),url('assets/envelope.webp')}
+.event-theme .opening:before{background-image:var(--event-art);opacity:.13}.event-theme .opening{background:radial-gradient(ellipse,var(--paper),#a5805266)}

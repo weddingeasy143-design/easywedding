@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print-ready Card · Easy Wedding</title>
+<style>
+ :root{--maroon:#571c24;--gold:#c9a24b;--ivory:#fdf8ec;--ink:#33231f;--soft:#7a5c48}
+ *{box-sizing:border-box}
+ body{margin:0;font-family:Georgia,'Times New Roman',serif;background:#efe6d0;color:var(--ink)}
+ .bar{max-width:640px;margin:18px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;font-family:system-ui,sans-serif}
+ .bar p{font-size:13.5px;color:var(--soft);margin:0}
+ .bar button{background:var(--maroon);color:var(--ivory);border:0;border-radius:999px;padding:10px 20px;font-size:14px;cursor:pointer}
+ .sheet{max-width:640px;margin:14px auto 40px;background:var(--ivory);border:2px solid var(--gold);border-radius:6px;padding:46px 42px 34px;text-align:center;box-shadow:0 14px 44px rgba(87,28,36,.18);position:relative}
+ .sheet:before{content:"";position:absolute;inset:9px;border:1px solid #e5d3a8;border-radius:4px;pointer-events:none}
+ .om{font-size:22px;color:var(--gold)}
+ .occasion{letter-spacing:.22em;text-transform:uppercase;font-family:system-ui,sans-serif;font-size:11.5px;color:var(--soft);margin:14px 0 4px}
+ .names{font-size:42px;font-style:italic;font-weight:600;color:var(--maroon);line-height:1.15;margin:6px 0}
+ .amp{color:var(--gold);font-size:30px}
+ .blessing{font-size:15.5px;color:var(--ink);white-space:pre-line;margin:12px auto;max-width:440px;line-height:1.55}
+ .when{font-size:19px;color:var(--maroon);margin:16px 0 2px}
+ .venue{font-size:16px;margin:2px 0}
+ .addr{font-size:13.5px;color:var(--soft);max-width:430px;margin:4px auto;line-height:1.5}
+ .events{margin:20px auto 4px;max-width:460px;text-align:left}
+ .events div{display:flex;justify-content:space-between;gap:14px;border-bottom:1px dashed #e5d3a8;padding:6px 2px;font-size:14.5px}
+ .events b{color:var(--maroon);font-weight:600}
+ .qr{margin:22px auto 6px}
+ .qr img{width:150px;height:150px}
+ .link{font-family:system-ui,sans-serif;font-size:12.5px;color:var(--soft);word-break:break-all;max-width:460px;margin:4px auto}
+ .foot{margin-top:20px;font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+ .state{max-width:640px;margin:60px auto;padding:0 20px;text-align:center;color:var(--soft);font-size:17px}
+ a.btn{display:inline-block;background:var(--maroon);color:var(--ivory);text-decoration:none;padding:10px 20px;border-radius:999px;font-family:system-ui,sans-serif;font-size:14px;margin-top:12px}
+ @media print{
+  body{background:#fff}
+  .bar{display:none}
+  .sheet{box-shadow:none;margin:0 auto;border-radius:0}
+  @page{margin:10mm}
+ }
+</style>
+</head>
+<body><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div>
+<main id="app"><p class="state">Preparing your print card…</p></main>
+<script src="/assets/vendor/qrcode.min.js"></script>
+<script type="module" src="pdf.js"></script>
+</body>
+</html>

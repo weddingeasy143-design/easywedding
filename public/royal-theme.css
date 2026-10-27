@@ -1,0 +1,169 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+/* One royal red identity for the Easy Wedding website and workspace. */
+:root{--royal-red:#75152e;--royal-red-rich:#641127;--royal-panel:#591024;--royal-deep:#390916;--royal-dark:#280710;--royal-text:#fff5e7;--royal-muted:#ead4c5;--royal-gold:#efcc87;--royal-gold-deep:#c5913f;--royal-line:#e8bd6b40;--royal-ease:cubic-bezier(.22,1,.36,1)}
+body.royal-ui{--ink:var(--royal-text);--muted:var(--royal-muted);--paper:var(--royal-red-rich);--line:var(--royal-line);--wine:var(--royal-gold);--wine-dark:#f5dba4;--maroon:var(--royal-red);--deep:var(--royal-deep);--gold:var(--royal-gold);--gold-dark:var(--royal-gold);--maroon-deep:var(--royal-deep);color:var(--royal-text);background:radial-gradient(ellipse at 8% 0%,#a0304429,transparent 55%),var(--royal-red-rich);color-scheme:dark}
+.royal-ui :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid var(--royal-gold);outline-offset:5px}
+.royal-ui :is(.eyebrow,.hero-eyebrow){color:var(--royal-gold)}
+.royal-ui :is(.brand-logo-crop,.collection-header>a:first-child){background:#fff7e8;border:1px solid #e8bd6b66;border-radius:8px;box-shadow:0 5px 20px #18030a20}
+.royal-ui .brand small{color:var(--royal-muted)}
+
+/* Substantial gold controls, with polished feedback instead of small flat CTAs. */
+.royal-ui :is(.button,.primary,.primary-link){position:relative;isolation:isolate;overflow:hidden;min-height:56px;padding:16px 28px;gap:14px;border:1px solid #f3d799;border-radius:12px;background:linear-gradient(135deg,#ffe6b4 0%,#efcc87 44%,#d8a954 100%);color:#3b0c1a;font-size:14px;font-weight:700;letter-spacing:.015em;line-height:1.35;text-decoration:none;box-shadow:inset 0 1px 0 #fff9,0 8px 22px #24030d40;transition:transform 280ms var(--royal-ease),box-shadow 280ms ease,background 200ms ease}
+.royal-ui :is(.button,.primary,.primary-link)::after{content:'';position:absolute;inset:-80% auto -80% -70%;width:40%;background:linear-gradient(90deg,transparent,#ffffff80,transparent);transform:skewX(-24deg);transition:left 650ms var(--royal-ease);pointer-events:none;z-index:-1}
+.royal-ui :is(.button,.primary,.primary-link):hover{transform:translateY(-3px);background:linear-gradient(135deg,#fff0cf,#f4d49b 45%,#e4b766);box-shadow:inset 0 1px 0 #fffc,0 14px 30px #24030d55}
+.royal-ui :is(.button,.primary,.primary-link):hover::after{left:150%}
+.royal-ui :is(.button,.primary,.primary-link):active{transform:translateY(0) scale(.97);transition-duration:100ms;box-shadow:inset 0 2px 6px #5b351b25,0 3px 10px #24030d30}
+.royal-ui :is(.button.ghost,.button.secondary,.secondary){display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:14px 24px;border:1px solid #e5be7770;border-radius:12px;color:var(--royal-text);background:#36091255;box-shadow:inset 0 1px 0 #f5d79b12;transition:background 200ms,transform 280ms var(--royal-ease),border-color 200ms}
+.royal-ui :is(.button.ghost,.button.secondary,.secondary):hover{background:#a4314840;border-color:var(--royal-gold);transform:translateY(-2px)}
+.royal-ui .button.danger{background:#a62640;color:#fff5e7;border-color:#ffb0bc}
+.royal-ui :is(.button.small,.top-actions .button){min-height:48px;padding:12px 18px;font-size:12px}
+.royal-ui :is(.button,.primary,.secondary):disabled{transform:none;box-shadow:none}
+.royal-ui :is(.button,.primary,.secondary) .icon{width:19px;height:19px;transition:transform 280ms var(--royal-ease)}
+.royal-ui :is(.button,.primary):hover .icon{transform:translateX(4px)}
+
+/* Homepage: the hero red continues into every chapter. */
+.royal-home .site-nav{min-height:94px;height:auto;padding-block:14px;background:#440b1cf2;border-color:var(--royal-line);box-shadow:0 6px 30px #21030d22;backdrop-filter:blur(16px)}
+.royal-home .site-nav .brand-logo-crop{width:226px}
+.royal-home .site-nav .brand small{font-size:9px;margin:6px 0 0 8px}
+.royal-home .site-links :is(a,button){color:var(--royal-text);font-size:13px}
+.royal-home .site-links :is(a,button):hover,.royal-home .site-links a[aria-current]{color:var(--royal-gold)}
+.royal-home .nav-cta .button{min-height:50px;font-size:12px;padding:13px 20px}
+.royal-home .hero-cta{gap:16px;flex-wrap:wrap}
+.royal-home .hero-cta .button{min-height:64px;font-size:16px;padding:19px 32px;min-width:152px;border-radius:14px}
+.royal-home .hero-cta .button.gold{min-width:238px}
+.royal-home .hero-left{background:var(--royal-red)}
+.royal-home :is(.features-section,.how-section,.studio-band,.dash-band,.love-section,.final-cta,.site-footer){position:relative;isolation:isolate;color:var(--royal-text);border-color:var(--royal-line)}
+.royal-home .features-section{background:radial-gradient(ellipse at 50% 0%,#bd4c4b20,transparent 65%),var(--royal-red)}
+.royal-home .how-section{background:radial-gradient(ellipse at 10% 60%,#af304522,transparent 60%),#591024}
+.royal-home .studio-band{background:radial-gradient(ellipse at 85% 10%,#b953452b,transparent 65%),var(--royal-red)}
+.royal-home .dash-band{background:radial-gradient(ellipse at 90% 30%,#a5314525,transparent 60%),#591024}
+.royal-home .love-section{background:radial-gradient(ellipse at 45% 0%,#a1354829,transparent 60%),var(--royal-red)}
+.royal-home .final-cta{background-image:linear-gradient(90deg,#4b0b20e8,#75152ed4),url('assets/homepage/candles-hd.webp');background-color:var(--royal-red)}
+.royal-home .site-footer{background:#390916}
+.royal-home :is(.feature-heading h2,.how-copy h2,.studio-copy h2,.dash-copy h2,.love-section h2,.feature-card h3,.step-link h3){color:var(--royal-text)}
+.royal-home :is(h2 em,.feature-heading em){color:var(--royal-gold)}
+.royal-home :is(.hero-side-caption,.section-intro,.feature-copy p,.step-head p,.dash-copy>p,.love-grid article p,.love-grid footer span,.studio-sub){color:var(--royal-muted)}
+.royal-home :is(.feature-card,.step-link,.love-grid article){background:linear-gradient(150deg,#912b3b45,#3c091c5c),var(--royal-panel);border-color:var(--royal-line);border-radius:18px;box-shadow:inset 0 1px 0 #f2d7a30a,0 12px 30px #20040d1f;color:var(--royal-text)}
+.royal-home :is(.feature-card,.step-link,.love-grid article):hover{border-color:#e9bc797a;box-shadow:inset 0 1px 0 #f2d7a312,0 20px 38px #23030e35}
+.royal-home :is(.f-icon,.step-number){background:#e6bc7020;border:1px solid #e6bc7045;color:var(--royal-gold)}
+.royal-home .feature-card:nth-child(n) .f-icon,.royal-home .love-stat .icon{color:var(--royal-gold)}
+.royal-home .card-action{color:var(--royal-gold);font-size:13px}
+.royal-home .love-grid footer b{color:var(--royal-text)}
+.royal-home .studio-points{color:var(--royal-muted)}
+.royal-home .studio-points .icon{color:var(--royal-gold)}
+.royal-home .collection-all{color:var(--royal-gold);border-color:#e6bc7090;font-size:15px;padding:8px 0}
+.royal-home #studio .template-row{scrollbar-color:#d8ac68 #4b0b20}
+.royal-home #studio .template-row .homepage-template figure{border-color:#e3bd7866;box-shadow:0 12px 30px #24030c40}
+.royal-home #studio .template-row .homepage-template figcaption{background:#4b0b20;color:var(--royal-text);font-size:14px}
+.royal-home #studio .template-row .homepage-template-premium figure{border-color:#efcc87;box-shadow:0 0 0 4px #efcc8712,0 14px 35px #24030c50}
+.royal-home .collection-premium{background:linear-gradient(130deg,#ffdf9f,#e0ad58);color:#3b0c1a;border:1px solid #f7dfa8}
+.royal-home .final-cta .button{min-height:64px;font-size:15px;padding:20px 30px}
+.royal-home .site-footer .brand{color:#641a2c}
+.royal-home .site-footer .brand small{color:#75152e}
+.royal-home :is(.footer-links a,.site-footer button){color:var(--royal-muted)}
+.royal-home .page-progress{accent-color:var(--royal-gold)}
+
+/* Light miniature illustrations retain their paper and ink inside red cards. */
+.royal-home :is(.mini-screen,.workspace-paper,.plan-paper,.dashboard-preview,.stationery-copy){--ink:#641a2c;--muted:#6d4a42;--paper:#fbf3e8;--ivory:#fffaf3;--wine:#681b36;--line:#e2d4c2;color:#641a2c;color-scheme:light}
+.royal-home :is(.mini-screen,.workspace-paper,.plan-paper,.dashboard-preview){background:#fff8eb}
+.royal-home .dashboard-preview{border:1px solid #efcc8780;box-shadow:0 30px 70px #25020d50}
+.royal-home .dashboard-preview .dashboard-topbar{background:#fff7e8}
+
+/* Planner and studio surfaces use the same red, gold and readable ivory. */
+.royal-planner :is(.workspace,.topbar,.window-header){background:#4b0b20;color:var(--royal-text);border-color:var(--royal-line)}
+.royal-planner .sidebar{background:linear-gradient(165deg,#75152e,#390916 85%)}
+.royal-planner .sidebar>.brand{background:#fff7e8}
+.royal-planner :is(.panel,.stat,.event-card,.cine-card,.cine-band,.quick-card,.photo-upload,.opacity-control,.loading-card){background:linear-gradient(145deg,#87273944,#400a1b55),var(--royal-panel);border-color:var(--royal-line);color:var(--royal-text);box-shadow:0 10px 30px #20040b20}
+.royal-planner :is(.event-tile,.empty,.upload-box,.prompt-box,.welcome-layout,.ai-photo,.provider-choice){background:#4b0b20;color:var(--royal-text);border-color:var(--royal-line)}
+.royal-planner .event-card-header{background:linear-gradient(130deg,#86263d,#641127);color:var(--royal-text)}
+.royal-planner .budget-ring::before{background:#4b0b20}
+.royal-planner .budget-table th{background:#4b0b20;color:var(--royal-muted)}
+.royal-planner .avatar{color:#3b0c1a}
+.royal-planner .notice{background:#7c2339;color:#fff0cc;border-color:var(--royal-line)}
+.royal-planner .notice.error{background:#6c1630;color:#ffd3dc}
+.royal-planner .ai-photo-empty{background:linear-gradient(140deg,#75152e,#4b0b20);color:var(--royal-gold)}
+.royal-planner label{color:var(--royal-text)}
+.royal-planner :is(.source-note,.photo-upload small,.ai-photo small,.bridge-status,.task-line.done strong){color:var(--royal-muted)}
+.royal-planner #save-state.failed{color:#ffd3dc}
+.royal-planner :is(.cine-head h2,.cine-card-title,.cine-stat-value,.cine-stat-label,.cine-stat-note,.opacity-control output){color:var(--royal-text)}
+.royal-planner :is(.cine-stat-label,.cine-stat-note,.art-caption,.field-help,.page-heading p,.breadcrumb,#save-state,.opacity-endpoints){color:var(--royal-muted)}
+.royal-planner :is(.window-header,.studio-window,.design-editor,.filter-bar){border-color:var(--royal-line);background:#4b0b20}
+.royal-planner .cine-card-body{background:#591024}
+.royal-planner :is(.text-link,.panel a,.quick-card .icon){color:var(--royal-gold)}
+.royal-planner .app-footer{background:#390916;color:var(--royal-muted)}
+.royal-planner .overview-portrait{background:#591024;border-color:#e8bd6b70}
+.royal-planner .overview-portrait figcaption{color:var(--royal-text)}
+.royal-planner .overview-portrait figcaption>span{color:var(--royal-muted)}
+.royal-planner #global-message{background:#9a364647;color:#ffe6b4;border-color:var(--royal-line)}
+.royal-planner :is(.tab-button,.chip,.filter-button,.segmented button){color:var(--royal-muted);border-color:var(--royal-line);background:#4b0b20}
+.royal-planner :is(.tab-button.active,.chip.active,.filter-button.active,.segmented button.active){color:#3b0c1a;background:var(--royal-gold)}
+.royal-studio .studio-header{background:#440b1c;border-color:var(--royal-line);color:var(--royal-text);min-height:94px}
+.royal-studio .editor{background:var(--royal-red-rich);border-color:var(--royal-line)}
+.royal-studio :is(.preview-pane,.preview-toolbar){background:#390916;color:var(--royal-text)}
+.royal-studio :is(.editor-intro h1 em,.compare-designs,.theme-help,.eyebrow){color:var(--royal-gold)}
+.royal-studio :is(.editor-intro p,.helper,label small,summary small,.header-actions>span,.preview-toolbar strong,.preview-toolbar small,.preview-actions>span,.preview-caption>p,.preview-caption>span){color:var(--royal-muted)}
+.royal-studio :is(.editor-section,.theme-fieldset,.field-separator){border-color:var(--royal-line)}
+.royal-studio :is(.photo-upload,.event-edit,.editor-bottom){background:#4b0b20;border-color:var(--royal-line);color:var(--royal-text);border-radius:12px}
+.royal-studio :is(.text-button,.preview-actions button,.compare-designs){color:var(--royal-gold)}
+.royal-studio :is(.theme-fieldset legend,.editor-section .step,.editor-section summary b){color:var(--royal-gold)}
+.royal-studio :is(.editor-bottom>p,.toggle-row small,.photo-upload [role=status],.song-upload small){color:var(--royal-muted)}
+.royal-studio #share-alerts{color:#ffd3dc}
+.royal-studio .theme-caption{background:#4b0b20;color:var(--royal-text)}
+.royal-studio .theme-caption small{color:var(--royal-muted)}
+.royal-studio .theme-card{border-color:#e6bc7050}
+.royal-studio .theme-card:has(input:checked){border-color:var(--royal-gold);box-shadow:0 0 0 3px #efcc8720}
+.royal-studio .preview-pane .preview-actions button{min-height:44px}
+.royal-studio :is(.primary,.secondary){font-size:13px;min-height:54px}
+.royal-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),textarea,select){background:#330814;color:var(--royal-text);border-color:#e5b97755;caret-color:var(--royal-gold);border-radius:8px}
+.royal-ui :is(input,textarea)::placeholder{color:#d6b5ab;opacity:1}
+.royal-ui :is(input,select,textarea):focus{border-color:var(--royal-gold)}
+.royal-ui :is(input[type=checkbox],input[type=radio],input[type=range]){accent-color:var(--royal-gold)}
+.royal-ui input[type=file]{color:var(--royal-muted);max-width:100%}
+.royal-ui input::file-selector-button{min-height:42px;padding:10px 16px;border:1px solid #e5b97755;border-radius:8px;margin-right:10px;background:#75152e;color:var(--royal-text);cursor:pointer}
+.royal-ui dialog{background:linear-gradient(145deg,#75152e,#410a1b);color:var(--royal-text);border:1px solid #e8bd6b70;border-radius:18px;box-shadow:0 35px 100px #16020980}
+.royal-ui dialog::backdrop{background:#1c030ce0;backdrop-filter:blur(7px)}
+.royal-ui dialog :is(p,.field-help){color:var(--royal-muted)}
+.royal-ui dialog :is(h2 em,.auth-tabs button[aria-selected=true]){color:var(--royal-gold)}
+.royal-ui .auth-tabs{border-color:var(--royal-line)}
+.royal-ui .auth-tabs button[aria-selected=true]{border-color:var(--royal-gold)}
+.royal-ui :is(.auth-error,#dialog-error,[role=alert]:not(#global-message)){color:#ffd3dc}
+.royal-ui :is(.icon-button,.dialog-close){color:var(--royal-text);min-width:44px;min-height:44px}
+
+/* Collection chrome is red; each preview keeps its own invitation art. */
+.royal-collection .collection-header{border-color:var(--royal-line)}
+.royal-collection .collection-header>a:first-child{padding:8px 14px}
+.royal-collection :is(.collection-intro h1 em,.world-meta,.eyebrow,.collection-facts){color:var(--royal-gold)}
+.royal-collection :is(.collection-intro>p,.world-description,.world-capacity,.collection-footer p,.preview-bottom p){color:var(--royal-muted)}
+.royal-collection .world-words h2{color:var(--royal-text)}
+.royal-collection .world-premium{background:linear-gradient(135deg,#902e4144,#440b1c),var(--royal-panel);border-color:#e8bd6b70;box-shadow:0 25px 65px #22030d40}
+.royal-collection .world-actions :is(a,button),.royal-collection .collection-footer>a{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:13px 20px;border:1px solid #e8bd6b70;border-radius:10px;color:var(--royal-text);background:#4b0b20;font-size:12px;transition:transform 280ms var(--royal-ease),background 200ms}
+.royal-collection .world-actions a{background:linear-gradient(130deg,#ffe4ac,#e4b45f);color:#3b0c1a;font-weight:700}
+.royal-collection .collection-footer{background:#390916;border-color:var(--royal-line)}
+.royal-collection #preview-dialog{background:#591024;color:var(--royal-text)}
+.royal-collection :is(.preview-heading,.preview-tools){border-color:var(--royal-line)}
+.royal-collection .preview-heading small{color:var(--royal-gold)}
+.royal-collection .preview-stage{background:#280710}
+.royal-collection .preview-tools button{color:var(--royal-text);border-color:var(--royal-line);background:#4b0b20}
+.royal-collection .device-options button[aria-pressed=true]{background:var(--royal-gold);color:#3b0c1a}
+
+/* Scroll-linked ornamentation is decorative, never above interactive content. */
+.royal-home .royal-chapter{overflow:clip}
+.royal-scroll-ornament{position:absolute;right:-90px;top:80px;width:300px;height:300px;z-index:-1;color:#efcc87;opacity:.1;pointer-events:none;transform:translate3d(0,var(--royal-scroll-shift,0px),0) rotate(var(--royal-scroll-turn,0deg))}
+.royal-scroll-ornament svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:.8}
+.royal-chapter:nth-of-type(even) .royal-scroll-ornament{right:auto;left:-100px;top:auto;bottom:80px}
+.royal-chapter :is(.feature-heading,.how-copy,.studio-copy,.dash-copy,.love-heading)::after{content:'';display:block;width:min(100%,100px);height:1px;margin-top:25px;background:linear-gradient(90deg,#efcc87,transparent);transform-origin:left;transition:transform 700ms var(--royal-ease)}
+.royal-motion-toggle{position:fixed;left:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid #efcc8770;border-radius:100px;background:#350814ed;color:#fff5e7;box-shadow:0 6px 22px #20030d40;font:600 10px/1.4 'DM Sans',Arial,sans-serif;cursor:pointer;backdrop-filter:blur(12px)}
+.royal-motion-toggle::before{content:'';width:5px;height:5px;border-radius:50%;background:#efcc87;box-shadow:0 0 0 3px #efcc8712}
+.royal-motion-toggle[aria-pressed=true]::before{box-shadow:none;background:#d6b5ab}
+body.royal-planner .royal-motion-toggle{left:auto;right:14px}
+.royal-motion-paused *, .royal-page-hidden *{animation-play-state:paused!important}
+.royal-motion-paused .royal-scroll-ornament{transform:none}
+.royal-home.motion-ready [data-reveal]{opacity:1;transform:none;transition:none}
+
+@media(max-width:1100px){.royal-home .site-links{gap:18px}.royal-home .site-nav .brand-logo-crop{width:200px}.royal-home .nav-cta .button{padding-inline:16px}.royal-home .hero-cta .button{font-size:15px;min-height:60px;padding:17px 26px}}
+@media(max-width:760px){.royal-home .site-nav{padding:14px 20px;min-height:84px;gap:12px}.royal-home .site-nav .brand-logo-crop{width:170px}.royal-home .site-nav .brand small{display:none}.royal-home .nav-cta .button{font-size:11px;min-height:46px;padding:11px 14px;max-width:none}.royal-home .site-links{top:100%;background:#440b1cf7;border-color:var(--royal-line)}.royal-home .hero-cta .button{min-height:58px;font-size:14px;padding:17px 22px;min-width:128px}.royal-home .hero-cta .button.gold{min-width:210px}.royal-home .final-cta .button{width:100%;max-width:360px;white-space:normal}.royal-home .studio-copy .button{font-size:13px;min-height:58px}.royal-scroll-ornament{width:220px;height:220px;opacity:.08}.royal-ui :is(.button,.primary,.primary-link){padding:15px 21px}.royal-studio .header-actions .primary{min-height:48px;padding:12px 14px;font-size:11px}.royal-motion-toggle{left:12px;bottom:calc(12px + env(safe-area-inset-bottom));font-size:10px}}
+@media(max-width:420px){.royal-home .site-nav{padding-inline:14px;gap:8px}.royal-home .site-nav .brand-logo-crop{width:143px}.royal-home .nav-cta .button{font-size:10px;padding-inline:12px;min-height:46px;max-width:115px}.royal-home .nav-toggle{min-width:44px}.royal-home .hero-cta{gap:12px}.royal-home .hero-cta .button.gold{min-width:0;flex:1}.royal-home .hero-cta .button.ghost{min-width:94px}.royal-home .hero-cta .button{font-size:13px;padding-inline:18px}.royal-ui .button.small{padding-inline:12px}.royal-studio .studio-header .brand-logo-crop{width:155px}}
+@media(max-width:360px){.royal-home .site-nav{padding-inline:12px;gap:6px}.royal-home .site-nav .brand-logo-crop{width:128px}.royal-home .nav-cta .button{max-width:95px;padding-inline:10px;font-size:10px}}
+@media(prefers-reduced-motion:reduce){.royal-ui :is(.button,.primary,.primary-link,.secondary){transition:background 150ms ease,box-shadow 150ms ease}.royal-ui :is(.button,.primary,.primary-link,.secondary):hover,.royal-ui :is(.button,.primary,.primary-link,.secondary):active{transform:none}.royal-ui :is(.button,.primary,.primary-link)::after,.royal-scroll-ornament{display:none}.royal-ui :is(.button,.primary):hover .icon{transform:none}.royal-home.motion-ready [data-reveal]{opacity:1!important;transform:none!important}.royal-ui :is(dialog[open],#toast:not([hidden])){animation:none}}
+
+html,body{overflow-x:clip}

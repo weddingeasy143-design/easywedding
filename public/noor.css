@@ -1,0 +1,109 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+/* Noor collection — three cinematic luxury themes: Midnight Noor, Blush Mehraab, Emerald Darbar.
+   Each theme gets its own palette, sealed-opening variant, hero treatment and glow choreography. */
+
+/* ============ MIDNIGHT NOOR — moonlit palace, silver & midnight blue ============ */
+.midnight{--paper:#0e1c38;--ink:#e8efff;--gold:#b9cdf5;--wine:#d7e4ff;--line:#8fa8d855;background:#0a1428;color:var(--ink)}
+.midnight .opening{background:radial-gradient(ellipse at 50% 28%,#1c3160,#0a1428 78%)}
+.midnight .envelope-inner{background-image:url('assets/midnight-noor.webp')}
+.midnight .paper-panel{background-image:linear-gradient(#16294dcc,#0a1428b3),url('assets/envelope.webp')}
+.midnight .opening-eyebrow,.midnight .opening-footer{color:#93a9d8}
+.midnight .opening-prompt{color:#cdd9f5}.midnight .opening-prompt small{color:#8fa3d4}
+.midnight .envelope-address{color:#a9bde6}
+.midnight .inner-label{color:#dbe6ff}.midnight .inner-names{color:#f4f8ff;text-shadow:0 2px 18px #4a6db399}
+.midnight .opening-glow{display:block;position:absolute;inset:-20%;z-index:15;background:radial-gradient(ellipse at 50% 46%,#eaf1ff 0%,#b9cdf5cc 10%,#7f9fe055 26%,transparent 55%);opacity:0;pointer-events:none;mix-blend-mode:screen;transform:scale(.1)}
+.midnight .is-opening .opening-glow{animation:midnight-glow 3s ease-in-out 3s both}
+@keyframes midnight-glow{0%{opacity:0;transform:scale(.12)}45%{opacity:.9;transform:scale(2.2)}100%{opacity:0;transform:scale(4.2)}}
+/* opening variant: panels sweep wider, like night curtains parting */
+.midnight .is-opening .panel-top{transform:rotateX(172deg);filter:brightness(.75) hue-rotate(12deg)}
+.midnight .is-opening .panel-left{transform:rotateY(-165deg);filter:brightness(.7)}
+.midnight .is-opening .panel-right{transform:rotateY(165deg);filter:brightness(.7)}
+.midnight .is-opening .panel-bottom{transform:rotateX(-150deg);filter:brightness(.7)}
+.midnight .is-opening .envelope-scene{transform:scale(1.14)}
+/* hero */
+.midnight .hero{min-height:700px;overflow:hidden}
+.midnight .hero-copy{top:13%;left:12%;right:12%;color:#f2f6ff;text-shadow:0 2px 18px #060b18cc;z-index:3}
+.midnight .hero .eyebrow{color:#dbe6ff;font:italic 17px/1.5 var(--serif);text-transform:none;letter-spacing:.02em;max-width:270px;margin:auto}
+.midnight .hero h1{font-size:clamp(64px,14.5vw,100px);margin-top:26px;line-height:1.08;color:#fbfcff}
+.midnight .hero-labels{margin-top:26px}
+.midnight .hero-label span{color:#eef3ff}
+.midnight .hero-label small{color:#a9bde6}
+.midnight .hero-label+.hero-label{border-left-color:#a9bde655}
+.midnight .hero-tagline{color:#d7e4ff;font-style:italic}
+.midnight .hero-light{background:linear-gradient(115deg,transparent 32%,#b9cdf533 46%,transparent 60%)}
+.midnight .scroll-cue{color:#cdd9f5}
+.midnight .paper-card{background:var(--paper);border:1px solid var(--line)}
+.midnight .scratch-tile{background:#16294d}
+.midnight .music-toggle{background:#16294dee;border-color:#8fa8d866;color:#e8efff}
+
+/* ============ BLUSH MEHRAAB — blush roses, champagne morning ============ */
+.blush{--paper:#fff6f1;--ink:#7a4a3a;--gold:#c08a6d;--wine:#a86a52;--line:#d9a98566;background:#f6e2d6;color:var(--ink)}
+.blush .opening{background:radial-gradient(ellipse at 50% 32%,#fffaf6,#f6ddd0 72%,#eec9b8)}
+.blush .envelope-inner{background-image:url('assets/blush-mehraab.webp')}
+.blush .paper-panel{background-image:linear-gradient(#f9e4d8cc,#f3d3c0b3),url('assets/envelope.webp')}
+.blush .opening-eyebrow,.blush .opening-footer{color:#a97c66}
+.blush .opening-prompt{color:#8a5a48}.blush .opening-prompt small{color:#b08a76}
+.blush .envelope-address{color:#9a7261}
+.blush .inner-label{color:#fff0e6;text-shadow:0 1px 10px #7a4a3a88}.blush .inner-names{color:#fff6f0;text-shadow:0 2px 16px #7a4a3a99}
+.blush .opening-glow{display:block;position:absolute;inset:-20%;z-index:15;background:radial-gradient(ellipse at 50% 46%,#fff6f0 0%,#f9d9c9cc 10%,#f2b8a055 26%,transparent 55%);opacity:0;pointer-events:none;mix-blend-mode:screen;transform:scale(.1)}
+.blush .is-opening .opening-glow{animation:blush-glow 3s ease-in-out 3.4s both}
+@keyframes blush-glow{0%{opacity:0;transform:scale(.12)}45%{opacity:.85;transform:scale(2.5)}100%{opacity:0;transform:scale(4)}}
+/* opening variant: panels bloom softly outward */
+.blush .is-opening .panel-top{transform:rotateX(150deg) scale(1.04);filter:brightness(1.02)}
+.blush .is-opening .panel-left{transform:rotateY(-138deg) scale(1.04);filter:brightness(1)}
+.blush .is-opening .panel-right{transform:rotateY(138deg) scale(1.04);filter:brightness(1)}
+.blush .is-opening .panel-bottom{transform:rotateX(-128deg) scale(1.04);filter:brightness(1)}
+.blush .is-opening .envelope-scene{transform:scale(1.1)}
+/* hero */
+.blush .hero{min-height:700px;overflow:hidden}
+.blush .hero-copy{top:13%;left:12%;right:12%;color:#fff9f5;text-shadow:0 2px 16px #7a4a3a80;z-index:3}
+.blush .hero .eyebrow{color:#ffe9db;font:italic 17px/1.5 var(--serif);text-transform:none;letter-spacing:.02em;max-width:270px;margin:auto}
+.blush .hero h1{font-size:clamp(64px,14.5vw,100px);margin-top:26px;line-height:1.08;color:#fffaf6}
+.blush .hero-labels{margin-top:26px}
+.blush .hero-label span{color:#fff3ea}
+.blush .hero-label small{color:#ffe2d2}
+.blush .hero-label+.hero-label{border-left-color:#ffe2d255}
+.blush .hero-tagline{color:#ffe9db;font-style:italic}
+.blush .hero-light{background:linear-gradient(115deg,transparent 32%,#fff0e633 46%,transparent 60%)}
+.blush .scroll-cue{color:#ffe9db}
+.blush .paper-card{background:var(--paper);border:1px solid var(--line)}
+.blush .scratch-tile{background:linear-gradient(135deg,#e8b48f,#d99a72)}
+.blush .music-toggle{background:#fff6f1ee;border-color:#d9a98588;color:#7a4a3a}
+
+/* ============ EMERALD DARBAR — emerald palace, peacocks, diyas ============ */
+.emerald{--paper:#0f2e22;--ink:#f4ecd2;--gold:#d9b25f;--wine:#e8cf8a;--line:#c9a24f55;background:#0a211a;color:var(--ink)}
+.emerald .opening{background:radial-gradient(ellipse at 50% 28%,#17402f,#0a211a 78%)}
+.emerald .envelope-inner{background-image:url('assets/emerald-darbar.webp')}
+.emerald .paper-panel{background-image:linear-gradient(#123c2bcc,#0a211ab3),url('assets/envelope.webp')}
+.emerald .opening-eyebrow,.emerald .opening-footer{color:#9dc4a8}
+.emerald .opening-prompt{color:#e8d9a8}.emerald .opening-prompt small{color:#a8bf9a}
+.emerald .envelope-address{color:#c3b98a}
+.emerald .inner-label{color:#f2e3b0}.emerald .inner-names{color:#faf3d8;text-shadow:0 2px 18px #3d5a1e99}
+.emerald .opening-glow{display:block;position:absolute;inset:-20%;z-index:15;background:radial-gradient(ellipse at 50% 46%,#fff6d8 0%,#e8c86acc 10%,#caa14e55 26%,transparent 55%);opacity:0;pointer-events:none;mix-blend-mode:screen;transform:scale(.1)}
+.emerald .is-opening .opening-glow{animation:emerald-glow 3.2s ease-in-out 2.8s both}
+@keyframes emerald-glow{0%{opacity:0;transform:scale(.12)}45%{opacity:.9;transform:scale(2.3)}100%{opacity:0;transform:scale(4.4)}}
+/* opening variant: panels rise like palace doors */
+.emerald .is-opening .panel-top{transform:rotateX(158deg);filter:brightness(.85) sepia(.2)}
+.emerald .is-opening .panel-left{transform:rotateY(-158deg);filter:brightness(.75)}
+.emerald .is-opening .panel-right{transform:rotateY(158deg);filter:brightness(.75)}
+.emerald .is-opening .panel-bottom{transform:rotateX(-165deg);filter:brightness(.75)}
+.emerald .is-opening .envelope-scene{transform:scale(1.13)}
+/* hero */
+.emerald .hero{min-height:700px;overflow:hidden}
+.emerald .hero-copy{top:13%;left:12%;right:12%;color:#faf5dd;text-shadow:0 2px 18px #0a1f16cc;z-index:3}
+.emerald .hero .eyebrow{color:#f2e3b0;font:italic 17px/1.5 var(--serif);text-transform:none;letter-spacing:.02em;max-width:270px;margin:auto}
+.emerald .hero h1{font-size:clamp(64px,14.5vw,100px);margin-top:26px;line-height:1.08;color:#fdf8e3}
+.emerald .hero-labels{margin-top:26px}
+.emerald .hero-label span{color:#f7efd2}
+.emerald .hero-label small{color:#d9c48f}
+.emerald .hero-label+.hero-label{border-left-color:#d9c48f55}
+.emerald .hero-tagline{color:#efdfae;font-style:italic}
+.emerald .hero-light{background:linear-gradient(115deg,transparent 32%,#e8c86a33 46%,transparent 60%)}
+.emerald .scroll-cue{color:#efdfae}
+.emerald .paper-card{background:var(--paper);border:1px solid var(--line)}
+.emerald .scratch-tile{background:#123c2b}
+.emerald .music-toggle{background:#0f2e22ee;border-color:#c9a24f66;color:#f4ecd2}
+
+/* shared: slow drifting sheen across the hero artwork (overlay animation) */
+.hero-light{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(115deg,transparent 32%,#ffffff26 46%,transparent 60%);background-size:280% 100%;animation:hero-sheen 11s ease-in-out infinite}
+@keyframes hero-sheen{0%{background-position:120% 0}55%{background-position:-20% 0}100%{background-position:120% 0}}

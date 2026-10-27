@@ -1,0 +1,116 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+@font-face{font-family:'Wedding Garden Script';src:url('/assets/GardenScript.otf') format('opentype');font-display:swap}
+html[data-invitation-design]{overflow-x:hidden}
+body[data-invitation-design]{background:var(--theme-paper);color:var(--theme-text);overflow-x:clip}
+body[data-invitation-design] main{color:var(--theme-text);background:var(--theme-paper);isolation:isolate}
+body[data-invitation-design] main section{isolation:isolate}
+body[data-invitation-design] main section>div:not(.theme-section-art){z-index:1}
+body[data-invitation-design] .theme-section-art{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;transform:translateY(var(--theme-scroll-shift,0px))}
+body[data-invitation-design] .theme-floral{object-fit:contain;transform-origin:15% 15%;will-change:transform;pointer-events:none}
+body[data-invitation-design] .theme-floral-bottom{position:absolute;left:-35px;bottom:-20px;width:clamp(150px,24vw,330px);height:auto;opacity:.2;transform-origin:10% 90%}
+body[data-invitation-design] .theme-floral-right{left:auto;right:-35px;scale:-1 1;transform-origin:90% 90%}
+body[data-invitation-design] .theme-scene{object-fit:cover!important;object-position:center!important}
+body[data-invitation-design] [aria-label='Wedding invitation cinematic opening'] .bg-cover{background-image:var(--theme-scene)!important}
+body[data-invitation-design] .theme-opening-card{background:var(--theme-paper)!important;border-radius:var(--theme-frame);box-shadow:0 30px 90px #160c1766;overflow:hidden}
+body[data-invitation-design] [aria-label='Wedding invitation opening']{overflow-x:hidden}
+body[data-invitation-design][data-ganesh-icon='none'] .theme-opening-card [aria-label='Lord Ganesha']{display:none}
+body[data-invitation-design][data-ganesh-icon='none'] .theme-ganesh{display:none}
+body[data-invitation-design] .theme-ganesh{position:relative;isolation:isolate}
+body[data-invitation-design] .theme-ganesh-family{width:104px;height:104px;margin:0 auto 22px}
+body[data-invitation-design] .theme-ganesh-image{object-fit:contain!important;object-position:center!important;transform-origin:center;max-width:100%;height:100%;position:relative;z-index:1}
+body[data-invitation-design] .theme-ganesh-halo{position:absolute;inset:-18px;z-index:0;pointer-events:none;border-radius:50%;background:radial-gradient(circle,rgba(239,194,103,.38),rgba(239,194,103,.13) 52%,transparent 72%)}
+body[data-invitation-design] .theme-opening-card [aria-label='Lord Ganesha'] [style*='mask-image']{mask-image:none!important;-webkit-mask-image:none!important;overflow:visible}
+body[data-invitation-design] .theme-ganesh-card{width:104px;height:112px;margin-top:64px}
+body[data-invitation-design] .theme-ganesh-card>div:last-child{border:0;box-shadow:none;overflow:visible;border-radius:0}
+body[data-invitation-design] .theme-opening-card [class*='text-[#8d1730]'],
+body[data-invitation-design] .theme-opening-card [class*='text-[#5e2f21]'],
+body[data-invitation-design] .theme-opening-card [class*='text-[#8a6a1f]']{color:var(--theme-ink)!important;filter:none!important}
+body[data-invitation-design] .theme-opening-card .oc-date-shimmer-text{background:none!important;color:var(--theme-ink)!important;-webkit-text-fill-color:var(--theme-ink)!important}
+body[data-invitation-design] .theme-opening-card h1 span.block{padding:0 .08em;overflow-wrap:anywhere}
+body[data-invitation-design] .btn-royal,
+body[data-invitation-design] button[aria-label='Tap to reveal the invitation']{background:var(--theme-button)!important;color:var(--theme-button-text)!important;border-color:var(--theme-gold)!important;box-shadow:0 8px 24px #160c1729}
+body[data-invitation-design] button[aria-label='Tap to reveal the invitation'] .text-white{color:var(--theme-button-text)!important}
+body[data-invitation-design] .btn-outline{background:transparent;color:var(--theme-ink);border-color:var(--theme-gold)}
+body[data-invitation-design] #family [class*='rounded-t-'][class*='border-']{border-radius:var(--theme-frame)!important}
+body[data-invitation-design] #family .font-script{filter:none;text-shadow:none}
+body[data-invitation-design] #family .bg-cream[style*='radial-gradient']{background:radial-gradient(circle at 38% 32%,var(--theme-paper),var(--theme-panel))!important}
+body[data-name-style='garden'] #family .font-script{font-size:clamp(3rem,5.5vw,5.5rem);line-height:1.12}
+body[data-name-style='serif'] #family .font-script{font-style:italic;font-weight:500;font-size:clamp(2.8rem,5vw,5rem);line-height:1.15;letter-spacing:-.035em}
+body[data-name-style='serif'] .theme-opening-card h1{font-style:italic;letter-spacing:-.045em}
+body[data-name-style='garden'] .theme-opening-card h1{line-height:1.2}
+body[data-invitation-design] [data-theme-door='left']{transform-origin:left center}
+body[data-invitation-design] [data-theme-door='right']{transform-origin:right center}
+body[data-invitation-design] [aria-label='Opening the invitation doors']{perspective:1400px}
+body[data-invitation-design] [class*='bg-white'],
+body[data-invitation-design] [class*='bg-neutral-50']{background-color:var(--theme-panel)}
+body[data-invitation-design] [class*='bg-[#fff'],
+body[data-invitation-design] [class*='bg-[#FFF'],
+body[data-invitation-design] [class*='bg-[#fdf6ec]'],
+body[data-invitation-design] [class*='bg-[#f7dee3]'],
+body[data-invitation-design] [class*='bg-[#fdeeee]']{background-color:var(--theme-panel)!important}
+body[data-invitation-design] [class*='text-[#5a2e22]'],
+body[data-invitation-design] [class*='text-[#5b2a1e]'],
+body[data-invitation-design] [class*='text-[#5e2f21]'],
+body[data-invitation-design] [class*='text-[#6B4A3A]'],
+body[data-invitation-design] [class*='text-[#6b4a3a]'],
+body[data-invitation-design] [class*='text-[#7A5C4D]'],
+body[data-invitation-design] [class*='text-[#8d1730]'],
+body[data-invitation-design] [class*='text-[#8e1f36]'],
+body[data-invitation-design] [class*='text-[#8f1d2c]'],
+body[data-invitation-design] [class*='text-[#9b1b32]'],
+body[data-invitation-design] [class*='text-[#C0392B]'],
+body[data-invitation-design] [class*='text-[#c0392b]']{color:var(--theme-ink)!important}
+body[data-invitation-design] [class*='text-[#8a6a1f]'],
+body[data-invitation-design] [class*='text-[#a67c2e]'],
+body[data-invitation-design] [class*='text-[#b8860b]'],
+body[data-invitation-design] [class*='text-[#b98a2f]']{color:var(--theme-accent-ink)!important}
+body[data-invitation-design] #events :is(h3,p.font-script,button,a)[style*='color'],
+body[data-invitation-design] #timeline p[style*='color'],
+body[data-invitation-design] [role='dialog'] .font-script[style*='color']{color:var(--theme-ink)!important}
+body[data-invitation-design] #events :is(button,a)[style*='border-color']{border-color:var(--theme-gold)!important}
+body[data-invitation-design] main :is(p,span,label,small)[class*='text-bark/']{color:var(--theme-text)!important}
+body[data-invitation-design] [class*='text-bark-soft/']{color:var(--theme-muted)!important}
+body[data-invitation-design] main :is(p,span,label,small)[class*='text-maroon/']{color:var(--theme-ink)!important}
+body[data-invitation-design] main :is(p,span,label,small)[class~='text-gold'],
+body[data-invitation-design] main :is(p,span,label,small)[class*='text-gold/']{color:var(--theme-accent-ink)!important}
+body[data-invitation-design] #blessings [class*='from-[#a51f36]']{background:var(--theme-button)!important;color:var(--theme-button-text)!important}
+body[data-invitation-design] #blessings [class*='from-[#a51f36]'] [class*='text-ivory']{color:var(--theme-button-text)!important}
+body[data-invitation-design] button[aria-label^='Turn music']{background:var(--theme-button)!important;color:var(--theme-button-text)!important}
+body[data-invitation-design] #home [class*='from-maroon'] [class*='text-gold-light']{color:var(--theme-paper)!important}
+body[data-invitation-design] #gallery [class*='from-black/65']{color:var(--theme-on-scene)!important;background:linear-gradient(to top,rgba(9,12,20,.86) 0%,rgba(9,12,20,.74) 58%,transparent 100%);text-shadow:0 1px 8px #0006}
+body[data-invitation-design] #video [class*='text-ivory']{color:var(--theme-on-scene)!important;text-shadow:0 1px 8px #0008}
+body[data-invitation-design] #video button.group.absolute.inset-0{color:var(--theme-on-scene)!important;background:linear-gradient(to bottom,color-mix(in srgb,var(--theme-scene-shade) 30%,transparent) 0%,color-mix(in srgb,var(--theme-scene-shade) 88%,transparent) 40%,color-mix(in srgb,var(--theme-scene-shade) 94%,transparent) 100%)}
+body[data-invitation-design] #video [class*='bg-maroon-deep/']{background-color:color-mix(in srgb,var(--theme-scene-shade) 85%,transparent)!important;color:var(--theme-on-scene)!important}
+body[data-invitation-design] #video .absolute.mt-32{font-weight:600}
+body[data-invitation-design] #video [class*='from-black/70']{background:linear-gradient(to top,rgba(9,12,20,.9) 0%,rgba(9,12,20,.78) 58%,transparent 100%)}
+body[data-invitation-design] #thankyou .theme-scene+div{background:linear-gradient(to bottom,color-mix(in srgb,var(--theme-scene-shade) 94%,transparent),color-mix(in srgb,var(--theme-scene-shade) 88%,transparent),color-mix(in srgb,var(--theme-scene-shade) 96%,transparent))!important}
+body[data-invitation-design] #thankyou :is(p,span,button)[class*='text-ivory'],
+body[data-invitation-design] #thankyou :is(p,span,button)[class*='text-gold-light'],
+body[data-invitation-design] #thankyou .btn-outline{color:var(--theme-on-scene)!important}
+body[data-invitation-design] input::placeholder,body[data-invitation-design] textarea::placeholder{color:var(--theme-muted)!important;opacity:1}
+body[data-invitation-design] input,body[data-invitation-design] textarea,body[data-invitation-design] select{color:var(--theme-text);background-color:var(--theme-paper);border-color:var(--theme-gold);color-scheme:light}
+body[data-invitation-design='royal-prestige'] input,body[data-invitation-design='royal-prestige'] textarea,
+body[data-invitation-design='mehndi'] input,body[data-invitation-design='mehndi'] textarea,
+body[data-invitation-design='midnight-noor'] input,body[data-invitation-design='midnight-noor'] textarea{color-scheme:dark}
+body[data-invitation-design] :is(a,button,input,textarea,select):focus-visible{outline:3px solid var(--theme-gold);outline-offset:4px}
+body[data-invitation-design] #reply-review{background:var(--theme-paper)!important;color:var(--theme-text)!important;border-color:var(--theme-gold)!important}
+body[data-invitation-design] #reply-review h2{color:var(--theme-ink)}
+body[data-invitation-design='royal-prestige'] .theme-opening-card{border-radius:8px}
+body[data-invitation-design='garden'] .theme-opening-card{border-radius:120px 120px 12px 12px}
+body[data-invitation-design='haldi'] .theme-opening-card{border-radius:24px 24px 100px 100px}
+body[data-invitation-design='mehndi'] .theme-opening-card{border-radius:160px 160px 24px 24px}
+body[data-invitation-design='sangeet'] .theme-opening-card{border-radius:90px 90px 24px 24px}
+body[data-invitation-design='reception'] .theme-opening-card{border-radius:3px}
+body[data-invitation-design='midnight-noor'] .theme-opening-card{border-radius:160px 160px 32px 32px}
+body[data-invitation-design='blush-mehraab'] .theme-opening-card{border-radius:120px 120px 36px 36px}
+body[data-invitation-design='emerald-darbar'] .theme-opening-card{border-radius:50px 50px 4px 4px}
+@media(max-width:600px){
+ body[data-invitation-design] .theme-floral-bottom{width:180px;opacity:.14}
+ body[data-invitation-design] .theme-opening-card{max-width:100%}
+ body[data-invitation-design] .theme-opening-card h1 span.block{font-size:clamp(3rem,13vw,4.7rem)}
+ body[data-name-style='garden'] #family .font-script,body[data-name-style='serif'] #family .font-script{font-size:3.3rem}
+}
+@media(prefers-reduced-motion:reduce){
+ body[data-invitation-design] .theme-floral{will-change:auto;transform:none!important}
+ body[data-invitation-design] .theme-section-art{transform:none}
+}

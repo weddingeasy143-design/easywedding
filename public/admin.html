@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#75152e"><title>Easy Wedding · Payment admin</title><meta name="description" content="Manage payment gateways and design prices for Easy Wedding."><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="brand.css"><script defer src="auth.js"></script><script defer src="admin.js"></script>
+<style>
+body{background:#fdf8f1;color:#33241d;font-family:Georgia,'Times New Roman',serif;margin:0}
+.ewp-admin{max-width:880px;margin:0 auto;padding:28px 18px 70px}
+.ewp-admin h1{color:#75152e;margin:8px 0 4px;font-size:34px}
+.ewp-admin h2{color:#75152e;margin:34px 0 6px;font-size:22px}
+.ewp-sub{color:#8a6d5a;margin:0 0 14px;font-size:15px}
+.ewp-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7d8c6;background:#fffaf3}
+.ewp-head a{color:#75152e;font-weight:700;text-decoration:none}
+.ewp-card{border:1px solid #e0cdb4;border-radius:14px;background:#fff;padding:18px;margin:14px 0;box-shadow:0 2px 10px rgba(117,21,46,.06)}
+.ewp-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ewp-card-head strong{font-size:19px;color:#75152e}
+.ewp-switch{position:relative;width:52px;height:28px;flex:none}
+.ewp-switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer}
+.ewp-track{position:absolute;inset:0;background:#cbb59c;border-radius:999px;transition:.2s;pointer-events:none}
+.ewp-track::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.ewp-switch input:checked + .ewp-track{background:#1d7a3a}
+.ewp-switch input:checked + .ewp-track::after{left:27px}
+.ewp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+@media(max-width:640px){.ewp-grid{grid-template-columns:1fr}}
+.ewp-field{display:block;font-size:13px;color:#8a6d5a}
+.ewp-field input,.ewp-field select{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:10px 11px;border:1px solid #d9c6b2;border-radius:9px;font-size:15px;color:#33241d;background:#fff}
+.ewp-steps{margin:14px 0 0;padding-left:20px;color:#5d4636;font-size:14px;line-height:1.55}
+.ewp-hook{margin:10px 0 0;color:#5d4636;font-size:14px;line-height:1.55;background:#fdf1e7;border-radius:9px;padding:10px 12px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e0cdb4;border-radius:14px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;font-size:14px;border-bottom:1px solid #f0e4d4}
+th{background:#fdf1e7;color:#75152e}
+td input[type=number]{width:100px;padding:8px;border:1px solid #d9c6b2;border-radius:8px;font-size:14px}
+.ewp-primary{background:#75152e;color:#fff;border:none;border-radius:10px;padding:13px 26px;font-size:16px;font-weight:700;cursor:pointer;margin-top:22px}
+.ewp-primary:disabled{opacity:.55}
+#admin-status{margin-left:12px;color:#1d7a3a;font-size:14px}
+.ewp-badge{border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;background:#e8dcc9;color:#5d4636}
+.ewp-badge.paid{background:#1d7a3a;color:#fff}
+.ewp-denied{background:#fdf1e7;border:1px dashed #c9a227;border-radius:12px;padding:16px}
+</style></head>
+<body><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div><header class="ewp-head"><a href="./">← Easy Wedding</a><span>Payment admin</span></header>
+<main class="ewp-admin"><h1>Payments</h1><p class="ewp-sub">Switch a gateway on, paste its keys, save — customers can pay with it right away. You can run one gateway or all four together.</p>
+<p id="admin-loading">Loading payment settings…</p>
+<div id="admin-denied" class="ewp-denied" hidden></div>
+<form id="admin-login" class="ewp-denied" hidden>
+<p style="margin-top:0"><strong>Admin sign in</strong></p>
+<label class="ewp-field">Email<input id="admin-login-email" type="email" autocomplete="username" required placeholder="Admin email"></label>
+<label class="ewp-field">Password<input id="admin-login-pass" type="password" autocomplete="current-password" required></label>
+<button class="ewp-primary" type="submit" style="margin-top:14px">Sign in to admin</button>
+<span id="admin-login-status" role="status"></span>
+<p class="ewp-sub" style="margin-bottom:0">Sign in with the admin account — the payment settings open right here on this page.</p>
+</form>
+<div id="admin-panel" hidden>
+<section><h2>Shop open to the public</h2><p class="ewp-sub">While this is OFF, visitors see an “Opening very soon” page — they cannot browse, sign up or pay. Your private owner link still opens the full site for you. Switch this ON only when live payment keys are saved below.</p><label class="ewp-switch"><input type="checkbox" id="site-open" aria-label="Shop open to the public"><span class="ewp-track"></span></label> <span id="site-open-label">Shop is open to everyone</span><p id="site-status" class="ewp-sub" role="status"></p></section>
+<section><h2>Payment gateways</h2><div id="gateway-cards"></div></section>
+<section><h2>Design prices</h2><p class="ewp-sub">Launching price applies while the Grand Opening offer is switched on for that design. Prices in ₹.</p><div id="prices-table"></div></section>
+<button id="admin-save" class="ewp-primary" type="button">Save all settings</button><span id="admin-status" role="status"></span>
+<section><h2>Recent orders</h2><div id="orders-table"></div></section>
+</div></main></body></html>

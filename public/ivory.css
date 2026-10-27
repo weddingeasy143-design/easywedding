@@ -1,0 +1,48 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+/* Ivory Arch — cinematic ivory & gold wedding theme (reference-reel level). */
+.ivory{--paper:#fdf8ec;--ink:#5d4c33;--gold:#a37c33;--wine:#8a5a24;--line:#c3a76a66;background:#f0e5cd}
+/* Sealed opening */
+.ivory .opening{background:radial-gradient(ellipse at 50% 36%,#fffdf7,#f3e3c2 70%,#e6cfa5)}
+.ivory .envelope-inner{background-image:url('assets/ivory-arch.webp')}
+.ivory .inner-label{color:#ffedcb;text-shadow:0 1px 10px #4a2f0e99;letter-spacing:.22em}
+.ivory .inner-names{color:#fff6dd;text-shadow:0 2px 16px #4a2f0eaa}
+.ivory .opening-glow{display:block;position:absolute;inset:-20%;z-index:15;background:radial-gradient(ellipse at 50% 46%,#fffbe8 0%,#ffedbecc 8%,#ffd98e55 22%,transparent 52%);opacity:0;pointer-events:none;mix-blend-mode:screen;transform:scale(.1)}
+.ivory .is-opening .opening-glow{animation:ivory-glow 2.6s ease-in-out 3.2s both}
+@keyframes ivory-glow{0%{opacity:0;transform:scale(.12)}50%{opacity:.85;transform:scale(2.4)}100%{opacity:0;transform:scale(4)}}
+/* Cinematic hero */
+.ivory .hero{overflow:hidden;min-height:700px}
+.ivory .hero-copy{top:13.5%;left:13%;right:13%;color:#fff9ec;text-shadow:0 2px 16px #4a2f0e80;z-index:3}
+.ivory .hero .eyebrow{color:#ffedcb;font:italic 17px/1.5 var(--serif);text-transform:none;letter-spacing:.02em;max-width:260px;margin:auto;text-shadow:0 1px 8px #4a2f0e99}
+.ivory .hero h1{font-size:clamp(64px,14.5vw,100px);margin-top:26px;line-height:1.08}
+.ivory .hero-labels{margin-top:26px}
+.ivory .hero-label span{color:#fff3da;text-shadow:0 1px 8px #4a2f0e88}
+.ivory .hero-label small{color:#ffedcb;text-shadow:0 1px 6px #4a2f0e88}
+.ivory .hero-label+.hero-label{border-left-color:#ffedcb55}
+.ivory .hero-tagline{color:#ffe9bd;text-shadow:0 1px 10px #4a2f0e99}
+.ivory .music-toggle{background:#a37c33;border-color:#ffe9bd88;color:#fff8e6}
+.ivory .hero h1 span{background:linear-gradient(180deg,#fffdf4 8%,#f6dd9a 52%,#c9973f 92%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 8px #4a2f0e66)}
+.ivory .hero h1 i{color:#ffedcb;text-shadow:0 1px 8px #4a2f0e88}
+.ivory .partner-details{color:#fff3da;font:italic 15px/1.5 var(--serif);text-shadow:0 1px 8px #4a2f0e88;max-width:250px;margin:12px auto 16px}
+.ivory .hero .scroll-cue{color:#ffedcb;text-shadow:0 1px 8px #4a2f0e88;margin-top:26px;font:11px/1.6 var(--serif);text-transform:uppercase;letter-spacing:.16em;gap:12px}
+.ivory.arrived .hero-art{animation:ivory-camera 24s ease-in-out infinite alternate}
+@keyframes ivory-camera{from{transform:scale(1.14) translateY(1.6%)}to{transform:scale(1.02) translateY(-1%)}}
+.ivory.arrived .hero-copy{animation:ivory-title 2.2s ease-out .25s both}
+@keyframes ivory-title{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+.ivory .hero-light{background:linear-gradient(112deg,transparent 40%,#fff8e024 47%,transparent 54%),linear-gradient(98deg,transparent 56%,#fff8e01c 62%,transparent 68%),radial-gradient(ellipse at 50% 18%,#ffedbe55,transparent 55%);animation:ivory-rays 9s ease-in-out infinite alternate}
+@keyframes ivory-rays{from{transform:translateX(-2.5%) rotate(.4deg);opacity:.75}to{transform:translateX(2.5%) rotate(-.4deg);opacity:1}}
+.ivory .hero-sparkles{display:block;position:absolute;inset:0;z-index:2;pointer-events:none;background-image:radial-gradient(circle,#ffe9b8 0 1.2px,transparent 3px),radial-gradient(circle,#fff6dd99 0 1px,transparent 2.4px);background-size:97px 151px,137px 191px;background-position:31px 63px,83px 149px;mask-image:linear-gradient(180deg,#000 30%,transparent 95%);animation:ivory-twinkle 4s ease-in-out infinite alternate}
+@keyframes ivory-twinkle{from{opacity:.3;transform:translateY(0)}to{opacity:.85;transform:translateY(-14px)}}
+/* Sections */
+.ivory .welcome{background:linear-gradient(#fffdf6,#fdf3dd 60%,var(--paper))}
+.ivory .script-heading{color:#a37c33}
+.ivory .paper-card{background:#fffdf6}
+.ivory .scratch-tile .date-value{color:#8a5a24}
+.ivory .countdown span{color:#8a5a24}
+.ivory .venue-illustration{background-image:url('assets/ivory-arch.webp');background-position:center 80%;box-shadow:inset 0 0 25px 13px var(--paper)}
+.ivory .closing{background:linear-gradient(#fdf8ece8,#fdf8ecd9),url('assets/ivory-arch.webp') center bottom/cover}
+.ivory .closing-names{color:#8a5a24}
+.ivory .outline-button{border-radius:24px}
+.ivory .fine-divider{color:#c9973f}
+@media(min-width:700px){.ivory .hero .eyebrow{font-size:21px}.ivory .hero-label span{font-size:17px}.ivory .partner-details{font-size:17px}}
+@media(max-width:380px){.ivory .hero h1{font-size:65px}.ivory .hero-copy{top:12%}.ivory .hero .eyebrow{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.ivory .hero-art,.ivory .hero-copy,.ivory .hero-light,.ivory .hero-sparkles{animation:none!important}.ivory .opening-glow{display:none!important}}

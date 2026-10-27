@@ -1,0 +1,128 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+/* Legible wedding lettering and an uninterrupted floral story across every theme. */
+body{--reading-ink:#44252d;--reading-accent:#71321d;--reading-shadow:0 1px 1px #fffaf0b3}
+body.midnight,body.emerald{--reading-ink:#faf4e4;--reading-accent:#f4dc9d;--reading-shadow:0 2px 5px #0008}
+body.midnight{--reading-accent:#deebff}
+body .hero::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,#18111c70 0%,#241521a8 16%,#20151cbf 39%,#26151c80 64%,transparent 92%)}
+body .hero-copy{background:none;border:0;border-radius:0;box-shadow:none;backdrop-filter:none;color:#fff7e6!important;text-shadow:0 2px 4px #160c13,0 5px 20px #160c13b3}
+body .hero h1,body .hero h1 span{color:#fff7e6!important;-webkit-text-fill-color:#fff7e6;background:none!important;font-weight:700;-webkit-text-stroke:.28px currentColor;filter:none;text-shadow:0 2px 3px #170b12,0 5px 20px #170b12b3;line-height:1.12}
+body .hero h1 i{color:#ffe4a2!important;-webkit-text-fill-color:#ffe4a2;font-weight:600}
+body .hero .eyebrow,body .hero .hero-label span,body .hero .hero-label small,body .hero .partner-details,body .hero .hero-tagline,body .hero .ceremony-invocation,body .hero .ceremony-ritual,body .hero .scroll-cue{color:#fff5df!important;font-weight:600;text-shadow:0 2px 4px #180c14,0 4px 12px #180c14a6}
+body .hero .hero-label span{font-size:clamp(16px,3.5vw,19px)}body .hero .hero-label small{font-size:11px;letter-spacing:.14em}body .hero .hero-tagline,body .hero .ceremony-ritual{font-size:17px;line-height:1.6}body .hero .couple-background{opacity:.08}
+body .section{color:var(--reading-ink);background:transparent!important;position:relative;z-index:1}
+body .section .script-heading,body .section .script-subheading{color:var(--reading-accent)!important;font-weight:600;-webkit-text-stroke:.18px currentColor;text-shadow:var(--reading-shadow);line-height:1.28}
+body .section .eyebrow,body .section .small-copy,body .section .family-line,body .section .venue-address,body .section .card-footnote{color:var(--reading-ink)!important;opacity:1;font-weight:600;text-shadow:var(--reading-shadow)}
+body .section .body-copy,body .section .timeline p,body .section .notes-card p,body .section #pre-events-list p{color:var(--reading-ink)!important;font-weight:500;font-size:18px;line-height:1.8;text-shadow:var(--reading-shadow)}
+body .section .timeline h3,body .section .venue-name,body .section .notes-card h3,body .section #pre-events-list h3{color:var(--reading-ink)!important;font-weight:700;text-shadow:var(--reading-shadow)}
+body .section .timeline time,body .section .date-value,body .section .countdown span{color:var(--reading-accent)!important;font-weight:700}body .section .countdown small,body .section .scratch-tile small{color:var(--reading-ink)!important;font-weight:600}
+body .paper-card{background:var(--paper)!important;box-shadow:0 12px 35px #2718100b;border-color:var(--line)}
+body .outline-button,body .text-button{color:var(--reading-ink);font-weight:700;letter-spacing:.08em}body .outline-button{background:var(--paper);border-color:var(--reading-accent)}
+.floral-story{position:relative;isolation:isolate;background:var(--paper);overflow:hidden}.floral-story>.hero,.floral-story>.section,.floral-story>.couple-photo-wrap{position:relative;z-index:1}
+.floral-scroll-scene{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;mask-image:linear-gradient(90deg,#000, #000 9%,transparent 28%,transparent 72%,#000 91%,#000);color:var(--gold)}
+.floral-vine{position:absolute;top:0;bottom:-35px;width:100px;opacity:.38;transform:translate3d(0,var(--floral-drift,0px),0) rotate(var(--floral-turn,0deg));transform-origin:center top}.vine-left{left:-18px}.vine-right{right:-18px;scale:-1 1}.floral-vine svg{display:block;overflow:visible}
+.scroll-bloom{position:absolute;width:230px;height:230px;object-fit:contain;opacity:.7;animation:story-bloom 12s ease-in-out var(--bloom-delay,0s) infinite alternate;animation-play-state:paused;filter:drop-shadow(0 5px 8px #39231712)}.bloom-left{left:-115px;transform-origin:0 50%}.bloom-right{right:-115px;rotate:180deg;transform-origin:100% 50%}
+.scroll-petal{position:absolute;left:var(--petal-x);top:var(--petal-y);width:8px;height:13px;border-radius:90% 10% 80% 20%;background:linear-gradient(145deg,#faecd3,var(--gold));opacity:0;animation:story-petal 18s linear var(--petal-delay) infinite;animation-play-state:paused}
+.floral-awake .scroll-bloom,.floral-awake .scroll-petal{animation-play-state:running}.floral-chapter-visible .fine-divider{animation:chapter-glimmer 1.6s ease-out both}
+@keyframes story-bloom{from{transform:translate3d(0,-5px,0) rotate(-2deg)}to{transform:translate3d(7px,8px,0) rotate(2deg)}}
+@keyframes story-petal{0%{opacity:0;transform:translate3d(0,-30px,0) rotate(0)}12%{opacity:.55}85%{opacity:.45}100%{opacity:0;transform:translate3d(26px,260px,0) rotate(170deg)}}
+@keyframes chapter-glimmer{0%{filter:drop-shadow(0 0 0 transparent);transform:scale(.95)}45%{filter:drop-shadow(0 0 9px var(--gold));transform:scale(1.04)}100%{filter:none;transform:none}}
+@media(max-width:380px){body .section .body-copy,body .section .timeline p{font-size:17px}.floral-vine{width:80px}.scroll-bloom{width:200px;height:200px}.bloom-left{left:-112px}.bloom-right{right:-112px}}
+@media(prefers-reduced-motion:reduce){.scroll-bloom,.scroll-petal,.floral-chapter-visible .fine-divider{animation:none!important}.scroll-petal{display:none}.floral-vine{transform:none}}
+body .closing{position:relative;z-index:1;background:transparent!important;color:var(--reading-ink)}body .closing .eyebrow,body .closing .small-copy,body .closing .signature{color:var(--reading-ink)!important;font-weight:600;text-shadow:var(--reading-shadow)}body .closing-script,body .closing-names{color:var(--reading-accent)!important;font-weight:600;text-shadow:var(--reading-shadow);-webkit-text-stroke:.18px currentColor}
+body[data-theme="mehndi"],body[data-theme="sangeet"],body[data-theme="reception"]{--reading-ink:#faf4e4;--reading-accent:#f4dc9d;--reading-shadow:0 2px 5px #0008}
+body .scratch-tile{background:var(--paper);border-color:var(--line)}body .scratch-tile .date-value,body .royal-scratch #heart-date,body .royal-scratch #heart-time{color:var(--reading-accent)!important;font-weight:700}body dialog{color:var(--reading-ink)}body dialog .form-note,body dialog .optional{color:var(--reading-ink)}
+body.midnight .solid-button,body.emerald .solid-button,body[data-theme="mehndi"] .solid-button,body[data-theme="sangeet"] .solid-button,body[data-theme="reception"] .solid-button{background:var(--reading-accent);color:#231621;font-weight:700}
+/* Older ceremony styles supplied a pale panel; a continuous scrim now does the contrast work. */
+body .hero-copy{background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important}
+.floral-scroll-scene{mask-image:linear-gradient(90deg,#000,#000 3%,transparent 10%,transparent 90%,#000 97%,#000)}body .hero .couple-background{opacity:.08!important}
+body .hero::after{background:linear-gradient(180deg,#18111c70 0%,#241521bb 20%,#20151cbf 72%,#26151c60 86%,transparent 100%)}
+/* Visible botanical artwork across the whole card, rather than a clipped edge trim. */
+.floral-scroll-scene{mask-image:none}
+.floral-scroll-scene::before{content:"";position:absolute;inset:0;background-image:url('assets/floral/wedding-bouquet.webp');background-size:390px 390px;background-repeat:repeat-y;background-position:50% 240px;opacity:.085;transform:translate3d(0,var(--floral-drift,0px),0)}
+.floral-scroll-scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--paper) 25%,transparent) 16%,color-mix(in srgb,var(--paper) 92%,transparent) 35%,color-mix(in srgb,var(--paper) 92%,transparent) 65%,color-mix(in srgb,var(--paper) 25%,transparent) 84%,transparent 100%)}
+.scroll-bloom{width:320px;height:320px;opacity:.85;animation-duration:7s}.bloom-left{left:-72px}.bloom-right{right:-72px}
+.floral-vine{width:135px;opacity:.48}.vine-left{left:8px}.vine-right{right:8px}
+.scroll-petal{width:12px;height:19px;animation-duration:11s;z-index:1}
+@keyframes story-bloom{from{transform:translate3d(-7px,-13px,0) rotate(-5deg) scale(.98)}to{transform:translate3d(15px,16px,0) rotate(5deg) scale(1.045)}}
+@keyframes story-petal{0%{opacity:0;transform:translate3d(0,-35px,0) rotate(0)}12%{opacity:.72}85%{opacity:.6}100%{opacity:0;transform:translate3d(55px,380px,0) rotate(230deg)}}
+body::before,body::after{content:"";position:fixed;pointer-events:none;z-index:-1;width:min(39vw,460px);height:100vh;background:url('assets/floral/wedding-bouquet.webp') center/contain no-repeat;opacity:.32;animation:surround-florals 10s ease-in-out infinite alternate}body::before{left:-8vw;top:-12vh}body::after{right:-8vw;bottom:-15vh;rotate:180deg;animation-delay:-5s}
+@keyframes surround-florals{from{transform:translate3d(0,-12px,0) rotate(-4deg)}to{transform:translate3d(12px,16px,0) rotate(4deg)}}
+body:not(.arrived)::before,body:not(.arrived)::after{animation-play-state:paused}
+@media(max-width:600px){body::before,body::after{display:none}.scroll-bloom{width:260px;height:260px}.bloom-left{left:-77px}.bloom-right{right:-77px}.floral-vine{width:100px}}
+@media(prefers-reduced-motion:reduce){body::before,body::after{animation:none}.scroll-bloom{animation:none}.scroll-petal{display:none}}
+body:not(.floral-soundstage-awake)::before,body:not(.floral-soundstage-awake)::after{animation-play-state:paused}
+/* Three distinct optical planes: camera parallax outside, botanical movement inside. */
+.floral-scroll-scene{perspective:950px;transform-style:preserve-3d}
+.bloom-depth-layer{position:absolute;top:0;width:360px;height:360px;transform-style:preserve-3d;pointer-events:none}
+.depth-left{left:-86px}.depth-right{right:-86px}
+.depth-far{transform:translate3d(calc(var(--pointer-x,0px)*.25),var(--depth-far,0px),-35px);opacity:.52;filter:blur(1.1px)}
+.depth-middle{transform:translate3d(calc(var(--pointer-x,0px)*.65),calc(var(--depth-middle,0px) + var(--pointer-y,0px)*.4),0)}
+.depth-near{width:410px;height:410px;transform:translate3d(var(--pointer-x,0px),calc(var(--depth-near,0px) + var(--pointer-y,0px)),35px);filter:drop-shadow(10px 18px 16px #21120d25)}
+.bloom-depth-layer .scroll-bloom{position:relative;inset:auto;width:100%;height:100%;opacity:.86;transform-origin:20% 50%;animation:botanical-camera 10s cubic-bezier(.45,0,.55,1) var(--bloom-delay,0s) infinite alternate;animation-play-state:paused}
+.depth-right .scroll-bloom{rotate:180deg;transform-origin:80% 50%}.depth-far .scroll-bloom{animation-duration:17s}.depth-middle .scroll-bloom{animation-duration:12s}.depth-near .scroll-bloom{animation-duration:8s}
+.floral-awake .bloom-depth-layer .scroll-bloom{animation-play-state:running}
+@keyframes botanical-camera{0%{transform:translate3d(-12px,-22px,-12px) rotateX(-9deg) rotateY(-12deg) rotateZ(-6deg) scale(.96)}50%{transform:translate3d(6px,3px,8px) rotateX(3deg) rotateY(1deg) rotateZ(1deg) scale(1.01)}100%{transform:translate3d(20px,26px,22px) rotateX(9deg) rotateY(12deg) rotateZ(6deg) scale(1.06)}}
+.floral-atmosphere{position:absolute;inset:0;pointer-events:none;animation-play-state:paused!important}
+.atmosphere-far{background:radial-gradient(ellipse 250px 500px at 15% 20%,#c38c3730,transparent 75%),radial-gradient(ellipse 230px 600px at 85% 65%,#bb776d28,transparent 75%);background-size:100% 1000px;animation:atmosphere-drift 20s ease-in-out infinite alternate;opacity:.7}
+.atmosphere-middle{background:repeating-linear-gradient(115deg,transparent 0 130px,#f8e4b512 170px,transparent 220px 380px);animation:light-procession 16s ease-in-out infinite alternate;mix-blend-mode:soft-light}
+.atmosphere-near{background:radial-gradient(circle at 12% 15%,#fff3cd85 0 2px,transparent 11px),radial-gradient(circle at 87% 55%,#fff3cd65 0 3px,transparent 15px),radial-gradient(circle at 8% 80%,#e3b36f50 0 4px,transparent 20px);background-size:100% 780px;animation:atmosphere-drift 11s ease-in-out infinite alternate;filter:blur(.4px)}
+.floral-awake .floral-atmosphere{animation-play-state:running!important}
+@keyframes atmosphere-drift{from{transform:translate3d(-14px,-30px,0) scale(1.01)}to{transform:translate3d(18px,55px,0) scale(1.045)}}
+@keyframes light-procession{from{background-position:-220px 0;opacity:.35}to{background-position:220px 90px;opacity:.85}}
+.floral-scroll-scene::before{animation:wallpaper-camera 18s ease-in-out infinite alternate;animation-play-state:paused;background-size:430px 600px;opacity:.12}
+.floral-awake::before{animation-play-state:running}
+@keyframes wallpaper-camera{from{transform:translate3d(-9px,-28px,0) scale(1.01)}to{transform:translate3d(9px,28px,0) scale(1.04)}}
+body[data-theme="sangeet"] .atmosphere-far{background:radial-gradient(ellipse at 10% 30%,#8e63db55,transparent 65%),radial-gradient(ellipse at 85% 70%,#e2ad5550,transparent 70%);background-size:100% 1100px}
+body[data-theme="mehndi"] .atmosphere-far,body.emerald .atmosphere-far{background:radial-gradient(ellipse at 10% 30%,#487c5c55,transparent 65%),radial-gradient(ellipse at 85% 70%,#d3b15c45,transparent 70%);background-size:100% 1100px}
+body.midnight .atmosphere-far{background:radial-gradient(ellipse at 10% 30%,#5980c355,transparent 65%),radial-gradient(ellipse at 85% 70%,#8fa7d045,transparent 70%);background-size:100% 1100px}
+@media(max-width:600px){.bloom-depth-layer{width:280px;height:280px}.depth-near{width:330px;height:330px}.depth-left{left:-90px}.depth-right{right:-90px}}
+@media(prefers-reduced-motion:reduce){.bloom-depth-layer{transform:none;filter:none}.bloom-depth-layer .scroll-bloom,.floral-atmosphere,.floral-scroll-scene::before{animation:none!important}}
+/* Each ceremony has its own moving symbol and light choreography. */
+body{--hero-tempo:18s;--light-tempo:16s;--motif-tempo:12s}
+body[data-theme="ivory-arch"]{--hero-tempo:22s;--light-tempo:18s;--motif-tempo:14s}
+body[data-theme="royal-prestige"]{--hero-tempo:19s;--light-tempo:15s;--motif-tempo:9s}
+body[data-theme="garden"]{--hero-tempo:21s;--light-tempo:20s;--motif-tempo:16s}
+body[data-theme="haldi"]{--hero-tempo:15s;--light-tempo:12s;--motif-tempo:10s}
+body[data-theme="mehndi"]{--hero-tempo:20s;--light-tempo:17s;--motif-tempo:32s}
+body[data-theme="sangeet"]{--hero-tempo:14s;--light-tempo:9s;--motif-tempo:7s}
+body[data-theme="reception"]{--hero-tempo:22s;--light-tempo:19s;--motif-tempo:15s}
+body[data-theme="midnight-noor"]{--hero-tempo:25s;--light-tempo:23s;--motif-tempo:13s}
+body[data-theme="blush-mehraab"]{--hero-tempo:20s;--light-tempo:18s;--motif-tempo:17s}
+body[data-theme="emerald-darbar"]{--hero-tempo:23s;--light-tempo:21s;--motif-tempo:40s}
+.ceremonial-medallion{position:absolute;width:340px;height:340px;color:var(--gold);opacity:.18;pointer-events:none;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--gold) 45%,transparent));transform:translate3d(0,var(--depth-far,0px),0)}
+.medallion-0,.medallion-2{left:-90px}.medallion-1{right:-90px}
+.ceremonial-medallion .ceremony-symbol{width:100%;height:100%;max-width:none;stroke-width:.7;animation:lotus-unfurl var(--motif-tempo) ease-in-out infinite alternate;animation-play-state:paused}
+.motif-mandala .ceremony-symbol,.motif-sun .ceremony-symbol{animation:ceremony-orbit var(--motif-tempo) linear infinite;animation-play-state:paused}
+.motif-stars .ceremony-symbol{animation:star-constellation var(--motif-tempo) ease-in-out infinite alternate;animation-play-state:paused}
+.motif-diya .ceremony-symbol{animation:diya-illumination var(--motif-tempo) ease-in-out infinite alternate;animation-play-state:paused}
+.floral-awake .ceremony-symbol{animation-play-state:running}
+.atmosphere-middle{animation-duration:var(--light-tempo)}
+@keyframes lotus-unfurl{from{transform:perspective(600px) rotateY(-16deg) rotateX(5deg) translateY(-10px) scale(.9);opacity:.6}to{transform:perspective(600px) rotateY(16deg) rotateX(-5deg) translateY(14px) scale(1.08);opacity:1}}
+@keyframes ceremony-orbit{from{transform:perspective(600px) rotateX(16deg) rotate(0deg)}to{transform:perspective(600px) rotateX(16deg) rotate(360deg)}}
+@keyframes star-constellation{from{transform:translate3d(-9px,-13px,0) rotate(-7deg) scale(.92);filter:drop-shadow(0 0 2px var(--gold))}to{transform:translate3d(12px,17px,0) rotate(7deg) scale(1.08);filter:drop-shadow(0 0 16px var(--gold))}}
+@keyframes diya-illumination{from{transform:translateY(-7px) scale(.96);opacity:.55;filter:drop-shadow(0 0 3px var(--gold))}to{transform:translateY(7px) scale(1.04);opacity:1;filter:drop-shadow(0 0 15px var(--gold))}}
+body.arrived .hero-art{animation:invitation-camera var(--hero-tempo) cubic-bezier(.45,0,.55,1) infinite alternate!important;transform-origin:50% 45%}
+@keyframes invitation-camera{from{transform:scale(1.015) translate3d(-3px,-7px,0)}to{transform:scale(1.075) translate3d(3px,7px,0)}}
+.floral-vine svg>defs path{stroke-dasharray:800;animation:vine-drawing 18s ease-in-out infinite alternate;animation-play-state:paused}.floral-awake .floral-vine svg>defs path{animation-play-state:running}
+@keyframes vine-drawing{from{stroke-dashoffset:260;opacity:.55}to{stroke-dashoffset:0;opacity:1}}
+body:not(.floral-soundstage-awake) .hero-art{animation-play-state:paused!important}
+@media(max-width:600px){.ceremonial-medallion{width:260px;height:260px}}
+@media(prefers-reduced-motion:reduce){body.arrived .hero-art,.ceremonial-medallion .ceremony-symbol,.floral-vine svg>defs path{animation:none!important;transform:none!important}}
+
+/* Wedding-only artwork: full hero camera and continuously animated botanical planes. */
+.ganesh-icon{width:68px;height:78px;object-fit:contain;filter:drop-shadow(0 2px 5px #0007)}
+.ganesh-vermilion{filter:sepia(1) saturate(7) hue-rotate(320deg) drop-shadow(0 2px 4px #0006)}
+.ganesh-ivory{filter:grayscale(1) brightness(2.8) drop-shadow(0 2px 4px #0007)}
+body .hero .ceremony-heading{margin:0 0 12px}.ceremony-heading[hidden]{display:none!important}
+body.arrived .ganesh-icon{animation:ganesh-blessing 5s ease-in-out infinite alternate;transform-origin:center}
+@keyframes ganesh-blessing{from{transform:translateY(-3px);opacity:.92}to{transform:translateY(3px);opacity:1}}
+@media(prefers-reduced-motion:reduce){body.arrived .ganesh-icon{animation:none}}
+/* Every illustrated surface uses the new wedding artwork, including the envelope and venue fallback. */
+body[data-theme] .envelope-inner,body[data-theme] .curtain-layer,body[data-theme] .venue-illustration{background-image:var(--event-art)!important}
+body[data-theme] .closing{background-image:none!important}
+body[data-theme] .hero-art{filter:none!important}
+body[data-theme] #invitation>.couple-photo-wrap,body[data-theme] .venue-image-wrap{border-radius:8px}
+/* Keep optional Ganesh and long family details inside the artwork at every width. */
+body[data-theme] .hero{display:grid;place-items:center}
+body[data-theme] .hero-copy{position:relative;inset:auto!important;width:76%;margin:0 auto;padding:70px 0 90px!important;box-sizing:border-box}
+@media(max-width:600px){body[data-theme] .hero-copy{width:80%;padding:55px 0 75px!important}.ganesh-icon{width:58px;height:66px}}
