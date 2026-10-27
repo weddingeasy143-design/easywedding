@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790093688427,
+      "tag": "0000_bouncy_nicolaos",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790888402617,
+      "tag": "0001_overjoyed_rumiko_fujikawa",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790890703450,
+      "tag": "0002_remove_places_cache",
+      "breakpoints": true
+    }
+  ]
+}

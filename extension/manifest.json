@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Easy Wedding Creative Companion",
+  "version": "1.0.1",
+  "minimum_chrome_version": "116",
+  "description": "Send your wedding brief and selected photos to your creative account, and return a chosen image or video to Easy Wedding.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://wedcanvas-interactive-invitation.mail-amtcentre.chatgpt.site/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://www.canva.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Easy Wedding Companion",
+    "default_popup": "panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://wedcanvas-interactive-invitation.mail-amtcentre.chatgpt.site/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "site.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
