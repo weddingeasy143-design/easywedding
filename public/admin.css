@@ -80,3 +80,5 @@ a{color:var(--maroon)}
 .ewp-field{display:block;font-size:13px;color:var(--mute)}.ewp-field input,.ewp-field select{display:block;width:100%;margin-top:5px;padding:10px 11px;border:1px solid #d9c6b2;border-radius:9px;font-size:15px;background:#fff}
 .ewp-steps{margin:14px 0 0;padding-left:20px;color:#5d4636;font-size:14px;line-height:1.55}.ewp-hook{margin:10px 0 0;color:#5d4636;font-size:14px;line-height:1.55;background:#fdf1e7;border-radius:9px;padding:10px 12px}
 .ewp-sub{color:var(--mute);font-size:14px}
+
+.ad-temp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ad-temp{display:inline-block;padding:10px 16px;border:1px dashed #c99a3d;border-radius:10px;background:#fffaf3;font:700 22px/1 ui-monospace,Consolas,monospace;letter-spacing:.06em;color:#75152e}

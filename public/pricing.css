@@ -64,3 +64,6 @@ html.lenis,html.lenis body{height:auto}
 .lenis.lenis-stopped{overflow:hidden}
 .lenis.lenis-scrolling iframe{pointer-events:none}
 .cine-hero-bg,[data-parallax]{will-change:transform;backface-visibility:hidden}
+
+/* Footer blocks fade in but never slide: a link that moves while it is being clicked loses the click (needed two taps). */
+.site-footer>div,.site-footer>nav,.site-footer .foot-social,.site-footer .foot-cols{transform:none!important;translate:none!important}

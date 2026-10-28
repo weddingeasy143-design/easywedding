@@ -123,11 +123,31 @@ async function loadCoupons(){
 $('#coupon-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#cp-status');st.textContent='Creating…';try{const d=await send('/api/admin/coupons',{code:$('#cp-code').value,kind:$('#cp-kind').value,value:$('#cp-value').value,max_uses:$('#cp-max').value,expires_on:$('#cp-exp').value||null},'POST');st.textContent='Coupon '+d.code+' is live — couples can enter it at payment.';e.target.reset();loadCoupons().catch(handleErr);}catch(err){st.textContent=err.message;}});
 
 // ---- Customers ----
+function planCell(designs){
+ const ids=(designs||'').split(',').filter(Boolean),main=ids.filter(x=>!x.startsWith('addon-')),extra=ids.filter(x=>x.startsWith('addon-'));
+ const box=el('div');
+ if(!main.length){box.append(badge('No plan yet','off'));}
+ else box.append(el('b',null,main.includes('ALL')?'All-Designs Pass':main.map(x=>DESIGN_NAMES[x]||x).join(', ')));
+ if(extra.length)box.append(el('div','ad-sub',('Add-ons: '+extra.map(x=>(DESIGN_NAMES[x]||x).replace('Add-on · ','')).join(', '))));
+ return box;
+}
+async function resetFor(email){
+ if(!confirm('Create a temporary password for '+email+'? They are signed out everywhere and must use the new password.'))return;
+ const box=$('#cu-temp');box.hidden=false;clear(box).append(el('p','ad-sub','Creating…'));
+ try{
+  const d=await send('/api/admin/reset-password',{email},'POST');
+  clear(box);box.append(el('h3',null,'Temporary password ready'),el('p',null,'Send this to '+email+' now — it is not shown again.'));
+  const code=el('code','ad-temp',d.temporaryPassword);const copy=el('button','ad-btn sm','Copy');copy.type='button';
+  copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(d.temporaryPassword);copy.textContent='Copied ✓';}catch{copy.textContent='Select & copy it manually';}});
+  const row=el('div','ad-temp-row');row.append(code,copy);box.append(row);if(box.scrollIntoView)box.scrollIntoView({behavior:'smooth',block:'center'});
+ }catch(err){clear(box);box.append(el('p','ad-status',err.message));}
+}
 async function loadCustomers(){
  const d=await api('/api/admin/customers?q='+encodeURIComponent($('#cu-q').value.trim()));
- const rows=d.customers.map(u=>{const acts=el('div');const g=el('button','ad-btn sm','Unlock');g.type='button';g.addEventListener('click',()=>{$('#grant-email').value=u.email;$('#grant-form').scrollIntoView({behavior:'smooth',block:'center'});});const r=el('button','ad-btn sm','Reset password');r.type='button';r.style.marginLeft='6px';r.addEventListener('click',()=>{$('#reset-email').value=u.email;$('#reset-form').scrollIntoView({behavior:'smooth',block:'center'});});acts.append(g,r);
-  return [u.name,u.email,when(u.created_at),num(u.paid_orders),inr(u.spent),(u.designs||'').split(',').filter(Boolean).map(x=>DESIGN_NAMES[x]||x).join(', ')||'—',acts];});
- clear($('#customers-table')).append(table(['Name','Email','Joined','Paid orders','Spent','Owns',''],rows,'No customers match.'));
+ const rows=d.customers.map(u=>{const acts=el('div');const g=el('button','ad-btn sm','Unlock');g.type='button';g.addEventListener('click',()=>{$('#grant-email').value=u.email;$('#grant-form').scrollIntoView({behavior:'smooth',block:'center'});});const r=el('button','ad-btn sm','Reset password');r.type='button';r.style.marginLeft='6px';r.addEventListener('click',()=>resetFor(u.email));acts.append(g,r);
+  return [u.name,u.email,planCell(u.designs),inr(u.spent),when(u.created_at),acts];});
+ $('#cu-count').textContent=d.customers.length+' registered user'+(d.customers.length===1?'':'s');
+ clear($('#customers-table')).append(table(['Name','Email','Plan taken','Paid','Registered',''],rows,'No customers match.'));
 }
 let cuTimer;$('#cu-q').addEventListener('input',()=>{clearTimeout(cuTimer);cuTimer=setTimeout(()=>loadCustomers().catch(handleErr),300);});
 {const sel=$('#grant-design');for(const [id,name] of Object.entries(DESIGN_NAMES)){const o=el('option',null,id==='ALL'?'All-Designs Wedding Pass':name);o.value=id;sel.append(o);}
