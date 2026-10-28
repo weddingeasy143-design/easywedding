@@ -149,6 +149,24 @@ async function loadCustomers(){
  $('#cu-count').textContent=d.customers.length+' registered user'+(d.customers.length===1?'':'s');
  clear($('#customers-table')).append(table(['Name','Email','Plan taken','Paid','Registered',''],rows,'No customers match.'));
 }
+// Pending sign-ups: people who started payment, or old accounts that never paid. The owner can clear them out.
+async function removePending(p){
+ const st=$('#pd-status'),who=(p.name||p.email)+' ('+p.email+')';
+ const msg=p.kind==='order'?'Delete the unfinished sign-up for '+who+'? This removes their started payment (order) only. No account was created yet. If this person already paid, refund them first — a deleted order cannot be completed later. This cannot be undone.'
+  :'Delete the account for '+who+'? They have never paid. If this person already paid, refund them first — a deleted account cannot be restored. This permanently removes their login, any unpaid orders, saved invitation drafts, planner data and vendor bookings; photos they uploaded may remain in storage. This cannot be undone.';
+ if(!confirm(msg))return;
+ st.textContent='Deleting…';
+ try{await api('/api/admin/pending/'+p.kind+'/'+encodeURIComponent(p.id),{method:'DELETE'});st.textContent='Deleted '+p.email+'.';}
+ catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not delete. Please try again.';}
+ await Promise.all([loadPending(),loadCustomers()]).catch(handleErr);
+}
+async function loadPending(){
+ const d=await api('/api/admin/pending');
+ const rows=d.pending.map(p=>{const del=el('button','ad-btn sm danger','Delete');del.type='button';del.addEventListener('click',()=>removePending(p));
+  return [p.name,p.email,p.kind==='order'?badge('Started payment','off'):badge('Registered, never paid','off'),when(p.createdAt),del];});
+ $('#pd-count').textContent=d.pending.length+' pending';
+ clear($('#pending-table')).append(table(['Name','Email','Status','Date',''],rows,'No pending sign-ups.'));
+}
 let cuTimer;$('#cu-q').addEventListener('input',()=>{clearTimeout(cuTimer);cuTimer=setTimeout(()=>loadCustomers().catch(handleErr),300);});
 {const sel=$('#grant-design');for(const [id,name] of Object.entries(DESIGN_NAMES)){const o=el('option',null,id==='ALL'?'All-Designs Wedding Pass':name);o.value=id;sel.append(o);}
  $('#grant-form').addEventListener('submit',async e=>{e.preventDefault();const status=$('#grant-status');status.textContent='Unlocking…';try{await send('/api/admin/grant',{email:$('#grant-email').value,designId:sel.value,amount:$('#grant-amount').value},'POST');status.textContent='Unlocked '+(sel.selectedOptions[0]?.textContent||sel.value)+' for '+$('#grant-email').value+'.';e.target.reset();loadCustomers().catch(handleErr);}catch(err){status.textContent=err.message;}});
@@ -167,7 +185,7 @@ async function loadSystem(){
 }
 
 // ---- Routing, login, start-up ----
-const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:loadCustomers,settings:loadSettings,system:loadSystem};
+const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:loadSettings,system:loadSystem};
 function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);
