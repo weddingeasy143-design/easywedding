@@ -1,0 +1,15 @@
+# Heavy static files rarely change: let browsers keep them for a week (revalidate quietly after that).
+/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/photos/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/music/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/opening/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/ornaments/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/sagun/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/share/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400

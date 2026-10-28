@@ -27,7 +27,7 @@ export function invitationModel(config,seed,base,snapshotId=''){
  for(const e of wedding.events)e.image=fixImg(e.image);
  for(const event of wedding.events){event.venue=config.venue;event.address=[config.venue,config.address,config.city].join(', ');event.mapUrl=site.content.venueMapUrl;}
  site.share={...site.share,...r.share};
- const url=new URL('invite.html',base);
+ const url=new URL('invite',base);
  if(snapshotId){url.searchParams.set('id',snapshotId);site.share.shareUrl=url.href;}else site.share.shareUrl=invitationUrl(config,url);
  const copy={...referenceDefaults.copy,...r.copy};
  site.content.siteTexts={...site.content.siteTexts,...r.content?.siteTexts,
