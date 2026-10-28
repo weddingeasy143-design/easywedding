@@ -6,7 +6,7 @@ import {existsSync} from 'node:fs';
 // scripts' read_text()/write_text() off the cp1252 locale codec.
 const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3');
 const pyEnv={...process.env,PYTHONUTF8:'1'};
-for(const script of ['scripts/package-companion.py','scripts/build-reference.py','scripts/reference-fields.py'])execFileSync(python,[script],{stdio:'inherit',env:pyEnv});
+const hasInputs=existsSync('qa/exact-reference/asset-manifest.json'); /* inputs are not in the hosted checkout; public/reference already holds their output */ if(hasInputs)for(const script of ['scripts/package-companion.py','scripts/build-reference.py','scripts/reference-fields.py'])execFileSync(python,[script],{stdio:'inherit',env:pyEnv});
 for(const file of ['public/reference/runtime.js','public/reference/current-components.js'])await transform(await readFile(file,'utf8'),{loader:'js',target:'es2022',sourcefile:file});
 await import('./scripts/build-source.mjs');
 await rm('dist',{recursive:true,force:true});
