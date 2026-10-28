@@ -207,3 +207,29 @@ async function initFlow(){
  if(user)$('#save-status').textContent='Finish your details and payment to activate your invitation.';
 }
 initFlow();
+
+// ---- Step chips + always-visible Pay & activate bar ----
+let payPricing=null;
+function updatePayBar(){
+const name=$('#pb-design'),price=$('#pb-price');if(!name||!price)return;
+name.textContent=eventThemes[config.theme].name;
+const row=payPricing&&payPricing.designs.find(x=>x.id===config.theme);
+price.replaceChildren();
+if(!row)return;
+if(row.launchActive&&row.regular>row.current){const s=document.createElement('s');s.textContent=inr(row.regular);const b=document.createElement('b');b.textContent=' '+inr(row.current);price.append('One-time · ',s,b);}
+else price.append('One-time · '+inr(row.current));
+}
+if(typeof fetch==='function')fetch('/api/pricing').then(r=>r.ok?r.json():null).then(d=>{if(d){payPricing=d;updatePayBar();}}).catch(()=>{});
+form.addEventListener('change',event=>{if(event.target.name==='theme')updatePayBar();});
+function nudgePay(){const b=$('#pb-pay');if(!b)return;b.classList.remove('nudge');void b.offsetWidth;b.classList.add('nudge');}
+function goStep(n){
+const owner=document.body.classList.contains('mode-owner');
+if(n===1){setStep(1);$('#flow-steps').scrollIntoView({behavior:'smooth',block:'start'});return;}
+if(owner){if(n===4||n===3){$('#owner-overview').scrollIntoView({behavior:'smooth',block:'start'});}return;}
+if(n===2){openPreviewStep();return;}
+if(n===3){setStep(3);clearTimeout(updateTimer);refresh();openShare();return;}
+$('#save-status').textContent='Pay & activate first — your invitation page opens right after payment.';nudgePay();
+}
+document.querySelectorAll('#flow-steps [data-step]').forEach(b=>b.addEventListener('click',()=>goStep(Number(b.dataset.step))));
+$('#pb-pay').addEventListener('click',()=>goStep(3));
+updatePayBar();

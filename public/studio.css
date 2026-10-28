@@ -104,3 +104,22 @@ body.mode-owner .theme-fieldset .theme-help{display:none}
 .ewp-coupon{display:flex;gap:8px;margin:12px 0 4px}.ewp-coupon input{flex:1;padding:10px 12px;border:1px solid #d9c6b2;border-radius:10px;font-size:15px;text-transform:uppercase}.ewp-coupon button{padding:10px 16px}
 
 .theme-card[hidden]{display:none!important}
+
+/* Step chips are real buttons */
+.flow-steps li{padding:0;border:0;background:none}
+.flow-steps li button{display:flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid #d9c6b2;border-radius:999px;font:inherit;font-size:13px;color:#6f5a4c;background:#fffaf3;cursor:pointer;touch-action:manipulation}
+.flow-steps li button:hover{border-color:#75152e;color:#75152e}
+.flow-steps li.on button{border-color:#75152e;color:#75152e;font-weight:700}
+.flow-steps li.done button{color:#1d7a3a}
+/* Always-visible Pay & activate bar (guests and unpaid accounts) */
+.pay-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;align-items:center;justify-content:space-between;gap:14px;padding:12px max(4%,16px) calc(12px + env(safe-area-inset-bottom));background:#fffaf3f2;backdrop-filter:blur(6px);border-top:2px solid #c99a3d;box-shadow:0 -8px 26px rgba(74,13,29,.18)}
+body.mode-guest .pay-bar,body.mode-unpaid .pay-bar{display:flex}
+body.mode-guest,body.mode-unpaid{padding-bottom:92px}
+.pb-info{display:flex;flex-direction:column;min-width:0}.pb-info strong{color:#75152e;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pb-info span{font-size:14px;color:#5d4636}.pb-info s{color:#9a8574}.pb-info b{color:#1d7a3a}
+.pay-big{flex:none;padding:15px 32px;border:0;border-radius:14px;background:linear-gradient(135deg,#e8c36a,#c99a3d);color:#4a0d1d;font:800 18px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(201,154,61,.55);touch-action:manipulation;animation:payPulse 2.6s ease-in-out infinite}
+.pay-big:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.pay-big.nudge{animation:payNudge .6s ease 2}
+@keyframes payPulse{0%,100%{box-shadow:0 6px 18px rgba(201,154,61,.55)}50%{box-shadow:0 6px 28px rgba(201,154,61,.95)}}
+@keyframes payNudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media(prefers-reduced-motion:reduce){.pay-big,.pay-big.nudge{animation:none}}
+@media(max-width:560px){.pay-big{padding:14px 20px;font-size:16px}.pb-info strong{font-size:15px}}
