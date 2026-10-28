@@ -28,10 +28,10 @@ $('#event-editor').addEventListener('click',event=>{const button=event.target.cl
 window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===preview.contentWindow&&event.data?.type==='wedcanvas:ready')sendPreview();});preview.addEventListener('load',sendPreview);$('#replay-preview').addEventListener('click',()=>preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin));
 function validate(){for(const input of form.querySelectorAll('input,textarea,select')){input.setCustomValidity('');if(input.dataset.referencePath?.endsWith('.dateISO')&&!validReferenceDate(input.value))input.setCustomValidity('Enter a valid event date and time, such as 2026-12-12T18:00:00+05:30.');if(!input.checkValidity()){input.closest('details')?.setAttribute('open','');input.reportValidity();return false;}}for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const input=form.elements[key];if(input.value&&!safeImageUrl(input.value)){input.setCustomValidity('Upload a photograph or use a direct HTTPS image URL.');input.closest('details')?.setAttribute('open','');input.reportValidity();return false;}}const gallery=form.elements.gallery;const urls=gallery.value.split('\n').map(s=>s.trim()).filter(Boolean);const galleryLimit=window.__ewGalleryLimit||4;if(urls.length>galleryLimit||urls.some(u=>!safeImageUrl(u))){gallery.setCustomValidity(urls.length>galleryLimit?('Add up to '+galleryLimit+' HTTPS image URLs, one per line.'+(galleryLimit===4?' More photos need the Premium Gallery add-on (section 07).':'')):'Add only direct HTTPS image URLs, one per line.');gallery.closest('details').setAttribute('open','');gallery.reportValidity();return false;}const realUser=window.EWAuth?.session();if(realUser&&!realUser.fake&&!rsvpDestination(config)){const input=form.elements.rsvpContact;input.setCustomValidity(config.rsvpContact?(config.rsvpMethod==='email'?'Enter a valid email address.':'Include the country code, for example +91 9876543210.'):'Add your WhatsApp number or email so guests can send their replies.');input.closest('details')?.setAttribute('open','');input.reportValidity();return false;}if(config.rsvpContact&&!rsvpDestination(config)){const input=form.elements.rsvpContact;input.setCustomValidity(config.rsvpMethod==='email'?'Enter a valid email address.':'Include the country code, for example +91 9876543210.');input.closest('details').setAttribute('open','');input.reportValidity();return false;}const video=form.elements.videoUrl;if(video.value.trim()&&!videoEmbedUrl(video.value.trim())){video.setCustomValidity('Paste a YouTube, Instagram or Facebook video link.');video.closest('details')?.setAttribute('open','');video.reportValidity();return false;}return true;}
 function openSigninGate(){$('#signin-dialog').showModal();}
-async function openShare(){clearTimeout(updateTimer);refresh();if(!validate())return;const sessionUser=window.EWAuth?.session();if(!sessionUser||sessionUser.fake){openSigninGate();return;}let entitled=!!sessionUser.admin;if(!entitled){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();entitled=!!d.admin||(d.designs||[]).includes(config.theme)||(d.designs||[]).includes('ALL');}}catch{}}if(!entitled){openPayDialog();return;}publishShare();}
-async function publishShare(){let url=invitationUrl(config,location.href);if(!browserOnlySession()){try{const response=await fetch('/api/invitations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const result=await response.json();if(!response.ok)throw Error(result.error);url=new URL(result.url,location.href).href}catch(error){$('#save-status').textContent=error.message||'Using a complete invitation link.'}}$('#share-url').value=url;$('#share-open').href=url;$('#copy-status').textContent='';const warnings=[];if(config.audioUrl.startsWith('local-audio:'))warnings.push('The uploaded song is stored on this device. Sign in and upload it before sharing with guests on other devices.');if(!rsvpDestination(config))warnings.push('Add an RSVP contact if you want guests to send replies.');if(config.address===DEFAULTS.address)warnings.push('The sample venue address is still present. Add your actual address before sharing.');$('#share-alerts').textContent=warnings.join(' ');$('#share-dialog').showModal();}
+async function openShare(){clearTimeout(updateTimer);refresh();if(!validate())return;let sessionUser=window.EWAuth?.session();if(!sessionUser||sessionUser.fake){if(!await createAccountFromCard())return;sessionUser=window.EWAuth.session();}let entitled=!!sessionUser?.admin;if(!entitled){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();entitled=!!d.admin||(d.designs||[]).includes(config.theme)||(d.designs||[]).includes('ALL');}}catch{}}if(!entitled){openPayDialog();return;}publishShare();}
+async function publishShare(){let url=invitationUrl(config,location.href);if(!browserOnlySession()){try{const response=await fetch('/api/invitations'+(latestInvitationId?'?replace='+latestInvitationId:''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const result=await response.json();if(!response.ok)throw Error(result.error);latestInvitationId=result.id;url=new URL(result.url,location.href).href}catch(error){$('#save-status').textContent=error.message||'Using a complete invitation link.'}}$('#share-url').value=url;$('#share-open').href=url;$('#copy-status').textContent='';const warnings=[];if(config.audioUrl.startsWith('local-audio:'))warnings.push('The uploaded song is stored on this device. Sign in and upload it before sharing with guests on other devices.');if(!rsvpDestination(config))warnings.push('Add an RSVP contact if you want guests to send replies.');if(config.address===DEFAULTS.address)warnings.push('The sample venue address is still present. Add your actual address before sharing.');$('#share-alerts').textContent=warnings.join(' ');$('#share-workspace').hidden=false;setStep(4);$('#share-dialog').showModal();}
 const signOutBtn=$('#signout-top');if(signOutBtn){const su=window.EWAuth?.session();if(su&&!su.fake){signOutBtn.hidden=false;signOutBtn.addEventListener('click',()=>window.EWAuth.signOut());}}
-$('#share-top').addEventListener('click',openShare);$('#share-bottom').addEventListener('click',openShare);$('#share-close').addEventListener('click',()=>$('#share-dialog').close());$('#signin-close').addEventListener('click',()=>$('#signin-dialog').close());$('#copy-link').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#share-url').value);$('#copy-status').textContent='Invitation link copied.';}catch{$('#share-url').focus();$('#share-url').select();$('#copy-status').textContent='Select and copy the highlighted link manually.';}});
+$('#share-top').addEventListener('click',primaryAction);$('#share-bottom').addEventListener('click',primaryAction);$('#share-close').addEventListener('click',()=>$('#share-dialog').close());$('#signin-close').addEventListener('click',()=>$('#signin-dialog').close());$('#copy-link').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#share-url').value);$('#copy-status').textContent='Invitation link copied.';}catch{$('#share-url').focus();$('#share-url').select();$('#copy-status').textContent='Select and copy the highlighted link manually.';}});
 $('#reset-draft').addEventListener('click',()=>$('#reset-dialog').showModal());$('#reset-cancel').addEventListener('click',()=>$('#reset-dialog').close());$('#reset-confirm').addEventListener('click',()=>{songUploadVersion++;const songInput=$('[data-song-upload]');songInput.disabled=false;songInput.value='';config=normalizeConfig(DEFAULTS);fillForm();refresh();preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin);$('#reset-dialog').close();});
 fillForm();refresh(false);
 
@@ -116,3 +116,81 @@ $('#slug-save')?.addEventListener('click',async()=>{
  try{const r=await fetch('/api/short-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug,invitationId})});const d=await r.json();if(!r.ok)throw Error(d.error||'Could not save.');updateSlugStatus('Your short link is live: easywedding.in/'+d.slug);}catch(e){updateSlugStatus(e.message);}
 });
 initAddons();
+
+// ---- One-page flow: details & photos → preview → account + payment → activated invitation workspace ----
+let latestInvitationId=null;
+function setStep(n){document.querySelectorAll('#flow-steps li').forEach((li,i)=>{li.classList.toggle('on',i+1===n);li.classList.toggle('done',i+1<n);});}
+function primaryAction(){if(document.body.classList.contains('mode-owner')){updateOwnerLink();return;}openPreviewStep();}
+function openPreviewStep(){clearTimeout(updateTimer);refresh();if(!validate())return;const guest=document.body.classList.contains('mode-guest');$('#pv-title').textContent=eventThemes[config.theme].name+' · your preview';$('#pv-continue').textContent=guest?'Create account & pay →':'Pay & activate →';setStep(2);$('#preview-full').src='reference/render.html#card='+encodeConfig(config);$('#preview-dialog').showModal();}
+$('#pv-back').addEventListener('click',()=>{$('#preview-dialog').close();setStep(1);});
+$('#pv-continue').addEventListener('click',()=>{$('#preview-dialog').close();setStep(3);openShare();});
+$('#preview-dialog').addEventListener('close',()=>{$('#preview-full').src='about:blank';});
+async function migrateLocalPhotos(){
+ const nodes=[...form.querySelectorAll('input,textarea')].filter(n=>typeof n.value==='string'&&n.value.includes('data:image/'));
+ if(!nodes.length)return;
+ const found=new Set();for(const n of nodes)for(const m of n.value.matchAll(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/g))found.add(m[0]);
+ const map=new Map();let done=0;
+ for(const dataUrl of found){
+  $('#save-status').textContent='Saving your photos… '+(++done)+' of '+found.size;
+  const blob=await (await fetch(dataUrl)).blob();const ext=blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg';
+  const data=new FormData();data.set('file',new File([blob],'photo.'+ext,{type:blob.type}));
+  const r=await fetch('/api/invitation-photos',{method:'POST',body:data});const result=await r.json().catch(()=>({}));
+  if(!r.ok)throw Error(result.error||'A photo could not be saved. Please upload it again.');
+  map.set(dataUrl,result.url);
+ }
+ for(const n of nodes){let v=n.value;for(const [from,to] of map)v=v.split(from).join(to);n.value=v;}
+ refresh();
+}
+async function createAccountFromCard(){
+ const err=$('#acct-error'),name=($('#acct-name').value||'').trim(),email=($('#acct-email').value||'').trim().toLowerCase(),pass=$('#acct-pass').value||'';
+ const stop=message=>{err.textContent=message;$('#account-card').scrollIntoView({behavior:'smooth',block:'center'});return false;};
+ err.textContent='';
+ if(!name)return stop('Please enter your name to create the account.');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return stop('Please enter a valid email address.');
+ if(pass.length<8)return stop('Choose a password of at least 8 characters.');
+ try{await window.EWAuth.signUp(name,email,pass);}catch(e){return stop(e.message||'Could not create the account.');}
+ try{await migrateLocalPhotos();}catch(e){$('#save-status').textContent=e.message;}
+ cloudReady=true;cloudPending=true;saveCloud();
+ document.body.classList.remove('mode-guest');document.body.classList.add('mode-unpaid');
+ const out=$('#signout-top');if(out){out.hidden=false;out.addEventListener('click',()=>window.EWAuth.signOut());}
+ return true;
+}
+function setOverviewLink(url){$('#ov-link').value=url;$('#ov-open').href=url;$('#ov-wa').href='https://wa.me/?text='+encodeURIComponent('You are invited! Open our wedding invitation: '+url);renderQr(url);}
+async function renderQr(url){try{const img=$('#ov-qr');img.src=await window.QRCode.toDataURL(url,{margin:1,width:240});img.hidden=false;}catch{}}
+async function updateOwnerLink(){
+ clearTimeout(updateTimer);refresh();if(!validate())return;const st=$('#ov-status');st.textContent='Saving…';
+ try{const r=await fetch('/api/invitations'+(latestInvitationId?'?replace='+latestInvitationId:''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const d=await r.json();if(!r.ok)throw Error(d.error||'Could not update the link.');latestInvitationId=d.id;setOverviewLink(new URL(d.url,location.href).href);st.textContent='Saved — your guests see the latest details at the same link.';}
+ catch(e){st.textContent=e.message;}
+}
+function ownerSetup(owned){
+ const root=$('#owner-overview');
+ root.innerHTML='<p class="eyebrow">YOUR INVITATION · ACTIVE ✓</p><h2 id="ov-title"></h2><p class="ov-sub">Payment received — your account is active. Your template, share link and everything you can edit are on this one page.</p><label class="ov-label">Your share link<input id="ov-link" readonly placeholder="Your link appears here"></label><div class="ov-actions"><button id="ov-copy" class="primary" type="button">Copy link</button><a id="ov-open" class="secondary" target="_blank" rel="noopener">Open invitation ↗</a><a id="ov-wa" class="secondary" target="_blank" rel="noopener">Share on WhatsApp</a><button id="ov-update" class="secondary" type="button">Save &amp; update link</button></div><div class="ov-extra"><img id="ov-qr" alt="QR code for your invitation" hidden width="120" height="120"><p><a href="/rsvps">Guest replies (RSVP)</a> · <a href="/guests">Guest list</a></p></div><p id="ov-status" role="status"></p>';
+ root.hidden=false;
+ const all=owned.includes('ALL');
+ document.querySelectorAll('#theme-options .theme-card').forEach(card=>{const v=card.querySelector('input')?.value;if(!all&&!owned.includes(v))card.hidden=true;});
+ const legend=document.querySelector('.theme-fieldset legend span');if(legend)legend.textContent=all?'Your designs':'Your template';
+ const help=document.querySelector('.theme-help');if(help)help.hidden=true;const cmp=$('#compare-designs');if(cmp)cmp.hidden=true;
+ if(!all&&!owned.includes(config.theme)){config=normalizeConfig({...config,theme:owned[0]});fillForm();refresh(false);}
+ $('#ov-title').textContent=eventThemes[config.theme].name;
+ form.addEventListener('change',()=>{$('#ov-title').textContent=eventThemes[config.theme].name;});
+ $('#ov-copy').addEventListener('click',async()=>{const st=$('#ov-status');try{await navigator.clipboard.writeText($('#ov-link').value);st.textContent='Link copied.';}catch{$('#ov-link').select();st.textContent='Select and copy the highlighted link.';}});
+ $('#ov-update').addEventListener('click',updateOwnerLink);
+ $('#share-top').textContent='Save & update link';$('#share-bottom').textContent='Save & update link';
+ const home=document.querySelector('.header-actions a.secondary');if(home)home.hidden=true;
+ fetch('/api/my-invitations').then(r=>r.ok?r.json():{invitations:[]}).then(d=>{const first=(d.invitations||[])[0];if(first){latestInvitationId=first.id;setOverviewLink(new URL('/invite?id='+first.id,location.href).href);}else $('#ov-status').textContent='Press “Save & update link” to create your share link.';}).catch(()=>{});
+}
+async function initFlow(){
+ if(new URLSearchParams(location.search).has('demo'))return;
+ const path=location.pathname.replace(/\/+$/,'');
+ let user=null,owned=[];
+ try{const s=await (await fetch('/api/session')).json();user=s.user||null;}catch{}
+ if(user){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();owned=d.admin?['ALL']:(d.designs||[]).filter(x=>!x.startsWith('addon-'));}}catch{}}
+ const entitled=owned.length>0;
+ if(path==='/workspace'||path==='/workspace.html'){if(!user){location.replace('/?auth=login&next=%2Fworkspace');return;}if(!entitled){location.replace('/studio');return;}}
+ const b=document.body;b.classList.toggle('mode-guest',!user);b.classList.toggle('mode-unpaid',!!user&&!entitled);b.classList.toggle('mode-owner',entitled);
+ if(entitled){ownerSetup(owned);document.dispatchEvent(new CustomEvent('ew:owner'));return;}
+ $('#share-top').textContent='Preview & continue →';$('#share-bottom').textContent='Preview & continue →';
+ const home=document.querySelector('.header-actions a.secondary');if(home)home.textContent='Home';
+ if(user)$('#save-status').textContent='Finish your details and payment to activate your invitation.';
+}
+initFlow();
