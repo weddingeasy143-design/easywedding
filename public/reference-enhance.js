@@ -5,7 +5,7 @@
 //  2. If this invitation was opened from a published link, quietly save the
 //     guest's RSVP reply to the couple's inbox as well (the guest's normal
 //     WhatsApp / email flow is untouched).
-import {readConfig} from './config.js';
+import {readConfig,encodeConfig,normalizeConfig} from './config.js';
 import {videoEmbedUrl} from './video-embed.js';
 
 const ewStyle=document.createElement('style');
@@ -15,6 +15,34 @@ const invitationId=new URLSearchParams(location.search).get('id')||'';
 const guestToken=new URLSearchParams(location.search).get('to')||'';
 let config=null;
 try{config=readConfig(location)}catch{config=null}
+
+// A published invitation (server ?id) shows exactly what the couple paid to
+// publish. Anything else — the studio's "open full screen" link or a hand-made
+// #card= URL — is an unpaid preview: opened on its own it carries a PREVIEW
+// watermark so it can't stand in for a real invitation. Previews framed inside
+// the studio or the homepage stay clean.
+function showPreviewRibbon(){
+ if(window.self!==window.top)return;
+ const style=document.createElement('style');
+ style.textContent='.ew-preview-mark{position:fixed;inset:0;z-index:2147483646;pointer-events:none;background-image:url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180"><text x="20" y="110" transform="rotate(-28 130 90)" font-family="Georgia,serif" font-size="34" letter-spacing="6" fill="rgba(117,21,46,0.16)">PREVIEW</text></svg>')+'")}'
+  +'.ew-preview-bar{position:fixed;left:0;right:0;top:0;z-index:2147483647;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px;background:#5e1220;color:#fff7e8;font:600 13px/1.4 system-ui,sans-serif;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}'
+  +'.ew-preview-bar a{color:#3a0a18;background:#e8c876;border-radius:999px;padding:6px 14px;text-decoration:none;font-weight:700;white-space:nowrap}';
+ document.head.append(style);
+ const mark=document.createElement('div');mark.className='ew-preview-mark';mark.setAttribute('aria-hidden','true');
+ const bar=document.createElement('div');bar.className='ew-preview-bar';bar.setAttribute('role','note');
+ const text=document.createElement('span');text.textContent='Preview only · unlock this design to share it with your guests';
+ const link=document.createElement('a');link.href='/studio.html'+(config?.theme?'?template='+encodeURIComponent(config.theme):'');link.textContent='Unlock & share →';
+ bar.append(text,link);document.body.append(mark,bar);
+}
+(async()=>{
+ if(!invitationId){showPreviewRibbon();return;}
+ try{
+  const r=await fetch('/api/invitations/'+encodeURIComponent(invitationId));
+  if(!r.ok){showPreviewRibbon();return;}
+  const published=encodeConfig(normalizeConfig(await r.json()));
+  if(location.hash.replace(/^#card=/,'')!==published){location.hash='card='+published;location.reload();}
+ }catch{/* offline guest: keep what loaded rather than block a real invitation */}
+})();
 
 function mountFilm(){
  if(!config||!config.videoUrl||document.getElementById('ew-film'))return false;

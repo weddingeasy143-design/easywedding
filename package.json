@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pretest": "node build.mjs",
     "test": "node --experimental-vm-modules --test qa/*.test.mjs",
     "dev": "vite --host 0.0.0.0 --port 4173",
     "build": "node build.mjs",
+    "deploy": "node build.mjs && npx wrangler deploy",
+    "db:migrate": "npx wrangler d1 migrations apply easy-wedding --remote",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {

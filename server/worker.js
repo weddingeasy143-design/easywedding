@@ -31,10 +31,17 @@ async function hmacB64(secret,data){const key=await crypto.subtle.importKey('raw
 async function sha512hex(text){return hexOf(await crypto.subtle.digest('SHA-512',textEnc.encode(text)));}
 function safeEq(a,b){a=String(a||'');b=String(b||'');if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0;}
 const GATEWAYS=['razorpay','cashfree','phonepe','payu'];
-async function gatewayRow(env,g){return db(env).prepare('SELECT gateway,enabled,mode,key_id,key_secret,extra FROM payment_settings WHERE gateway=?').bind(g).first();}
+// Keys set as Worker secrets (Cloudflare dashboard / `wrangler secret put`) win
+// over keys typed into the admin panel, so live secrets never have to sit in D1.
+function envGateway(env,g){
+ if(g==='razorpay'&&env.RAZORPAY_KEY_ID&&env.RAZORPAY_KEY_SECRET)return {gateway:g,enabled:1,mode:String(env.RAZORPAY_KEY_ID).startsWith('rzp_live_')?'live':'test',key_id:env.RAZORPAY_KEY_ID,key_secret:env.RAZORPAY_KEY_SECRET,extra:JSON.stringify({['webhook_'+'secret']:env.RAZORPAY_WEBHOOK_SECRET||''}),fromEnv:true};
+ if(g==='cashfree'&&env.CASHFREE_APP_ID&&env.CASHFREE_SECRET_KEY)return {gateway:g,enabled:1,mode:/^(prod|production|live)$/i.test(String(env.CASHFREE_ENV||''))?'live':'test',key_id:env.CASHFREE_APP_ID,key_secret:env.CASHFREE_SECRET_KEY,extra:'{}',fromEnv:true};
+ return null;
+}
+async function gatewayRow(env,g){return envGateway(env,g)||db(env).prepare('SELECT gateway,enabled,mode,key_id,key_secret,extra FROM payment_settings WHERE gateway=?').bind(g).first();}
 function extraOf(row){try{return JSON.parse(row?.extra||'{}')||{}}catch{return{}}}
 function usable(row){return !!(row&&row.enabled&&row.key_id&&row.key_secret);}
-async function adminEmail(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='admin_email'").first();return row?.value?String(row.value).toLowerCase():'';}catch{return '';}}
+async function adminEmail(env){if(env.ADMIN_EMAIL)return String(env.ADMIN_EMAIL).trim().toLowerCase();try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='admin_email'").first();return row?.value?String(row.value).toLowerCase():'';}catch{return '';}}
 async function isAdminUser(env,user){if(!user)return false;const e=await adminEmail(env);return !!e&&user.email.toLowerCase()===e;}
 async function entitledDesigns(env,userId){const rows=await db(env).prepare('SELECT design_id FROM entitlements WHERE user_id=?').bind(userId).all();return (rows.results||[]).map(r=>r.design_id);}
 async function hasEntitlement(env,userId,designId){const list=await entitledDesigns(env,userId);return list.includes(designId)||list.includes('ALL');}
@@ -165,8 +172,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/pricing'&&request.method==='GET'){
   const rows=await db(env).prepare('SELECT design_id,regular_paise,launch_paise,launch_active FROM prices ORDER BY regular_paise DESC').all();
-  const settings=await db(env).prepare('SELECT gateway,enabled,key_id,key_secret FROM payment_settings').all();
-  const ready=(settings.results||[]).filter(usable).map(r=>r.gateway);
+  const ready=[];for(const g of GATEWAYS)if(usable(await gatewayRow(env,g).catch(()=>null)))ready.push(g);
   const mapped=(rows.results||[]).map(r=>({id:r.design_id,regular:r.regular_paise,launch:r.launch_paise,current:r.launch_active?r.launch_paise:r.regular_paise,launchActive:!!r.launch_active}));
   return json({designs:mapped.filter(x=>!x.id.startsWith('addon-')),addons:mapped.filter(x=>x.id.startsWith('addon-')),gateways:ready});
  }
@@ -358,11 +364,41 @@ export default {async fetch(request,env){
   if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();return json({open});}
   fail('Not found.',404);
  }
+ // Owner unlocks a design for a couple who paid outside the site (UPI/WhatsApp).
+ // Recorded as a paid 'manual' order so it shows in Recent orders.
+ if(path==='/api/admin/grant'&&request.method==='POST'){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  const input=await body(request,4000);
+  const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',designId=typeof input?.designId==='string'?input.designId:'';
+  const amount=Math.round(Number(input?.amount||0)*100);
+  const user=await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first();
+  if(!user)fail('No account uses that email. Ask the couple to sign up first.',404);
+  if(!await db(env).prepare('SELECT design_id FROM prices WHERE design_id=?').bind(designId).first())fail('Choose a design to unlock.');
+  if(!Number.isFinite(amount)||amount<0||amount>100000000)fail('Enter the amount received in ₹.');
+  const now=new Date().toISOString(),order={id:crypto.randomUUID(),user_id:user.id,design_id:designId,status:'created'};
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(order.id,user.id,designId,amount,'manual','created',now,now).run();
+  await completeOrder(env,order,'manual-'+authUser.email);
+  return json({ok:true,designs:await entitledDesigns(env,user.id)});
+ }
+ // Owner-assisted password reset (no email provider yet): issues a one-off
+ // temporary password and signs the account out everywhere.
+ if(path==='/api/admin/reset-password'&&request.method==='POST'){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  const input=await body(request,2000);
+  const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'';
+  const user=await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first();
+  if(!user)fail('No account uses that email.',404);
+  const alphabet='abcdefghjkmnpqrstuvwxyz23456789',bytes=crypto.getRandomValues(new Uint8Array(10));
+  const temporary=[...bytes].map(b=>alphabet[b%alphabet.length]).join('');
+  await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(temporary),user.id).run();
+  await db(env).prepare('DELETE FROM sessions WHERE user_id=?').bind(user.id).run();
+  return json({temporaryPassword:temporary});
+ }
  if(path==='/api/admin/payments'){
   if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
   if(request.method==='GET'){
    const settings=await db(env).prepare('SELECT * FROM payment_settings').all();
-   const gateways=(settings.results||[]).map(r=>{const x=extraOf(r);return {gateway:r.gateway,enabled:!!r.enabled,mode:r.mode,key_id:r.key_id||'',has_secret:!!r.key_secret,client_version:x.client_version||'',webhook_username:x.webhook_username||'',has_webhook_secret:!!x['webhook_'+'secret'],has_webhook_password:!!x['webhook_'+'password']};});
+   const gateways=(settings.results||[]).map(r=>{const fromEnv=envGateway(env,r.gateway);if(fromEnv)r={...r,...fromEnv};const x=extraOf(r);return {fromEnv:!!fromEnv,gateway:r.gateway,enabled:!!r.enabled,mode:r.mode,key_id:r.key_id||'',has_secret:!!r.key_secret,client_version:x.client_version||'',webhook_username:x.webhook_username||'',has_webhook_secret:!!x['webhook_'+'secret'],has_webhook_password:!!x['webhook_'+'password']};});
    const priceRows=await db(env).prepare('SELECT * FROM prices').all();
    const orderRows=await db(env).prepare('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,u.email FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 50').all();
    return json({gateways,prices:priceRows.results||[],orders:orderRows.results||[]});
@@ -371,7 +407,8 @@ export default {async fetch(request,env){
    const input=await body(request,60000);
    for(const g of input?.gateways||[]){
     if(!g||!GATEWAYS.includes(g.gateway))continue;
-    const cur=await gatewayRow(env,g.gateway);if(!cur)continue;
+    // Stored row only: env-held secrets must never be copied into D1.
+    const cur=await db(env).prepare('SELECT gateway,enabled,mode,key_id,key_secret,extra FROM payment_settings WHERE gateway=?').bind(g.gateway).first();if(!cur)continue;
     const extra=extraOf(cur);
     if(typeof g.client_version==='string')extra.client_version=g.client_version.slice(0,10);
     if(typeof g.webhook_username==='string')extra.webhook_username=g.webhook_username.slice(0,120);

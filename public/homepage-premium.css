@@ -27,3 +27,5 @@
 .premium-home.royal-motion-paused .premium-button__label>.icon{transform:none!important}
 @media(max-width:760px){.premium-chapter-art{width:250px;right:-130px}.premium-home .hero-cta .premium-button__label{gap:8px}}
 @media(prefers-reduced-motion:reduce){.premium-home .premium-button{transform:none!important;transition:background .15s!important}.premium-button__sheen,.premium-chapter-art{display:none}.premium-button__label>.icon{transform:none!important;transition:none}}
+/* Decorative chapter circles sit partly outside their section; clip them there so phones never pan sideways. */
+:where(section,.planning-stories):has(>.premium-chapter-art){position:relative;overflow-x:clip}

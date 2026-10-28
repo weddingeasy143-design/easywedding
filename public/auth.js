@@ -34,6 +34,15 @@
     document.cookie = HINT + '=' + (on ? '1' : '') + '; Path=/; SameSite=Lax' + secure +
       '; Max-Age=' + (on ? MAX_AGE : 0);
   }
+  /* Sign-out on a shared phone must not leave the couple's names, phone,
+     venue or photos behind for the next person. The motion preference stays. */
+  function forgetDeviceDrafts() {
+    try {
+      Object.keys(localStorage).forEach(function (key) {
+        if (/^(wedcanvas:|ew_workspace_v1_|ew_demo_state_v1)/.test(key)) localStorage.removeItem(key);
+      });
+    } catch (e) { /* storage blocked: nothing was kept */ }
+  }
   function remember(user) {
     writeCache(user);
     setHint(!!user);
@@ -85,6 +94,7 @@
     signOut: async function () {
       try { await post('/api/auth/logout', {}); } catch (e) { /* session already gone */ }
       remember(null);
+      forgetDeviceDrafts();
       location.href = '/';
     }
   };

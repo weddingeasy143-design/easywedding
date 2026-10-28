@@ -1,0 +1,54 @@
+/* Templates & Pricing section (right after the hero). Loaded last so it keeps
+   the cascade position it had as an inline block. */
+.ewp-section{padding:76px 20px 84px;background:#fff7e8}
+.ewp-inner{max-width:1120px;margin:0 auto}
+.ewp-banner{background:linear-gradient(135deg,#5e1220,#7c1d2e);color:#e8c876;text-align:center;font-family:Georgia,serif;letter-spacing:.14em;font-size:13px;padding:13px 18px;border-radius:999px;margin-bottom:30px}
+.ewp-head{text-align:center;max-width:720px;margin:0 auto 36px}
+.ewp-head .eyebrow{color:#c99a3d;letter-spacing:.3em;font-size:12px;text-transform:uppercase}
+.ewp-head h2{color:#5e1220;font-size:36px;line-height:1.15;margin:10px 0 12px;font-weight:600}
+.ewp-head h2 em{color:#c99a3d}
+.ewp-head p{color:#8a6d5a;font-size:16px;line-height:1.55}
+.ewp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:18px}
+.ewp-card{background:#fff;border:1px solid #ecd9ae;border-radius:14px;overflow:hidden;box-shadow:0 3px 14px rgba(94,18,32,.06)}
+.ewp-card img{width:100%;height:250px;object-fit:cover;display:block;background:#f3e6cf;transition:transform .5s ease}
+.ewp-thumb{position:relative;display:block;width:100%;padding:0;border:0;background:#f3e6cf;cursor:pointer;overflow:hidden}
+.ewp-thumb:hover img,.ewp-thumb:focus-visible img{transform:scale(1.04)}
+.ewp-thumb:focus-visible{outline:3px solid #c99a3d;outline-offset:-3px}
+.ewp-play{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;background:rgba(58,10,24,.78);color:#fff7e8;font-size:13px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.ewp-play .icon{width:14px;height:14px}
+.ewp-card .ewp-body{padding:13px 15px 15px}
+.ewp-card h3{font-size:17px;color:#5e1220}
+.ewp-card .ewp-style{font-size:13px;color:#8a6d5a;font-style:italic;margin:3px 0 10px}.ewp-buy{display:inline-block;margin-top:11px;padding:9px 15px;border-radius:9px;background:#75152e;color:#fff;text-decoration:none;font-weight:700;font-size:14px}.ewp-buy:hover{background:#5e1220}.ewp-pass .ewp-buy{background:#c9a227;color:#3a0a18;margin-top:0;align-self:center}
+.ewp-badge{display:inline-block;font-size:10px;letter-spacing:.18em;background:#5e1220;color:#e8c876;border-radius:4px;padding:3px 7px;margin-bottom:7px}
+.ewp-price{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.ewp-price s{color:#b09a86;font-size:15px}
+.ewp-price strong{color:#5e1220;font-size:23px}
+.ewp-price span{font-size:12px;background:#f7ecd4;border:1px dashed #c99a3d;color:#7c5a14;border-radius:20px;padding:2px 9px}
+.ewp-pass{margin-top:22px;background:linear-gradient(135deg,#5e1220,#7c1d2e);border-radius:16px;padding:22px 26px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.ewp-pass h3{color:#e8c876;font-size:21px;margin-bottom:4px}
+.ewp-pass p{color:#fff7e8;font-size:14px;opacity:.92}
+.ewp-pass .ewp-price s{color:#d9bfa8}
+.ewp-pass .ewp-price strong{color:#fff}
+.ewp-pass .ewp-price span{background:rgba(255,247,232,.12);border-color:#e8c876;color:#e8c876}
+.ewp-cta{display:flex;gap:12px;justify-content:center;margin-top:28px;flex-wrap:wrap}
+.ewp-note{text-align:center;color:#8a6d5a;font-size:13px;margin-top:16px}
+.ewp-cta .button.ghost{color:#75152e;border-color:#75152e;background:transparent}
+.ewp-cta .button.ghost:hover{background:#75152e;color:#fff7e8}
+/* Phones: two compact columns instead of eleven full-width cards. */
+@media (max-width:600px){
+.ewp-section{padding:56px 14px 64px}
+.ewp-head h2{font-size:28px}
+.ewp-banner{font-size:11px;letter-spacing:.08em;border-radius:14px}
+.ewp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ewp-card img{height:190px}
+.ewp-play{font-size:12px;padding:6px 11px}
+.ewp-card .ewp-body{padding:10px 11px 12px}
+.ewp-card h3{font-size:15px}
+.ewp-card .ewp-style{font-size:12px;margin-bottom:8px}
+.ewp-price{gap:6px}
+.ewp-price strong{font-size:19px}
+.ewp-price s{font-size:13px}
+.ewp-buy{display:block;text-align:center;padding:9px 8px;font-size:13px}
+.ewp-pass{padding:18px}
+.ewp-pass .ewp-buy{width:100%}
+}

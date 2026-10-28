@@ -1,0 +1,33 @@
+// Cloudflare Workers deployment for Easy Wedding.
+// Build first (`npm run build`), then `npx wrangler deploy`.
+// Secrets (payment keys, admin email) are NOT kept here — see .dev.vars.example
+// and set them with `npx wrangler secret put NAME` or the Cloudflare dashboard.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "easy-wedding",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2025-09-17",
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS",
+    // The worker serves "/", clean URLs, maintenance mode and short links,
+    // so it must see every request before static files are matched.
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "easy-wedding",
+      // Replace with the id printed by: npx wrangler d1 create easy-wedding
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "easy-wedding-photos"
+    }
+  ],
+  "observability": { "enabled": true }
+}

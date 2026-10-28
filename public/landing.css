@@ -33,12 +33,31 @@
 .ftpl-play .icon{width:20px;height:20px}
 .ftpl-name{display:block;padding:12px 6px 2px;font:600 14px/1.4 'DM Sans',sans-serif;color:#f7e8cd}
 .ftpl-hint{display:block;font:500 12px/1.4 'DM Sans',sans-serif;color:#d8ac68;letter-spacing:1px;text-transform:uppercase}
-dialog.tpl-dialog{width:min(480px,calc(100% - 24px));padding:22px}
-.tpl-dialog .dialog-heading{margin-bottom:14px}
-.tpl-dialog .dialog-heading h2{font-size:26px}
-.tpl-frame-wrap{position:relative;border-radius:14px;overflow:hidden;background:#20040d}
-#tpl-frame{width:100%;height:min(72svh,740px);border:0;display:block;background:#20040d}
-.tpl-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#20040d;color:#f7e8cd;text-align:center;padding:20px}
+/* Template preview: the invitation plays inside a small phone screen on
+   desktop; on a phone the sheet fills the screen like a native app view. */
+html:has(dialog.tpl-dialog[open]){overflow:hidden}
+dialog.tpl-dialog,.royal-ui dialog.tpl-dialog{width:fit-content;max-width:calc(100% - 24px);max-height:calc(100dvh - 24px);padding:18px 22px 20px;overflow:auto;overscroll-behavior:contain}
+.tpl-dialog .dialog-heading{margin-bottom:12px;gap:16px}
+.tpl-dialog .dialog-heading h2{font-size:22px}
+.tpl-frame-wrap{position:relative;height:min(690px,calc(100dvh - 190px));min-height:380px;aspect-ratio:9/17.5;max-width:calc(100vw - 72px);margin:0 auto;padding:12px;border-radius:46px;background:linear-gradient(160deg,#2b0a15,#12030a);box-shadow:inset 0 0 0 2px #e8bd6b55,0 24px 60px #0a010588}
+.tpl-notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:34%;height:22px;border-radius:0 0 14px 14px;background:#12030a;z-index:2;pointer-events:none}
+#tpl-frame{width:100%;height:100%;border:0;display:block;border-radius:34px;background:#20040d}
+.tpl-loading{position:absolute;inset:12px;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;border-radius:34px;background:#20040d;color:#f7e8cd;text-align:center;padding:20px}
+.tpl-loading::before{content:"";width:34px;height:34px;border-radius:50%;border:3px solid #e8bd6b40;border-top-color:#e8bd6b;animation:tpl-spin 1s linear infinite}
+@keyframes tpl-spin{to{transform:rotate(360deg)}}
 .tpl-loading[hidden]{display:none}
-.tpl-loading p{color:#f7e8cd;font-size:16px}
-.tpl-make{display:flex;justify-content:center;margin-top:16px}
+.tpl-loading p{color:#f7e8cd;font-size:15px}
+.tpl-make{display:flex;justify-content:center;width:fit-content;margin:16px auto 0}
+@media (max-width:600px){
+ dialog.tpl-dialog,.royal-ui dialog.tpl-dialog{width:100%;max-width:100%;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0;display:none;flex-direction:column;overflow:hidden}
+ dialog.tpl-dialog[open]{display:flex}
+ .tpl-dialog .dialog-heading{flex:none;margin:0;padding:10px 12px 10px 18px;padding-top:max(10px,env(safe-area-inset-top))}
+ .tpl-dialog .dialog-heading h2{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .tpl-dialog .dialog-heading .icon-button{min-width:44px;min-height:44px}
+ .tpl-frame-wrap{flex:1;width:100%;max-width:none;height:auto;min-height:0;aspect-ratio:auto;padding:0;border-radius:0;box-shadow:none;background:#20040d}
+ .tpl-notch{display:none}
+ #tpl-frame{border-radius:0}
+ .tpl-loading{inset:0;border-radius:0}
+ .tpl-make{flex:none;width:auto;margin:0;border-radius:0;min-height:54px;align-items:center;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+}
+@media (prefers-reduced-motion:reduce){.tpl-loading::before{animation:none}}

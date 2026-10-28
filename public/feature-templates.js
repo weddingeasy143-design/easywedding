@@ -6,7 +6,7 @@ import {referenceDesigns} from './reference-designs.js';
 const strip = document.querySelector('#feature-template-strip');
 const dialog = document.querySelector('#template-preview-dialog');
 
-if (strip && dialog) {
+if (dialog) {
   const frame = dialog.querySelector('#tpl-frame');
   const title = dialog.querySelector('#tpl-title');
   const makeLink = dialog.querySelector('#tpl-make');
@@ -19,14 +19,19 @@ if (strip && dialog) {
   }
 
   function press(el, doc) {
-    /* The invitation app reacts to pointer presses, not a bare .click(). */
-    const opts = { bubbles: true, cancelable: true, view: doc.defaultView || window };
+    /* The invitation app reacts to pointer presses, not a bare .click().
+       Events are built with the frame's own constructors: ones made in this
+       window are rejected (the cross-window `view`) or ignored inside it. */
+    const view = doc.defaultView || window;
+    const Pointer = view.PointerEvent || view.MouseEvent;
+    const Mouse = view.MouseEvent;
+    const opts = { bubbles: true, cancelable: true, view };
     try {
-      el.dispatchEvent(new PointerEvent('pointerdown', opts));
-      el.dispatchEvent(new MouseEvent('mousedown', opts));
-      el.dispatchEvent(new PointerEvent('pointerup', opts));
-      el.dispatchEvent(new MouseEvent('mouseup', opts));
-      el.dispatchEvent(new MouseEvent('click', opts));
+      el.dispatchEvent(new Pointer('pointerdown', opts));
+      el.dispatchEvent(new Mouse('mousedown', opts));
+      el.dispatchEvent(new Pointer('pointerup', opts));
+      el.dispatchEvent(new Mouse('mouseup', opts));
+      el.dispatchEvent(new Mouse('click', opts));
     } catch (err) { el.click(); }
   }
 
@@ -61,44 +66,70 @@ if (strip && dialog) {
   }
 
   let idleTicks = 0;
+  let pressTicks = 0;
+
+  function hideLoading() {
+    if (loading) loading.hidden = true;
+  }
 
   function tick() {
     let doc = null;
     try { doc = frame.contentDocument; } catch (err) { doc = null; }
-    if (doc && doc.body) {
+    /* invite.html first shows its own "Preparing…" page, then hands over to
+       reference/render.html. Keep our loader up until the real card is there. */
+    const onCard = !!doc && !!doc.body && /\/reference\/render\.html$/.test(doc.location.pathname);
+    if (onCard) {
       const text = doc.body.textContent || '';
-      if (loading && !loading.hidden && text.trim().length > 0) {
-        loading.hidden = true;
-      }
       /* Later stage first: once the card is showing, its open control is the
          goal — an off-screen leftover of the reveal screen must not starve it. */
-      if (pressByText(doc, /open invitation/i)) {
-        idleTicks = 0; /* Card is on screen; pressed its open control. */
-      } else if (pressByText(doc, /tap to reveal/i)) {
-        idleTicks = 0; /* Reveal still on screen — pressed it (again if needed). */
+      const pressed = pressByText(doc, /open invitation/i) || pressByText(doc, /tap to reveal/i);
+      if (pressed || text.length > 3000) hideLoading();
+      if (pressed) {
+        idleTicks = 0;
+        pressTicks += 1;
+        /* Some reveals need a scratch or swipe a synthetic tap can't make.
+           After ~9s of pressing, ask the invitation to open itself. */
+        if (pressTicks >= 10) {
+          try { frame.contentWindow.postMessage({ type: 'wedcanvas:open' }, location.origin); } catch (err) { /* frame gone */ }
+        }
       } else {
         idleTicks += 1;
-        /* Both controls gone and a long page is showing: the invitation
-           itself is open — done. (Short screens like the curtain, whose
-           text is brief, never trigger this.) */
-        if (idleTicks >= 4 && text.length > 3000) stopAutoplay();
+        /* Done only once the invitation itself is open (its RSVP section or
+           replay control exists). Text length alone also matches the curtain
+           and reveal screens, which stopped autoplay before the card. */
+        const opened = !!doc.querySelector('#rsvp') ||
+          [...doc.querySelectorAll('button')].some((b) => /replay invitation/i.test(b.textContent || ''));
+        if (idleTicks >= 2 && opened) stopAutoplay();
       }
     }
-    if (Date.now() - startedAt > 90000) stopAutoplay();
+    const elapsed = Date.now() - startedAt;
+    if (elapsed > 15000) hideLoading();
+    if (elapsed > 90000) stopAutoplay();
   }
+
+  /* Focus moves into the invitation once it is tapped; keep Esc closing the
+     preview, and hide the frame's own scrollbar inside the phone screen. */
+  frame.addEventListener('load', () => {
+    try {
+      const view = frame.contentWindow;
+      view.addEventListener('keydown', (event) => { if (event.key === 'Escape') dialog.close(); });
+      view.document.documentElement.style.scrollbarWidth = 'none';
+    } catch (err) { /* about:blank or navigated away */ }
+  });
 
   function openPreview(design) {
     title.textContent = design.name;
     makeLink.href = 'studio.html?template=' + design.id;
     if (loading) loading.hidden = false;
     idleTicks = 0;
+    pressTicks = 0;
     startedAt = Date.now();
     frame.src = 'invite.html?template=' + design.id;
     stopAutoplay();
     pollTimer = setInterval(tick, 900);
   }
 
-  Object.values(referenceDesigns).forEach((design, index) => {
+  if (strip) Object.values(referenceDesigns).forEach((design, index) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'ftpl-card';
@@ -135,6 +166,21 @@ if (strip && dialog) {
     strip.append(button);
   });
 
+  /* Pricing cards, hero thumbnails and the studio band all play the same
+     preview. Delegated, because the studio band is rebuilt by another module;
+     links keep their invite.html href as the no-JS fallback. */
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-preview]');
+    const design = trigger && referenceDesigns[trigger.dataset.preview];
+    if (!design) return;
+    event.preventDefault();
+    if (!dialog.open) {
+      document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+      dialog.showModal();
+    }
+    openPreview(design);
+  });
+
   if (window.lucide) window.lucide.createIcons();
 
   dialog.addEventListener('close', () => {
@@ -142,3 +188,22 @@ if (strip && dialog) {
     frame.src = 'about:blank';
   });
 }
+
+/* The cards ship with launch prices; refresh them from /api/pricing so an
+   admin price edit shows here too. Any failure keeps the printed prices. */
+const rupees = (paise) => '₹' + Math.round(paise / 100).toLocaleString('en-IN');
+fetch('/api/pricing').then((r) => (r.ok ? r.json() : null)).then((pricing) => {
+  if (!pricing || !Array.isArray(pricing.designs)) return;
+  pricing.designs.forEach((row) => {
+    const card = document.querySelector('[data-design="' + CSS.escape(row.id) + '"]');
+    const price = card && card.querySelector('.ewp-price');
+    if (!price || !(row.current > 0)) return;
+    const was = price.querySelector('s');
+    const now = price.querySelector('strong');
+    const save = price.querySelector('span');
+    now.textContent = rupees(row.current);
+    const discounted = row.regular > row.current;
+    if (was) { was.textContent = rupees(row.regular); was.hidden = !discounted; }
+    if (save) { save.textContent = 'Save ' + rupees(row.regular - row.current); save.hidden = !discounted; }
+  });
+}).catch(() => {});

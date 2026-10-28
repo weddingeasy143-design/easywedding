@@ -3,6 +3,58 @@
 An Indian wedding planner with a public homepage, invitation studio, event cards,
 budget tracker, wardrobe suggestions, vendor directory and checklist.
 
+## Go live on Cloudflare (accounts, payments, unlock)
+
+How it works: couples register/login with email + password (PBKDF2 hashes, HttpOnly
+session cookie, stored in D1). Planning and all invitation previews are free. When a
+couple publishes an invitation the studio asks them to pay for that design (or the
+All-Designs Pass) with Razorpay or Cashfree; the design unlocks as soon as the
+payment is verified (client signature check) or the gateway webhook arrives.
+Prices live in D1 and are edited at `/admin.html`.
+
+1. Install and build: `npm ci`, then `npm run build` (needs Python 3; on Windows
+   `python` is used automatically, or set `PYTHON`).
+2. Create storage once:
+   ```bash
+   npx wrangler d1 create easy-wedding        # paste the id into wrangler.jsonc
+   npx wrangler r2 bucket create easy-wedding-photos
+   npm run db:migrate                          # applies drizzle/*.sql
+   ```
+3. Add secrets (names and where to find each key: `.dev.vars.example`):
+   ```bash
+   npx wrangler secret put ADMIN_EMAIL
+   npx wrangler secret put RAZORPAY_KEY_ID
+   npx wrangler secret put RAZORPAY_KEY_SECRET
+   npx wrangler secret put RAZORPAY_WEBHOOK_SECRET
+   npx wrangler secret put CASHFREE_APP_ID
+   npx wrangler secret put CASHFREE_SECRET_KEY
+   npx wrangler secret put CASHFREE_ENV          # sandbox or production
+   ```
+   Keys from secrets override anything typed into the admin panel and are never
+   written to D1. Use `rzp_test_…` / Cashfree sandbox keys first, then swap to live.
+4. Deploy: `npm run deploy`.
+5. Webhooks (so a payment unlocks even if the buyer closes the tab):
+   - Razorpay → `https://<domain>/api/payments/webhook/razorpay`, events
+     `payment.captured` and `order.paid`, secret = `RAZORPAY_WEBHOOK_SECRET`.
+   - Cashfree → `https://<domain>/api/payments/webhook/cashfree` (signed with
+     the Cashfree secret key).
+6. Register on the site with the `ADMIN_EMAIL` address to open `/admin.html`.
+   There you can switch the shop open, edit prices, see orders, **unlock a design
+   manually** for a couple who paid you directly (UPI/WhatsApp), and **reset a
+   password** for a couple who forgot theirs (there is no email provider yet).
+
+Before switching on live payments, review the Terms of service and Refunds &
+cancellations text in `public/landing.html` (footer dialogs) — Razorpay and
+Cashfree check for both when activating an account.
+
+Unpaid previews: an invitation opened without a published `?id` (for example the
+studio's "Open full screen" link) shows a PREVIEW watermark and an unlock banner.
+Only a paid, published link (`/invite.html?id=…`) shows the clean invitation.
+
+Local preview with test keys: copy `.dev.vars.example` to `.dev.vars`, fill test
+keys, run `npm run dev` (http://localhost:4173). `npm test` builds first, then runs
+`qa/*.test.mjs`.
+
 ## Current update — scroll choreography and visible button hover (15 October 2026)
 
 The homepage now uses scroll-linked GSAP timelines: each feature and planning

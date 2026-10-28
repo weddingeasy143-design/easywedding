@@ -25,6 +25,7 @@ function gatewayCard(g){const meta=GUIDE[g.gateway];const card=el('div','ewp-car
  if(g.gateway==='razorpay')grid.append(field('Webhook Secret',textInput('webhook_secret','',g.has_webhook_secret?'•••••••• saved — type only to change it':'From the Razorpay webhook settings','password')));
  if(g.gateway==='phonepe'){grid.append(field('Webhook Username',textInput('webhook_username',g.webhook_username||'','From the PhonePe webhook settings')));grid.append(field('Webhook Password',textInput('webhook_password','',g.has_webhook_password?'•••••••• saved — type only to change it':'From the PhonePe webhook settings','password')));}
  card.append(grid);
+ if(g.fromEnv){card.append(el('p','ewp-hook','Keys come from the Cloudflare environment secrets ('+(g.gateway==='razorpay'?'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET':'CASHFREE_APP_ID / CASHFREE_SECRET_KEY')+') and are always on. Change them in Cloudflare, not here.'));for(const x of card.querySelectorAll('input,select'))x.disabled=true;}
  const steps=el('ol','ewp-steps');for(const s of meta.steps)steps.append(el('li',null,s));card.append(steps);
  if(meta.hook)card.append(el('p','ewp-hook',meta.hook));
  return card;}
@@ -60,3 +61,12 @@ async function init(){try{const s=await fetch('/api/session').then(r=>r.json()).
  state=await r.json();render();$('#admin-loading').hidden=true;$('#admin-panel').hidden=false;loadSite();}catch{deny('Could not load payment settings. Please try again.');}}
 $('#admin-save').addEventListener('click',async()=>{const btn=$('#admin-save'),status=$('#admin-status');const payload=collect();if(payload.prices.some(p=>!Number.isFinite(p.regular)||!Number.isFinite(p.launch))){status.textContent='Please check the prices — every box needs a number.';return;}btn.disabled=true;status.textContent='Saving…';try{const r=await fetch('/api/admin/payments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw Error(d.error||'Save failed.');await load();status.textContent='Saved — the live site now uses these settings.';}catch(e){status.textContent=e.message||'Save failed. Please try again.';}finally{btn.disabled=false;}});
 init();
+// Manual unlock: for couples who paid outside the site.
+{const form=$('#grant-form');if(form){const sel=$('#grant-design');for(const [id,name] of [...Object.entries(DESIGN_NAMES),['ALL','All-Designs Wedding Pass']]){if(id==='ALL'&&DESIGN_NAMES.ALL)continue;const o=el('option',null,name);o.value=id;sel.append(o);}
+ form.addEventListener('submit',async e=>{e.preventDefault();const status=$('#grant-status');status.textContent='Unlocking…';
+  try{const r=await fetch('/api/admin/grant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('#grant-email').value,designId:sel.value,amount:$('#grant-amount').value})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not unlock.');status.textContent='Unlocked '+(sel.selectedOptions[0]?.textContent||sel.value)+' for '+$('#grant-email').value+'.';form.reset();load().catch(()=>{});}
+  catch(err){status.textContent=err.message;}});}}
+// Owner-assisted password reset.
+{const form=$('#reset-form');if(form)form.addEventListener('submit',async e=>{e.preventDefault();const status=$('#reset-status');status.textContent='Creating…';
+ try{const r=await fetch('/api/admin/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('#reset-email').value})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not reset.');status.textContent='New password for '+$('#reset-email').value+': '+d.temporaryPassword+' — send it to them now; it is not shown again.';form.reset();}
+ catch(err){status.textContent=err.message;}});}
