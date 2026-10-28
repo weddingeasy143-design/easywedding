@@ -155,7 +155,7 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  // Clean URLs: the .html pages redirect to their extension-less address.
- const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/'};
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index'};
  if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
  // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
  if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
