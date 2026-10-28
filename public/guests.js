@@ -3,7 +3,7 @@ const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const when=iso=>{try{return new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}catch{return ''}};
 async function api(path,opts){const r=await fetch(path,opts);const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Something went wrong. Please try again.');return d;}
-const linkFor=g=>location.origin+'/invite.html?id='+encodeURIComponent(g.invitationId)+'&to='+encodeURIComponent(g.token);
+const linkFor=g=>location.origin+'/invite?id='+encodeURIComponent(g.invitationId)+'&to='+encodeURIComponent(g.token);
 
 async function main(){
  let session;
@@ -16,13 +16,13 @@ async function main(){
  try{ent=await api('/api/entitlements')}catch{}
  const owns=(ent.designs||[]).includes('addon-personal')||(ent.designs||[]).includes('ALL')||ent.admin;
  if(!owns){
-  app.innerHTML='<div class="card empty">Personal Invitations is an advanced add-on.<br><span class="note">Unlock it from the studio — section 07 “Advanced add-ons” (free with the All-Designs Pass).</span><br><a class="btn" href="/studio.html">Open the studio</a></div>';
+  app.innerHTML='<div class="card empty">Personal Invitations is an advanced add-on.<br><span class="note">Unlock it from the studio — section 07 “Advanced add-ons” (free with the All-Designs Pass).</span><br><a class="btn" href="/studio">Open the studio</a></div>';
   return;
  }
  let invitations=[];
  try{invitations=(await api('/api/my-invitations')).invitations||[]}catch{}
  if(!invitations.length){
-  app.innerHTML='<div class="card empty">Publish your invitation first.<br><span class="note">Personal guest links are made for a published invitation — create your invitation link in the studio, then come back here.</span><br><a class="btn" href="/studio.html">Open the studio</a></div>';
+  app.innerHTML='<div class="card empty">Publish your invitation first.<br><span class="note">Personal guest links are made for a published invitation — create your invitation link in the studio, then come back here.</span><br><a class="btn" href="/studio">Open the studio</a></div>';
   return;
  }
  let guests=[];

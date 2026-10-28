@@ -4,7 +4,7 @@ const target=document.querySelector('#studio .template-row');
 if(target){
  target.replaceChildren();
  for(const [index,design] of Object.values(referenceDesigns).entries()){
-  const link=document.createElement('a');link.href='invite.html?template='+design.id;link.className='homepage-template';link.dataset.preview=design.id;link.setAttribute('aria-label','Preview '+design.name);
+  const link=document.createElement('a');link.href='invite?template='+design.id;link.className='homepage-template';link.dataset.preview=design.id;link.setAttribute('aria-label','Preview '+design.name);
   const figure=document.createElement('figure'),image=document.createElement('img'),caption=document.createElement('figcaption');
   image.src=design.scene;image.alt=design.name+' wedding design';image.loading='lazy';
   caption.textContent=String(index+1).padStart(2,'0')+' · '+design.name;

@@ -52,3 +52,7 @@
 .ewp-pass{padding:18px}
 .ewp-pass .ewp-buy{width:100%}
 }
+
+/* Footer social icons: a full-size tap target above any decoration, no double-tap delay on phones. */
+.socials a,.socials button{position:relative;z-index:3;min-width:44px;min-height:44px;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.site-footer a,.site-footer button{touch-action:manipulation}

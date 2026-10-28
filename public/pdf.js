@@ -13,7 +13,7 @@ function prettyDate(iso,time){
 }
 async function main(){
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)){
-  app.innerHTML='<p class="state">Choose one of your published invitations in the studio (section 07), then open the print card from there.<br><a class="btn" href="/studio.html">Open the studio</a></p>';
+  app.innerHTML='<p class="state">Choose one of your published invitations in the studio (section 07), then open the print card from there.<br><a class="btn" href="/studio">Open the studio</a></p>';
   return;
  }
  let session;
@@ -26,14 +26,14 @@ async function main(){
  try{ent=await (await fetch('/api/entitlements')).json()}catch{}
  const owns=(ent.designs||[]).includes('addon-pdf')||ent.admin;
  if(!owns){
-  app.innerHTML='<p class="state">The Print-ready PDF card is an add-on.<br>Unlock it from the studio — section 07 “Advanced add-ons”.<br><a class="btn" href="/studio.html">Open the studio</a></p>';
+  app.innerHTML='<p class="state">The Print-ready PDF card is an add-on.<br>Unlock it from the studio — section 07 “Advanced add-ons”.<br><a class="btn" href="/studio">Open the studio</a></p>';
   return;
  }
  let cfg;
  try{const r=await fetch('/api/invitations/'+encodeURIComponent(id));if(!r.ok)throw Error();cfg=await r.json();}catch{
   app.innerHTML='<p class="state">This invitation could not be found.</p>';return;
  }
- const link=location.origin+'/invite.html?id='+id;
+ const link=location.origin+'/invite?id='+id;
  const events=(cfg.events||[]).slice(0,6).map(e=>'<div><span>'+esc(e.title||'Celebration')+'</span><b>'+esc(e.time||'')+'</b></div>').join('');
  app.innerHTML='<div class="bar"><p>Your print-ready card — print it, or save it as a PDF to share anywhere.</p><button type="button" id="print-btn">Print / Save PDF</button></div>'
   +'<section class="sheet"><div class="om">॥ श्री गणेशाय नमः ॥</div>'

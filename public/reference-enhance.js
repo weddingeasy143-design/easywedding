@@ -31,7 +31,7 @@ function showPreviewRibbon(){
  const mark=document.createElement('div');mark.className='ew-preview-mark';mark.setAttribute('aria-hidden','true');
  const bar=document.createElement('div');bar.className='ew-preview-bar';bar.setAttribute('role','note');
  const text=document.createElement('span');text.textContent='Preview only · unlock this design to share it with your guests';
- const link=document.createElement('a');link.href='/studio.html'+(config?.theme?'?template='+encodeURIComponent(config.theme):'');link.textContent='Unlock & share →';
+ const link=document.createElement('a');link.href='/studio'+(config?.theme?'?template='+encodeURIComponent(config.theme):'');link.textContent='Unlock & share →';
  bar.append(text,link);document.body.append(mark,bar);
 }
 (async()=>{
