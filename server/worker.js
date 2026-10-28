@@ -45,7 +45,37 @@ async function adminEmail(env){if(env.ADMIN_EMAIL)return String(env.ADMIN_EMAIL)
 async function isAdminUser(env,user){if(!user)return false;const e=await adminEmail(env);return !!e&&user.email.toLowerCase()===e;}
 async function entitledDesigns(env,userId){const rows=await db(env).prepare('SELECT design_id FROM entitlements WHERE user_id=?').bind(userId).all();return (rows.results||[]).map(r=>r.design_id);}
 async function hasEntitlement(env,userId,designId){const list=await entitledDesigns(env,userId);return list.includes(designId)||list.includes('ALL');}
-async function completeOrder(env,order,paymentId){if(!order||order.status==='paid')return;const now=new Date().toISOString();await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=? WHERE id=?").bind(paymentId||null,now,order.id).run();await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(order.user_id,order.design_id,order.id,now).run();}
+async function completeOrder(env,order,paymentId){if(!order||order.status==='paid')return;const now=new Date().toISOString();await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=? WHERE id=?").bind(paymentId||null,now,order.id).run();await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(order.user_id,order.design_id,order.id,now).run();if(order.coupon)await db(env).prepare('UPDATE coupons SET used=used+1 WHERE code=?').bind(order.coupon).run().catch(()=>{});}
+// ---- Analytics + coupons helpers ----
+const AI_HOSTS=[['chatgpt.com','chatgpt'],['chat.openai.com','chatgpt'],['openai.com','chatgpt'],['perplexity.ai','ai_chat'],['gemini.google.com','ai_chat'],['claude.ai','ai_chat'],['copilot.microsoft.com','ai_chat'],['you.com','ai_chat'],['deepseek.com','ai_chat'],['poe.com','ai_chat'],['grok.com','ai_chat']];
+const UTM_SOURCES={fb:'facebook',facebook:'facebook',ig:'instagram',instagram:'instagram',google:'google',chatgpt:'chatgpt','chatgpt.com':'chatgpt',openai:'chatgpt',whatsapp:'whatsapp',wa:'whatsapp',youtube:'youtube',twitter:'twitter',x:'twitter'};
+function classifyHost(h){
+ if(!h)return '';
+ for(const [d,s] of AI_HOSTS)if(h===d||h.endsWith('.'+d))return s;
+ if(/(^|\.)google\.[a-z.]+$/.test(h))return 'google';
+ if(/(^|\.)(facebook\.com|fb\.com|fb\.me|messenger\.com)$/.test(h))return 'facebook';
+ if(/(^|\.)instagram\.com$/.test(h))return 'instagram';
+ if(/(^|\.)(whatsapp\.com|wa\.me)$/.test(h))return 'whatsapp';
+ if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h))return 'youtube';
+ if(/(^|\.)(twitter\.com|x\.com|t\.co)$/.test(h))return 'twitter';
+ if(/(^|\.)(bing\.com|duckduckgo\.com|yahoo\.com|ecosia\.org|baidu\.com)$|(^|\.)yandex\.[a-z]+$/.test(h))return 'search_other';
+ return 'referral';
+}
+function deviceOf(ua){return /iPad|Tablet|SM-T|Nexus 7/i.test(ua)?'tablet':/Mobi|Android|iPhone/i.test(ua)?'mobile':'desktop';}
+const istNow=()=>new Date(Date.now()+19800000);
+const istDay=(back=0)=>new Date(Date.now()+19800000-back*86400000).toISOString().slice(0,10);
+const istStart=day=>new Date(day+'T00:00:00+05:30').toISOString();
+async function couponFor(env,code,amount){
+ const c=String(code||'').trim().toUpperCase().slice(0,30);if(!c)return null;
+ const row=await db(env).prepare('SELECT * FROM coupons WHERE code=?').bind(c).first();
+ if(!row||!row.active)fail('This coupon code is not valid.');
+ if(row.expires_on&&row.expires_on<istDay())fail('This coupon has expired.');
+ if(row.max_uses>0&&row.used>=row.max_uses)fail('This coupon has been fully used.');
+ let discount=row.kind==='percent'?Math.floor(amount*row.value/100):row.value*100;
+ discount=Math.min(discount,Math.max(amount-100,0));
+ if(discount<=0)fail('This coupon does not apply to this item.');
+ return {code:row.code,discount,final:amount-discount};
+}
 async function razorpayCreate(cfg,order){
  const res=await fetch('https://api.razorpay.com/v1/orders',{method:'POST',headers:{'Authorization':'Basic '+btoa(cfg.key_id+':'+cfg.key_secret),'Content-Type':'application/json'},body:JSON.stringify({amount:order.amount_paise,currency:'INR',receipt:order.id})});
  const data=await res.json().catch(()=>null);
@@ -113,7 +143,7 @@ export default {async fetch(request,env){
   }
   const cookieOk=!!maint.secret&&(request.headers.get('Cookie')||'').split(';').some(c=>c.trim()==='ew_open='+maint.secret);
   const callback=path.startsWith('/api/payments/webhook/')||path==='/api/payments/payu-return';
-  const adminPath=path==='/boss'||path==='/boss/'||path==='/admin.js'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
+  const adminPath=path==='/boss'||path==='/boss/'||path==='/admin.js'||path==='/admin.css'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
   let adminOk=false;
   if(!cookieOk&&!adminPath){try{const u=await currentUser(request,env);adminOk=!!u&&u.email.toLowerCase()===(await adminEmail(env));}catch{adminOk=false;}}
   if(!cookieOk&&!callback&&!adminPath&&!adminOk){
@@ -177,6 +207,36 @@ export default {async fetch(request,env){
   const key='invitation-audio/'+id,head=await env.BUCKET?.head(key);if(!head)fail('Song not found.',404);const headers={'Content-Type':head.httpMetadata.contentType,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','Accept-Ranges':'bytes'};const range=request.headers.get('Range');
   if(range){const m=/^bytes=(\d*)-(\d*)$/.exec(range);if(!m||(!m[1]&&!m[2]))return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const start=m[1]?Number(m[1]):Math.max(0,head.size-Number(m[2])),end=m[1]?(m[2]?Math.min(Number(m[2]),head.size-1):head.size-1):head.size-1;if(start>end||start>=head.size)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const object=await env.BUCKET.get(key,{range:{offset:start,length:end-start+1}});return new Response(object.body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${head.size}`,'Content-Length':String(end-start+1)}});}
   const object=await env.BUCKET.get(key);return new Response(object.body,{headers:{...headers,'Content-Length':String(head.size)}});
+ }
+ // Privacy-friendly visit beacon (no cookies, no IPs stored): source, device, hour (IST), country.
+ if(path==='/api/track'&&request.method==='POST'){
+  const ua=request.headers.get('User-Agent')||'';
+  if(!ua||/bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|monitor|curl|wget|python|node-fetch/i.test(ua))return new Response(null,{status:204});
+  await rateHit(env,'track',request,90,60);
+  const input=await body(request,2000);
+  const p=typeof input?.p==='string'&&input.p.startsWith('/')?input.p.split(/[?#]/)[0].slice(0,80):'';
+  const v=typeof input?.v==='string'&&/^[a-z0-9]{8,40}$/i.test(input.v)?input.v:'';
+  if(!p||!v||/^\/(boss|api)(\/|$)/.test(p))return new Response(null,{status:204});
+  let refHost='';try{if(input.r)refHost=new URL(String(input.r)).hostname.toLowerCase().replace(/^www\./,'');}catch{}
+  const own=url.hostname.replace(/^www\./,''),start=input.s?1:0;
+  let source='internal';
+  if(start){const hint=String(input.u||'').toLowerCase().slice(0,40);source=(hint&&(UTM_SOURCES[hint]||'campaign'))||(refHost&&refHost!==own?classifyHost(refHost):'')||'direct';}
+  const ist=istNow();
+  await db(env).prepare('INSERT INTO visits(ts,day,hour,path,source,ref_host,device,country,visitor,session_start) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(new Date().toISOString(),ist.toISOString().slice(0,10),ist.getUTCHours(),p,source,start&&refHost&&refHost!==own?refHost.slice(0,80):null,deviceOf(ua),(request.cf&&request.cf.country)||null,v,start).run();
+  return new Response(null,{status:204});
+ }
+ if(path==='/api/site-info'&&request.method==='GET'){
+  const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
+  return json({banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null},200,{'Cache-Control':'public, max-age=60'});
+ }
+ if(path==='/api/coupon/check'&&request.method==='POST'){
+  await rateHit(env,'coupon',request,30,600);
+  const input=await body(request,2000);
+  const price=await db(env).prepare('SELECT * FROM prices WHERE design_id=?').bind(typeof input?.designId==='string'?input.designId:'').first();
+  if(!price)fail('Choose a design first.');
+  const amount=price.launch_active?price.launch_paise:price.regular_paise;
+  const c=await couponFor(env,input?.code,amount);if(!c)fail('Enter a coupon code.');
+  return json({code:c.code,discount:c.discount,final:c.final,current:amount});
  }
  if(path==='/api/pricing'&&request.method==='GET'){
   const rows=await db(env).prepare('SELECT design_id,regular_paise,launch_paise,launch_active FROM prices ORDER BY regular_paise DESC').all();
@@ -409,10 +469,11 @@ export default {async fetch(request,env){
   const alreadyOwned=ownedList.includes(designId)||(ownedList.includes('ALL')&&!designId.startsWith('addon-'))||(designId==='addon-personal'&&ownedList.includes('ALL'));
   if(alreadyOwned)fail(designId.startsWith('addon-')?'You already own this add-on.':'You already own this design.',409);
   const cfg=await gatewayRow(env,gateway);if(!usable(cfg))fail('This payment option is not available right now. Please try another.',400);
-  const amount=price.launch_active?price.launch_paise:price.regular_paise;
-  const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created'};
+  let amount=price.launch_active?price.launch_paise:price.regular_paise;
+  let coupon=null;if(input?.coupon){coupon=await couponFor(env,input.coupon,amount);amount=coupon.final;}
+  const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created',coupon:coupon?coupon.code:null};
   const now=new Date().toISOString();
-  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now).run();
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0).run();
   try{
    let made;
    if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
@@ -449,6 +510,81 @@ export default {async fetch(request,env){
   if(!paid)fail('Payment is not confirmed yet. If money was deducted, it will reflect shortly.',402);
   await completeOrder(env,order,paymentId);
   return json({ok:true,designs:await entitledDesigns(env,owner)});
+ }
+ // ---- Admin console API (owner only) ----
+ if(['overview','analytics','orders','customers','coupons','banner','system'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
+  const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
+  const all=async(sql,...b)=>(await d.prepare(sql).bind(...b).all()).results||[];
+  if(name==='overview'){
+   const today=istDay();
+   const rev=async day=>one("SELECT COALESCE(SUM(amount_paise),0) AS paise,COUNT(*) AS n FROM orders WHERE status='paid' AND created_at>=?",istStart(day));
+   const [rToday,rWeek,rMonth,rAll]=[await rev(today),await rev(istDay(6)),await rev(istDay(29)),await one("SELECT COALESCE(SUM(amount_paise),0) AS paise,COUNT(*) AS n FROM orders WHERE status='paid'")];
+   const status={};for(const r of await all('SELECT status,COUNT(*) AS n FROM orders GROUP BY status'))status[r.status]=r.n;
+   const customers=await one('SELECT COUNT(*) AS n FROM users'),newCustomers=await one('SELECT COUNT(*) AS n FROM users WHERE created_at>=?',istStart(today));
+   const visitors=await one('SELECT COUNT(DISTINCT visitor) AS n,COUNT(*) AS views FROM visits WHERE day=?',today);
+   const revenueDaily=await all("SELECT date(created_at,'+330 minutes') AS day,SUM(amount_paise) AS paise,COUNT(*) AS n FROM orders WHERE status='paid' AND created_at>=? GROUP BY 1 ORDER BY 1",istStart(istDay(13)));
+   const recent=await all('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,u.email,u.name FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 8');
+   const newest=await all('SELECT email,name,created_at FROM users ORDER BY created_at DESC LIMIT 5');
+   const gateways=[];for(const g of GATEWAYS){const row=await gatewayRow(env,g).catch(()=>null);gateways.push({gateway:g,ready:usable(row),mode:row?.mode||'test',fromEnv:!!envGateway(env,g)});}
+   const maint=await one("SELECT value FROM site_settings WHERE key='maintenance'");
+   return json({revenue:{today:rToday,week:rWeek,month:rMonth,total:rAll},orders:status,customers:{total:customers.n,today:newCustomers.n},visitors:{today:visitors.n,views:visitors.views},revenueDaily,recent,newest,gateways,open:!maint||maint.value!=='1'});
+  }
+  if(name==='analytics'){
+   const days=Math.min(Math.max(parseInt(q.get('days')||'30',10)||30,1),365),from=istDay(days-1);
+   const totals=await one('SELECT COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors,COALESCE(SUM(session_start),0) AS sessions FROM visits WHERE day>=?',from);
+   const live=await one('SELECT COUNT(DISTINCT visitor) AS n FROM visits WHERE ts>=?',new Date(Date.now()-30*60000).toISOString());
+   const funnel={visitors:totals.visitors,studio:(await one("SELECT COUNT(DISTINCT visitor) AS n FROM visits WHERE day>=? AND path IN ('/studio','/workspace')",from)).n,signups:(await one('SELECT COUNT(*) AS n FROM users WHERE created_at>=?',istStart(from))).n,checkout:(await one('SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE created_at>=?',istStart(from))).n,paid:(await one("SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE status='paid' AND created_at>=?",istStart(from))).n};
+   return json({days,from,totals,live:live.n,funnel,
+    daily:await all('SELECT day,COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY day ORDER BY day',from),
+    sources:await all('SELECT source,COUNT(*) AS sessions,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? AND session_start=1 GROUP BY source ORDER BY sessions DESC',from),
+    hours:await all('SELECT hour,COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY hour ORDER BY hour',from),
+    devices:await all('SELECT device,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY device ORDER BY visitors DESC',from),
+    countries:await all("SELECT COALESCE(country,'XX') AS country,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY 1 ORDER BY visitors DESC LIMIT 10",from),
+    pages:await all('SELECT path,COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY path ORDER BY views DESC LIMIT 12',from),
+    referrers:await all("SELECT ref_host,COUNT(*) AS sessions FROM visits WHERE day>=? AND session_start=1 AND ref_host IS NOT NULL GROUP BY ref_host ORDER BY sessions DESC LIMIT 10",from)});
+  }
+  if(name==='orders'){
+   const st=q.get('status')||'',term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
+   let sql='SELECT o.id,o.design_id,o.amount_paise,o.discount_paise,o.coupon,o.gateway,o.status,o.created_at,u.email,u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE 1=1';const bind=[];
+   if(['paid','created','failed'].includes(st)){sql+=' AND o.status=?';bind.push(st);}
+   if(term){sql+=' AND (lower(u.email) LIKE ? OR lower(u.name) LIKE ? OR o.id LIKE ?)';bind.push('%'+term+'%','%'+term+'%',term+'%');}
+   return json({orders:await all(sql+' ORDER BY o.created_at DESC LIMIT 300',...bind)});
+  }
+  if(name==='customers'){
+   const term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
+   let sql="SELECT u.id,u.email,u.name,u.created_at,(SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS paid_orders,(SELECT COALESCE(SUM(amount_paise),0) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS spent,(SELECT group_concat(design_id) FROM entitlements e WHERE e.user_id=u.id) AS designs FROM users u WHERE 1=1";const bind=[];
+   if(term){sql+=' AND (lower(u.email) LIKE ? OR lower(u.name) LIKE ?)';bind.push('%'+term+'%','%'+term+'%');}
+   return json({customers:await all(sql+' ORDER BY u.created_at DESC LIMIT 300',...bind)});
+  }
+  if(name==='coupons'){
+   if(request.method==='GET')return json({coupons:await all('SELECT * FROM coupons ORDER BY created_at DESC')});
+   if(request.method==='POST'){
+    const input=await body(request,2000),code=String(input?.code||'').trim().toUpperCase(),kind=input?.kind==='flat'?'flat':'percent',value=Math.round(Number(input?.value)),maxUses=Math.max(0,Math.round(Number(input?.max_uses||0)));
+    if(!/^[A-Z0-9]{3,20}$/.test(code))fail('Coupon code: 3–20 letters or numbers, no spaces.');
+    if(!Number.isFinite(value)||value<1||(kind==='percent'&&value>90)||(kind==='flat'&&value>100000))fail(kind==='percent'?'Percent off must be between 1 and 90.':'Flat discount must be between ₹1 and ₹1,00,000.');
+    if(!Number.isFinite(maxUses)||maxUses>1000000)fail('Enter how many times it can be used (0 = unlimited).');
+    const exp=input?.expires_on?String(input.expires_on):null;if(exp&&!/^\d{4}-\d{2}-\d{2}$/.test(exp))fail('Choose a valid expiry date.');
+    if(await one('SELECT code FROM coupons WHERE code=?',code))fail('That coupon code already exists.',409);
+    await d.prepare('INSERT INTO coupons(code,kind,value,max_uses,used,expires_on,active,created_at) VALUES(?,?,?,?,0,?,1,?)').bind(code,kind,value,maxUses,exp,new Date().toISOString()).run();
+    return json({saved:true,code},201);
+   }
+   const code=decodeURIComponent(seg[3]||'').toUpperCase();
+   if(request.method==='PUT'){const input=await body(request,500);const r=await d.prepare('UPDATE coupons SET active=? WHERE code=?').bind(input?.active?1:0,code).run();if(!r.meta?.changes)fail('Coupon not found.',404);return json({saved:true});}
+   if(request.method==='DELETE'){await d.prepare('DELETE FROM coupons WHERE code=?').bind(code).run();return json({deleted:true});}
+   fail('Not found.',404);
+  }
+  if(name==='banner'){
+   if(request.method==='GET'){const row=await one("SELECT value FROM site_settings WHERE key='banner'");let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}return json({on:!!b?.on,text:b?.text||''});}
+   if(request.method==='PUT'){const input=await body(request,2000),text=String(input?.text||'').trim().slice(0,160),on=!!input?.on&&!!text;await d.prepare("INSERT INTO site_settings(key,value) VALUES('banner',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({on,text})).run();return json({on,text});}
+   fail('Not found.',404);
+  }
+  if(name==='system'){
+   const counts={};for(const t of ['users','orders','entitlements','visits','coupons','bookings'])counts[t]=(await one('SELECT COUNT(*) AS n FROM '+t).catch(()=>null))?.n??null;
+   return json({db:true,r2:!!env.BUCKET,adminEmail:!!env.ADMIN_EMAIL,adminPassword:!!env.ADMIN_PASSWORD,razorpayEnv:!!envGateway(env,'razorpay'),cashfreeEnv:!!envGateway(env,'cashfree'),counts,time:new Date().toISOString(),origin:url.origin});
+  }
+  fail('Not found.',404);
  }
  if(path==='/api/admin/site'){
   if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
