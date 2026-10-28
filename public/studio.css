@@ -123,3 +123,20 @@ body.mode-guest,body.mode-unpaid{padding-bottom:92px}
 @keyframes payNudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 @media(prefers-reduced-motion:reduce){.pay-big,.pay-big.nudge{animation:none}}
 @media(max-width:560px){.pay-big{padding:14px 20px;font-size:16px}.pb-info strong{font-size:15px}}
+
+/* Payment dialog: every line readable on the dark maroon panel */
+#pay-dialog .ewp-price{align-items:center;margin:14px 0 4px}
+#pay-dialog .ewp-price strong{color:#ffe29a;font-size:40px;line-height:1;font-weight:800;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+#pay-dialog .ewp-price s{color:#e8cfb0;font-size:20px}
+#pay-dialog .ewp-price span{background:#1d7a3a;border:0;color:#fff;font-weight:700}
+#pay-dialog .ewp-note{color:#f6e6c9;text-align:left;font-size:14px}
+#pay-dialog .ewp-pass{display:block;width:100%;margin:10px 0;padding:12px 14px;border:1px dashed #e8c876;border-radius:12px;background:rgba(255,226,154,.1);color:#ffe29a;font:700 15px/1.4 system-ui,sans-serif;text-align:left;text-decoration:none;cursor:pointer}
+#pay-dialog .ewp-pass:hover{background:rgba(255,226,154,.2)}
+#pay-dialog .ewp-field{color:#f6e6c9}
+#pay-dialog .ewp-gateway{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:8px 0;border:1px solid #e8c876;border-radius:12px;background:rgba(255,248,230,.12);color:#fff6e0;font-weight:600;cursor:pointer}
+#pay-dialog .ewp-gateway input{accent-color:#e8c876;width:18px;height:18px}
+#pay-dialog .ewp-error{color:#ffb4a8;font-weight:600}
+#pay-dialog .ewp-soon{padding:14px;border:1px dashed #c99a3d;border-radius:12px;background:#fff5e6}
+#pay-dialog .ewp-soon p{color:#4a0d1d}
+#pay-dialog #pay-now{width:100%;margin-top:10px;padding:16px;border:0;border-radius:14px;background:linear-gradient(135deg,#e8c36a,#c99a3d);color:#4a0d1d;font:800 18px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(201,154,61,.5)}
+#pay-dialog #pay-now:disabled{opacity:.6;cursor:default}
