@@ -48,6 +48,17 @@
   }
   document.addEventListener('click',function(e){var b=e.target.closest('[data-signout]');if(!b)return;e.preventDefault();if(window.EWAuth)window.EWAuth.signOut();});
 
+  /* One scroll animation for every in-page link: eased, ~0.7s, identical in every browser (instant when the visitor prefers reduced motion). */
+  var glideFrame=0;
+  function glideTo(y){
+    var from=window.pageYOffset,dist=y-from;cancelAnimationFrame(glideFrame);
+    if(!dist)return;
+    if(!window.requestAnimationFrame||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){window.scrollTo({top:y,behavior:'instant'});return;}
+    var start=null,dur=Math.min(900,Math.max(450,Math.abs(dist)*0.35));
+    function step(t){if(start===null)start=t;var k=Math.min(1,(t-start)/dur),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;window.scrollTo({top:from+dist*e,behavior:'instant'});if(k<1)glideFrame=requestAnimationFrame(step);}
+    glideFrame=requestAnimationFrame(step);
+    var stop=function(){cancelAnimationFrame(glideFrame);};window.addEventListener('wheel',stop,{passive:true,once:true});window.addEventListener('touchstart',stop,{passive:true,once:true});
+  }
   /* In-page links (#top, #pricing…) scroll smoothly and keep the address bar clean: easywedding.in, never easywedding.in/#top. */
   document.addEventListener('click',function(e){
     if(e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
@@ -57,8 +68,7 @@
     e.preventDefault();
     var L=window.__ewLenis,pad=parseInt(getComputedStyle(document.documentElement).scrollPaddingTop,10)||0;
     if(L){L.scrollTo(target||0,{offset:target?-pad:0});}
-    else if(target&&target.scrollIntoView){target.scrollIntoView({behavior:'smooth',block:'start'});}
-    else if(window.scrollTo&&!target){window.scrollTo({top:0,behavior:'smooth'});}
+    else{glideTo(target?Math.max(0,Math.round(target.getBoundingClientRect().top+window.pageYOffset-pad)):0);}
     try{if(location.hash||location.search.indexOf('auth=')>=0)history.replaceState(null,'',location.pathname);}catch(err){}
   });
   if(location.hash){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
