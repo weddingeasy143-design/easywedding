@@ -45,7 +45,18 @@ async function adminEmail(env){if(env.ADMIN_EMAIL)return String(env.ADMIN_EMAIL)
 async function isAdminUser(env,user){if(!user)return false;const e=await adminEmail(env);return !!e&&user.email.toLowerCase()===e;}
 async function entitledDesigns(env,userId){const rows=await db(env).prepare('SELECT design_id FROM entitlements WHERE user_id=?').bind(userId).all();return (rows.results||[]).map(r=>r.design_id);}
 async function hasEntitlement(env,userId,designId){const list=await entitledDesigns(env,userId);return list.includes(designId)||list.includes('ALL');}
-async function completeOrder(env,order,paymentId){if(!order||order.status==='paid')return;const now=new Date().toISOString();await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=? WHERE id=?").bind(paymentId||null,now,order.id).run();await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(order.user_id,order.design_id,order.id,now).run();if(order.coupon)await db(env).prepare('UPDATE coupons SET used=used+1 WHERE code=?').bind(order.coupon).run().catch(()=>{});}
+async function completeOrder(env,order,paymentId){
+ if(!order||order.status==='paid')return;
+ const now=new Date().toISOString();let userId=order.user_id;
+ // Guest checkout: the account is created only now that the payment has succeeded.
+ if(String(userId).startsWith('pending-')&&order.signup_hash&&order.signup_email){
+  await db(env).prepare('INSERT OR IGNORE INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),order.signup_email,order.signup_name||'Customer',order.signup_hash,now).run();
+  userId=(await db(env).prepare('SELECT id FROM users WHERE email=?').bind(order.signup_email).first()).id;
+ }
+ await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=?,user_id=? WHERE id=?").bind(paymentId||null,now,userId,order.id).run();
+ await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(userId,order.design_id,order.id,now).run();
+ if(order.coupon)await db(env).prepare('UPDATE coupons SET used=used+1 WHERE code=?').bind(order.coupon).run().catch(()=>{});
+}
 // ---- Analytics + coupons helpers ----
 const AI_HOSTS=[['chatgpt.com','chatgpt'],['chat.openai.com','chatgpt'],['openai.com','chatgpt'],['perplexity.ai','ai_chat'],['gemini.google.com','ai_chat'],['claude.ai','ai_chat'],['copilot.microsoft.com','ai_chat'],['you.com','ai_chat'],['deepseek.com','ai_chat'],['poe.com','ai_chat'],['grok.com','ai_chat']];
 const UTM_SOURCES={fb:'facebook',facebook:'facebook',ig:'instagram',instagram:'instagram',google:'google',chatgpt:'chatgpt','chatgpt.com':'chatgpt',openai:'chatgpt',whatsapp:'whatsapp',wa:'whatsapp',youtube:'youtube',twitter:'twitter',x:'twitter'};
@@ -155,7 +166,7 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  // Clean URLs: the .html pages redirect to their extension-less address.
- const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright'};
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright','/register.html':'/register'};
  if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
  // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
  if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
@@ -277,14 +288,14 @@ export default {async fetch(request,env){
   const cfg=await gatewayRow(env,'payu').catch(()=>null);
   const form=request.method==='POST'?await request.formData().catch(()=>null):null;
   const get=k=>form?String(form.get(k)||''):(url.searchParams.get(k)||'');
-  let ok=false;
+  let ok=false,oid='';
   if(cfg){const udfs=[];for(let i=10;i>=1;i--)udfs.push(get('udf'+i));
    const calc=await sha512hex([cfg.key_secret,get('status'),...udfs,get('email'),get('firstname'),get('productinfo'),get('amount'),get('txnid'),cfg.key_id].join('|'));
-   if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(get('txnid')).first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;}}
+   if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(get('txnid')).first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;oid=order.id;}}
   }
-  return new Response(null,{status:302,headers:{'Location':'/studio?payment='+(ok?'success':'failed')}});
+  return new Response(null,{status:302,headers:{'Location':'/studio?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
  }
- const authUser=await currentUser(request,env);
+ let authUser=await currentUser(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
  if(path==='/api/auth/signup'&&request.method==='POST'){
   await rateHit(env,'signup',request,8,600);
@@ -344,6 +355,34 @@ export default {async fetch(request,env){
   const token=sessionToken(request);
   if(token)await db(env).prepare('DELETE FROM sessions WHERE id=?').bind(await sha256hex(token)).run();
   return json({ok:true},200,{'Set-Cookie':sessionCookie('',0)});
+ }
+
+ // Guest checkout: no account exists until a payment succeeds. The sign-up details wait on the order.
+ let guestSignup=null,guestOrder=null;
+ if(!authUser&&request.method==='POST'&&path==='/api/checkout'){
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const peek=await body(request.clone(),20000),su=peek?.signup;
+  const sName=typeof su?.name==='string'?su.name.trim():'',sEmail=typeof su?.email==='string'?su.email.trim().toLowerCase():'',sPass=typeof su?.password==='string'?su.password:'';
+  if(!sName||!bounded(sName,70))fail('Please enter your name to create the account.');
+  if(!bounded(sEmail,120)||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(sEmail))fail('Please enter a valid email address.');
+  if(sPass.length<8)fail('Please choose a password of at least 8 characters.');
+  if(sPass.length>72)fail('Please choose a shorter password (72 characters at most).');
+  if(sEmail===await adminEmail(env))fail('This email is reserved. Please use a different email.',409);
+  const existing=await db(env).prepare('SELECT id,password_hash FROM users WHERE email=?').bind(sEmail).first();
+  if(existing){
+   // An earlier account that never paid: signing in with its password lets the customer continue.
+   if(!await verifyPassword(sPass,existing.password_hash))fail('This email is already registered. Please log in, or enter the password you used before.',409);
+   return json({relogin:true},200,{'Set-Cookie':sessionCookie(await startSession(env,existing.id),2592000)});
+  }
+  guestSignup={id:'pending-'+crypto.randomUUID(),name:sName,email:sEmail,hash:await makePasswordRecord(sPass)};
+  authUser={id:guestSignup.id,email:sEmail,name:sName};
+ }
+ if(!authUser&&request.method==='POST'&&path==='/api/checkout/verify'){
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const peek=await body(request.clone(),20000);
+  guestOrder=await db(env).prepare('SELECT * FROM orders WHERE id=? AND signup_email IS NOT NULL AND claimed=0').bind(typeof peek?.orderId==='string'?peek.orderId:'').first();
+  if(!guestOrder)fail('Order not found.',404);
+  authUser={id:guestOrder.user_id,email:guestOrder.signup_email,name:guestOrder.signup_name};
  }
  if(!authUser)fail('Sign in to save your wedding workspace.',401);
  const owner=authUser.id;
@@ -444,7 +483,7 @@ export default {async fetch(request,env){
    if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
    const input=await body(request,5000);
    const slug=String(input?.slug||'').trim().toLowerCase();
-   const RESERVED=['boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   const RESERVED=['register','boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
    if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
    const invitationId=String(input?.invitationId||'');
    const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
@@ -473,7 +512,7 @@ export default {async fetch(request,env){
   let coupon=null;if(input?.coupon){coupon=await couponFor(env,input.coupon,amount);amount=coupon.final;}
   const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created',coupon:coupon?coupon.code:null};
   const now=new Date().toISOString();
-  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0).run();
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise,signup_name,signup_email,signup_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0,guestSignup?guestSignup.name:null,guestSignup?guestSignup.email:null,guestSignup?guestSignup.hash:null).run();
   try{
    let made;
    if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
@@ -487,9 +526,16 @@ export default {async fetch(request,env){
  if(path==='/api/checkout/verify'&&request.method==='POST'){
   const input=await body(request,20000);
   const orderId=typeof input?.orderId==='string'?input.orderId:'';
-  const order=await db(env).prepare('SELECT * FROM orders WHERE id=? AND user_id=?').bind(orderId,owner).first();
+  const order=guestOrder||await db(env).prepare('SELECT * FROM orders WHERE id=? AND user_id=?').bind(orderId,owner).first();
   if(!order)fail('Order not found.',404);
-  if(order.status==='paid')return json({ok:true,designs:await entitledDesigns(env,owner)});
+  const finish=async()=>{
+   if(!guestOrder)return json({ok:true,designs:await entitledDesigns(env,owner)});
+   const done=await db(env).prepare('SELECT user_id FROM orders WHERE id=?').bind(order.id).first();
+   const claim=await db(env).prepare('UPDATE orders SET claimed=1,signup_hash=NULL WHERE id=? AND claimed=0').bind(order.id).run();
+   if(!claim.meta?.changes)fail('This payment was already used. Please log in with your email and password.',409);
+   return json({ok:true,signedIn:true,designs:await entitledDesigns(env,done.user_id)},200,{'Set-Cookie':sessionCookie(await startSession(env,done.user_id),2592000)});
+  };
+  if(order.status==='paid')return finish();
   const cfg=await gatewayRow(env,order.gateway);if(!usable(cfg))fail('This payment option is not available right now.',400);
   let paid=false,paymentId=null;
   if(order.gateway==='razorpay'){
@@ -509,7 +555,7 @@ export default {async fetch(request,env){
   }
   if(!paid)fail('Payment is not confirmed yet. If money was deducted, it will reflect shortly.',402);
   await completeOrder(env,order,paymentId);
-  return json({ok:true,designs:await entitledDesigns(env,owner)});
+  return finish();
  }
  // ---- Admin console API (owner only) ----
  if(['overview','analytics','orders','customers','coupons','banner','system'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
