@@ -1,0 +1,22 @@
+# Copy to .dev.vars for local `wrangler dev`. In production set each one with
+#   npx wrangler secret put NAME
+# or Cloudflare dashboard → Workers → easy-wedding → Settings → Variables and Secrets.
+# Never commit real keys: .dev.vars is gitignored.
+
+# Account that can open /admin.html (prices, orders, maintenance switch).
+ADMIN_EMAIL=you@example.com
+
+# Razorpay — Dashboard → Account & Settings → API Keys.
+# rzp_test_… keys = test mode, rzp_live_… keys = real payments.
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=
+# Dashboard → Webhooks → URL https://<your-domain>/api/payments/webhook/razorpay
+# events: payment.captured, order.paid
+RAZORPAY_WEBHOOK_SECRET=
+
+# Cashfree — Merchant Dashboard → Developers → API Keys.
+CASHFREE_APP_ID=
+CASHFREE_SECRET_KEY=
+# sandbox (test) or production (real payments)
+CASHFREE_ENV=sandbox
+# Webhook URL: https://<your-domain>/api/payments/webhook/cashfree

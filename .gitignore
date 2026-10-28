@@ -1,0 +1,13 @@
+node_modules/
+*.tgz
+*.tar.gz
+
+dist/
+.sites-runtime/
+.wrangler/
+
+.openai/
+.dev.vars
+.env
+.env.*
+New folder/

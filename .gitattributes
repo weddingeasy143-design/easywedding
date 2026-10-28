@@ -1,0 +1,11 @@
+# Keep LF in the repo so a Windows build doesn't show every regenerated file as changed.
+* text=auto eol=lf
+*.png binary
+*.webp binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.mp3 binary
+*.woff2 binary
+*.otf binary
+*.zip binary
