@@ -1,57 +1,134 @@
 <!doctype html>
-<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#75152e"><title>Easy Wedding · Payment admin</title><meta name="description" content="Manage payment gateways and design prices for Easy Wedding."><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="brand.css"><script defer src="auth.js"></script><script defer src="admin.js"></script>
-<style>
-body{background:#fdf8f1;color:#33241d;font-family:Georgia,'Times New Roman',serif;margin:0}
-.ewp-admin{max-width:880px;margin:0 auto;padding:28px 18px 70px}
-.ewp-admin h1{color:#75152e;margin:8px 0 4px;font-size:34px}
-.ewp-admin h2{color:#75152e;margin:34px 0 6px;font-size:22px}
-.ewp-sub{color:#8a6d5a;margin:0 0 14px;font-size:15px}
-.ewp-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7d8c6;background:#fffaf3}
-.ewp-head a{color:#75152e;font-weight:700;text-decoration:none}
-.ewp-card{border:1px solid #e0cdb4;border-radius:14px;background:#fff;padding:18px;margin:14px 0;box-shadow:0 2px 10px rgba(117,21,46,.06)}
-.ewp-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.ewp-card-head strong{font-size:19px;color:#75152e}
-.ewp-switch{position:relative;width:52px;height:28px;flex:none}
-.ewp-switch input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer}
-.ewp-track{position:absolute;inset:0;background:#cbb59c;border-radius:999px;transition:.2s;pointer-events:none}
-.ewp-track::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
-.ewp-switch input:checked + .ewp-track{background:#1d7a3a}
-.ewp-switch input:checked + .ewp-track::after{left:27px}
-.ewp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-@media(max-width:640px){.ewp-grid{grid-template-columns:1fr}}
-.ewp-field{display:block;font-size:13px;color:#8a6d5a}
-.ewp-field input,.ewp-field select{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:10px 11px;border:1px solid #d9c6b2;border-radius:9px;font-size:15px;color:#33241d;background:#fff}
-.ewp-steps{margin:14px 0 0;padding-left:20px;color:#5d4636;font-size:14px;line-height:1.55}
-.ewp-hook{margin:10px 0 0;color:#5d4636;font-size:14px;line-height:1.55;background:#fdf1e7;border-radius:9px;padding:10px 12px}
-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e0cdb4;border-radius:14px;overflow:hidden}
-th,td{padding:10px 12px;text-align:left;font-size:14px;border-bottom:1px solid #f0e4d4}
-th{background:#fdf1e7;color:#75152e}
-td input[type=number]{width:100px;padding:8px;border:1px solid #d9c6b2;border-radius:8px;font-size:14px}
-.ewp-primary{background:#75152e;color:#fff;border:none;border-radius:10px;padding:13px 26px;font-size:16px;font-weight:700;cursor:pointer;margin-top:22px}
-.ewp-primary:disabled{opacity:.55}
-#admin-status{margin-left:12px;color:#1d7a3a;font-size:14px}
-.ewp-badge{border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;background:#e8dcc9;color:#5d4636}
-.ewp-badge.paid{background:#1d7a3a;color:#fff}
-.ewp-denied{background:#fdf1e7;border:1px dashed #c9a227;border-radius:12px;padding:16px}
-</style></head>
-<body><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div><header class="ewp-head"><a href="./">← Easy Wedding</a><span>Payment admin</span></header>
-<main class="ewp-admin"><h1>Payments</h1><p class="ewp-sub">Switch a gateway on, paste its keys, save — customers can pay with it right away. You can run one gateway or all four together.</p>
-<p id="admin-loading">Loading payment settings…</p>
-<div id="admin-denied" class="ewp-denied" hidden></div>
-<form id="admin-login" class="ewp-denied" hidden>
-<p style="margin-top:0"><strong>Admin sign in</strong></p>
-<label class="ewp-field">Email<input id="admin-login-email" type="email" autocomplete="username" required placeholder="Admin email"></label>
-<label class="ewp-field">Password<input id="admin-login-pass" type="password" autocomplete="current-password" required></label>
-<button class="ewp-primary" type="submit" style="margin-top:14px">Sign in to admin</button>
-<span id="admin-login-status" role="status"></span>
-<p class="ewp-sub" style="margin-bottom:0">Sign in with the admin account — the payment settings open right here on this page.</p>
-</form>
-<div id="admin-panel" hidden>
-<section><h2>Shop open to the public</h2><p class="ewp-sub">While this is OFF, visitors see an “Opening very soon” page — they cannot browse, sign up or pay. Your private owner link still opens the full site for you. Switch this ON only when live payment keys are saved below.</p><label class="ewp-switch"><input type="checkbox" id="site-open" aria-label="Shop open to the public"><span class="ewp-track"></span></label> <span id="site-open-label">Shop is open to everyone</span><p id="site-status" class="ewp-sub" role="status"></p></section>
-<section><h2>Payment gateways</h2><div id="gateway-cards"></div></section>
-<section><h2>Design prices</h2><p class="ewp-sub">Launching price applies while the Grand Opening offer is switched on for that design. Prices in ₹.</p><div id="prices-table"></div></section>
-<button id="admin-save" class="ewp-primary" type="button">Save all settings</button><span id="admin-status" role="status"></span>
-<section><h2>Unlock a design manually</h2><p class="ewp-sub">For a couple who paid you directly (UPI, WhatsApp, cash). They must already have an account.</p><form id="grant-form" class="ewp-grid"><label class="ewp-field">Couple’s account email<input id="grant-email" type="email" required placeholder="couple@example.com"></label><label class="ewp-field">Design<select id="grant-design" required></select></label><label class="ewp-field">Amount received (₹)<input id="grant-amount" type="number" min="0" step="1" value="0"></label><button class="ewp-primary" type="submit">Unlock design</button><span id="grant-status" role="status"></span></form></section>
-<section><h2>Reset a password</h2><p class="ewp-sub">When a couple forgets their password: check it is really them (their WhatsApp number), create a new password and send it to them. They are signed out on every device and sign in with the new password straight away.</p><form id="reset-form" class="ewp-grid"><label class="ewp-field">Account email<input id="reset-email" type="email" required placeholder="couple@example.com"></label><button class="ewp-primary" type="submit">Create new password</button><span id="reset-status" role="status"></span></form></section>
-<section><h2>Recent orders</h2><div id="orders-table"></div></section>
-</div></main></body></html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#4a0d1d"><meta name="robots" content="noindex,nofollow"><title>Easy Wedding · Admin</title><meta name="description" content="Easy Wedding owner console."><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="brand.css"><link rel="stylesheet" href="admin.css"><script defer src="auth.js"></script><script defer src="admin.js"></script></head>
+<body><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div>
+
+<p id="admin-loading" class="ad-loading">Loading admin…</p>
+<div id="admin-denied" class="ad-denied" hidden></div>
+
+<main id="admin-login-wrap" class="ad-login" hidden>
+ <section class="ad-login-art" aria-hidden="true"><div><div class="ad-logo">Easy<span>Wedding</span></div><h2>Run your wedding business from one place.</h2><ul><li>Orders &amp; payments at a glance</li><li>Visitors from Google, Instagram, Facebook, ChatGPT &amp; more</li><li>Designs, prices, coupons &amp; customers</li></ul></div></section>
+ <form id="admin-login" class="ad-login-form">
+  <h1>Admin sign in</h1><p class="ad-sub">Only the owner account can open this console.</p>
+  <label class="ad-field">Email<input id="admin-login-email" type="email" autocomplete="username" required placeholder="Admin email"></label>
+  <label class="ad-field">Password<input id="admin-login-pass" type="password" autocomplete="current-password" required placeholder="Password"></label>
+  <button class="ad-btn primary" type="submit">Sign in to admin</button>
+  <p id="admin-login-status" class="ad-status" role="status"></p>
+ </form>
+</main>
+
+<div id="admin-panel" class="ad-shell" hidden>
+ <aside class="ad-side" id="ad-side">
+  <div class="ad-logo">Easy<span>Wedding</span></div>
+  <nav id="ad-nav" aria-label="Admin sections">
+   <a href="#/dashboard" data-page="dashboard"><i>▦</i>Dashboard</a>
+   <a href="#/analytics" data-page="analytics"><i>◔</i>Analytics</a>
+   <a href="#/orders" data-page="orders"><i>☰</i>Orders</a>
+   <a href="#/payments" data-page="payments"><i>₹</i>Payments</a>
+   <a href="#/designs" data-page="designs"><i>✦</i>Designs &amp; prices</a>
+   <a href="#/addons" data-page="addons"><i>＋</i>Add-ons</a>
+   <a href="#/coupons" data-page="coupons"><i>％</i>Coupons &amp; offers</a>
+   <a href="#/customers" data-page="customers"><i>☺</i>Customers</a>
+   <a href="#/settings" data-page="settings"><i>⚙</i>Website &amp; banner</a>
+   <a href="#/system" data-page="system"><i>✓</i>System health</a>
+  </nav>
+  <a class="ad-viewsite" href="/" target="_blank" rel="noopener">View website ↗</a>
+ </aside>
+ <div class="ad-main">
+  <header class="ad-top"><h1 id="ad-title">Dashboard</h1><div class="ad-top-r"><span id="ad-me"></span><button id="ad-signout" class="ad-btn" type="button">Sign out</button></div></header>
+  <main class="ad-content">
+
+   <section data-page="dashboard" id="pg-dashboard">
+    <div class="ad-kpis" id="kpis"></div>
+    <div class="ad-grid2">
+     <div class="ad-card"><h3>Revenue · last 14 days</h3><div id="rev-chart"></div></div>
+     <div class="ad-card"><h3>Quick actions</h3><div class="ad-quick"><a class="ad-btn" href="#/customers">Unlock a design</a><a class="ad-btn" href="#/coupons">Create coupon</a><a class="ad-btn" href="#/analytics">See traffic</a><a class="ad-btn" href="#/settings">Edit banner</a></div>
+      <h3 style="margin-top:18px">Website status</h3><label class="ad-switch"><input type="checkbox" class="site-toggle" aria-label="Shop open to the public"><span></span></label> <span class="site-label"></span>
+     </div>
+    </div>
+    <div class="ad-grid2">
+     <div class="ad-card"><h3>Recent orders</h3><div id="recent-orders"></div><p><a href="#/orders">View all orders →</a></p></div>
+     <div><div class="ad-card"><h3>Payment gateways</h3><div id="gw-status"></div></div><div class="ad-card"><h3>New customers</h3><div id="new-customers"></div></div></div>
+    </div>
+   </section>
+
+   <section data-page="analytics" id="pg-analytics" hidden>
+    <div class="ad-toolbar"><label>Period <select id="an-days"><option value="1">Today</option><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label><span id="an-live" class="ad-pill"></span></div>
+    <div class="ad-kpis" id="an-kpis"></div>
+    <div class="ad-card"><h3>Visitors per day</h3><div id="an-daily"></div></div>
+    <div class="ad-grid2">
+     <div class="ad-card"><h3>Where visitors come from</h3><p class="ad-sub">New visits by source — Google, social, direct and AI chats such as ChatGPT.</p><div id="an-sources"></div></div>
+     <div class="ad-card"><h3>Day vs night (India time)</h3><div id="an-daynight"></div><div id="an-hours"></div></div>
+    </div>
+    <div class="ad-grid3">
+     <div class="ad-card"><h3>Devices</h3><div id="an-devices"></div></div>
+     <div class="ad-card"><h3>Countries</h3><div id="an-countries"></div></div>
+     <div class="ad-card"><h3>Websites sending visitors</h3><div id="an-refs"></div></div>
+    </div>
+    <div class="ad-grid2">
+     <div class="ad-card"><h3>Top pages</h3><div id="an-pages"></div></div>
+     <div class="ad-card"><h3>Visitor → customer funnel</h3><div id="an-funnel"></div></div>
+    </div>
+   </section>
+
+   <section data-page="orders" id="pg-orders" hidden>
+    <div class="ad-toolbar"><input id="ord-q" type="search" placeholder="Search name, email or order id"><select id="ord-status"><option value="">All statuses</option><option value="paid">Paid</option><option value="created">Pending</option><option value="failed">Failed</option></select><button id="ord-csv" class="ad-btn" type="button">Download CSV</button></div>
+    <div class="ad-card"><div id="orders-table"></div></div>
+   </section>
+
+   <section data-page="payments" id="pg-payments" hidden>
+    <p class="ad-sub">Switch a gateway on, paste its keys, save — customers can pay right away. Keys saved as Cloudflare secrets show as always on.</p>
+    <div id="gateway-cards"></div>
+    <div class="ad-savebar"><button class="ad-btn primary save-all" type="button">Save payment settings</button><span class="ad-status save-status" role="status"></span></div>
+   </section>
+
+   <section data-page="designs" id="pg-designs" hidden>
+    <p class="ad-sub">Launching price applies while the Grand Opening offer is switched on for that design. Prices in ₹.</p>
+    <div class="ad-card"><div id="prices-table"></div></div>
+    <div class="ad-savebar"><button class="ad-btn primary save-all" type="button">Save prices</button><span class="ad-status save-status" role="status"></span></div>
+   </section>
+
+   <section data-page="addons" id="pg-addons" hidden>
+    <p class="ad-sub">One-time extras couples can add to their wedding.</p>
+    <div class="ad-card"><div id="addons-table"></div></div>
+    <div class="ad-savebar"><button class="ad-btn primary save-all" type="button">Save prices</button><span class="ad-status save-status" role="status"></span></div>
+   </section>
+
+   <section data-page="coupons" id="pg-coupons" hidden>
+    <div class="ad-card"><h3>Create a coupon</h3>
+     <form id="coupon-form" class="ad-form">
+      <label class="ad-field">Code<input id="cp-code" required maxlength="20" placeholder="WELCOME10" style="text-transform:uppercase"></label>
+      <label class="ad-field">Type<select id="cp-kind"><option value="percent">Percent off</option><option value="flat">Flat ₹ off</option></select></label>
+      <label class="ad-field">Value<input id="cp-value" type="number" min="1" required placeholder="10"></label>
+      <label class="ad-field">Max uses <small>(0 = unlimited)</small><input id="cp-max" type="number" min="0" value="0"></label>
+      <label class="ad-field">Expires on <small>(optional)</small><input id="cp-exp" type="date"></label>
+      <button class="ad-btn primary" type="submit">Create coupon</button>
+     </form><p id="cp-status" class="ad-status" role="status"></p>
+    </div>
+    <div class="ad-card"><h3>Your coupons</h3><div id="coupons-table"></div></div>
+   </section>
+
+   <section data-page="customers" id="pg-customers" hidden>
+    <div class="ad-toolbar"><input id="cu-q" type="search" placeholder="Search name or email"></div>
+    <div class="ad-card"><div id="customers-table"></div></div>
+    <div class="ad-grid2">
+     <div class="ad-card"><h3>Unlock a design manually</h3><p class="ad-sub">For a couple who paid you directly (UPI, WhatsApp, cash). They must already have an account.</p>
+      <form id="grant-form" class="ad-form"><label class="ad-field">Account email<input id="grant-email" type="email" required placeholder="couple@example.com"></label><label class="ad-field">Design<select id="grant-design" required></select></label><label class="ad-field">Amount received (₹)<input id="grant-amount" type="number" min="0" step="1" value="0"></label><button class="ad-btn primary" type="submit">Unlock design</button></form><p id="grant-status" class="ad-status" role="status"></p></div>
+     <div class="ad-card"><h3>Reset a password</h3><p class="ad-sub">Check it is really them (their WhatsApp number), create a new password and send it. They are signed out everywhere.</p>
+      <form id="reset-form" class="ad-form"><label class="ad-field">Account email<input id="reset-email" type="email" required placeholder="couple@example.com"></label><button class="ad-btn primary" type="submit">Create new password</button></form><p id="reset-status" class="ad-status" role="status"></p></div>
+    </div>
+   </section>
+
+   <section data-page="settings" id="pg-settings" hidden>
+    <div class="ad-card"><h3>Shop open to the public</h3><p class="ad-sub">While OFF, visitors see an “Opening very soon” page and cannot browse, sign up or pay. You can still open the full site on /boss.</p><label class="ad-switch"><input type="checkbox" class="site-toggle" aria-label="Shop open to the public"><span></span></label> <span class="site-label"></span><p class="ad-status site-status" role="status"></p></div>
+    <div class="ad-card"><h3>Homepage announcement banner</h3><p class="ad-sub">A thin strip shown at the top of the homepage — for offers, festival notices, etc.</p>
+     <form id="banner-form" class="ad-form"><label class="ad-field" style="grid-column:1/-1">Banner text<input id="bn-text" maxlength="160" placeholder="🎉 Grand Opening offer — all designs at launch prices this month!"></label><label class="ad-check"><input id="bn-on" type="checkbox"> Show banner</label><button class="ad-btn primary" type="submit">Save banner</button></form><p id="bn-status" class="ad-status" role="status"></p></div>
+   </section>
+
+   <section data-page="system" id="pg-system" hidden>
+    <div class="ad-card"><h3>System health</h3><p class="ad-sub">Checks only — secrets are never shown here.</p><div id="sys-list"></div></div>
+   </section>
+
+  </main>
+ </div>
+</div>
+</body></html>
