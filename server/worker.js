@@ -103,7 +103,7 @@ async function razorpayCreate(cfg,order){
 }
 async function cashfreeCreate(cfg,order,user,phone,origin){
  const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
- const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:user.id,customer_name:user.name||'Customer',customer_email:user.email,customer_phone:phone},order_meta:{return_url:origin+'/studio?order_id='+order.id}})});
+ const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:user.id,customer_name:user.name||'Customer',customer_email:user.email,customer_phone:phone},order_meta:{return_url:origin+'/register?order_id='+order.id}})});
  const data=await res.json().catch(()=>null);
  if(!res.ok||!data?.payment_session_id)fail('Payment could not be started. Please try another option.',502);
  return {gateway_order_id:order.id,payload:{gateway:'cashfree',payment_session_id:data.payment_session_id,mode:cfg.mode}};
@@ -119,7 +119,7 @@ async function phonepeToken(cfg){
 }
 async function phonepeCreate(cfg,order,origin){
  const {host,token}=await phonepeToken(cfg);
- const res=await fetch(host+'/apis/hermes/checkout/v2/pay',{method:'POST',headers:{'Authorization':'O-Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({merchantOrderId:order.id,amount:order.amount_paise,paymentFlow:{type:'PG_CHECKOUT',merchantUrls:{redirectUrl:origin+'/studio.html?order_id='+order.id}}})});
+ const res=await fetch(host+'/apis/hermes/checkout/v2/pay',{method:'POST',headers:{'Authorization':'O-Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({merchantOrderId:order.id,amount:order.amount_paise,paymentFlow:{type:'PG_CHECKOUT',merchantUrls:{redirectUrl:origin+'/register?order_id='+order.id}}})});
  const data=await res.json().catch(()=>null);
  if(!res.ok||!data?.redirectUrl)fail('Payment could not be started. Please try another option.',502);
  return {gateway_order_id:order.id,payload:{gateway:'phonepe',redirect_url:data.redirectUrl}};
@@ -174,10 +174,10 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  // Clean URLs: the .html pages redirect to their extension-less address.
- const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright','/register.html':'/register','/forgot-password.html':'/forgot-password'};
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/dashboard','/index':'/dashboard','/workspace':'/dashboard','/workspace/':'/dashboard','/dashboard/':'/dashboard','/login.html':'/login','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright','/register.html':'/register','/forgot-password.html':'/forgot-password'};
  if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
- // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
- if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
+ // /dashboard is the signed-in customer's planner (public/index.html); /workspace and /index redirect here via CLEAN.
+ if(path==='/dashboard')return env.ASSETS.fetch(new Request(new URL('/index.html',url),request));
  if(path==='/')return env.ASSETS.fetch(new Request(new URL('/landing.html',url),request));
  // Admin lives at /boss only; the default /admin and /admin.html paths are not served.
  if(path==='/boss'||path==='/boss/')return env.ASSETS.fetch(new Request(new URL('/admin.html',url),request));
@@ -301,7 +301,7 @@ export default {async fetch(request,env){
    const calc=await sha512hex([cfg.key_secret,get('status'),...udfs,get('email'),get('firstname'),get('productinfo'),get('amount'),get('txnid'),cfg.key_id].join('|'));
    if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(get('txnid')).first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;oid=order.id;}}
   }
-  return new Response(null,{status:302,headers:{'Location':'/studio?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
+  return new Response(null,{status:302,headers:{'Location':'/register?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
  }
  let authUser=await currentUser(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
@@ -513,7 +513,7 @@ export default {async fetch(request,env){
    if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
    const input=await body(request,5000);
    const slug=String(input?.slug||'').trim().toLowerCase();
-   const RESERVED=['forgot-password','register','boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   const RESERVED=['forgot-password','register','boss','workspace','dashboard','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
    if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
    const invitationId=String(input?.invitationId||'');
    const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
@@ -589,7 +589,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','coupons','banner','system'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','system'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -612,7 +612,7 @@ export default {async fetch(request,env){
    const days=Math.min(Math.max(parseInt(q.get('days')||'30',10)||30,1),365),from=istDay(days-1);
    const totals=await one('SELECT COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors,COALESCE(SUM(session_start),0) AS sessions FROM visits WHERE day>=?',from);
    const live=await one('SELECT COUNT(DISTINCT visitor) AS n FROM visits WHERE ts>=?',new Date(Date.now()-30*60000).toISOString());
-   const funnel={visitors:totals.visitors,studio:(await one("SELECT COUNT(DISTINCT visitor) AS n FROM visits WHERE day>=? AND path IN ('/studio','/workspace')",from)).n,signups:(await one('SELECT COUNT(*) AS n FROM users WHERE created_at>=?',istStart(from))).n,checkout:(await one('SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE created_at>=?',istStart(from))).n,paid:(await one("SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE status='paid' AND created_at>=?",istStart(from))).n};
+   const funnel={visitors:totals.visitors,studio:(await one("SELECT COUNT(DISTINCT visitor) AS n FROM visits WHERE day>=? AND path IN ('/studio','/workspace','/dashboard','/register')",from)).n,signups:(await one('SELECT COUNT(*) AS n FROM users WHERE created_at>=?',istStart(from))).n,checkout:(await one('SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE created_at>=?',istStart(from))).n,paid:(await one("SELECT COUNT(DISTINCT user_id) AS n FROM orders WHERE status='paid' AND created_at>=?",istStart(from))).n};
    return json({days,from,totals,live:live.n,funnel,
     daily:await all('SELECT day,COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY day ORDER BY day',from),
     sources:await all('SELECT source,COUNT(*) AS sessions,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? AND session_start=1 GROUP BY source ORDER BY sessions DESC',from),
@@ -634,6 +634,43 @@ export default {async fetch(request,env){
    let sql="SELECT u.id,u.email,u.name,u.created_at,(SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS paid_orders,(SELECT COALESCE(SUM(amount_paise),0) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS spent,(SELECT group_concat(design_id) FROM entitlements e WHERE e.user_id=u.id) AS designs FROM users u WHERE 1=1";const bind=[];
    if(term){sql+=' AND (lower(u.email) LIKE ? OR lower(u.name) LIKE ?)';bind.push('%'+term+'%','%'+term+'%');}
    return json({customers:await all(sql+' ORDER BY u.created_at DESC LIMIT 1000',...bind)});
+  }
+  if(name==='pending'){
+   const kind=seg[3];let id='';try{id=decodeURIComponent(seg[4]||'');}catch{fail('Not found.',404);}
+   if(!kind){
+    if(request.method!=='GET')fail('Not found.',404);
+    const owner=await adminEmail(env);
+    const orders=await all("SELECT id,signup_name AS name,signup_email AS email,created_at AS createdAt,design_id AS design FROM orders WHERE status!='paid' AND claimed=0 AND signup_email IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users WHERE lower(email)=lower(orders.signup_email)) ORDER BY created_at DESC LIMIT 500");
+    const accounts=await all("SELECT id,name,email,created_at AS createdAt FROM users u WHERE lower(email)!=? AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.user_id=u.id AND o.status='paid') AND NOT EXISTS(SELECT 1 FROM entitlements e WHERE e.user_id=u.id) ORDER BY created_at DESC LIMIT 500",owner);
+    const pending=[...orders.map(o=>({kind:'order',...o})),...accounts.map(u=>({kind:'account',...u,design:null}))].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,500);
+    return json({pending});
+   }
+   if(request.method!=='DELETE'||!id||!['order','account'].includes(kind))fail('Not found.',404);
+   if(kind==='order'){
+    const o=await one('SELECT id,status,claimed,signup_email FROM orders WHERE id=?',id);
+    if(!o)fail('That sign-up was not found. It may already be deleted.',404);
+    if(o.status==='paid'||o.claimed||!o.signup_email)fail('This order is paid or already used, so it cannot be deleted here.',409);
+    await d.prepare("DELETE FROM orders WHERE id=? AND status!='paid' AND claimed=0 AND signup_email IS NOT NULL").bind(id).run();
+    return json({deleted:true});
+   }
+   const u=await one('SELECT id,email FROM users WHERE id=?',id);
+   if(!u)fail('That account was not found. It may already be deleted.',404);
+   if(String(u.email).toLowerCase()===await adminEmail(env))fail('The admin account cannot be deleted.',409);
+   if(await one("SELECT 1 AS x FROM orders WHERE user_id=? AND status='paid' LIMIT 1",id)||await one('SELECT 1 AS x FROM entitlements WHERE user_id=? LIMIT 1',id))fail('This account has paid or has a design unlocked, so it cannot be deleted here.',409);
+   // Every statement re-checks "never paid, nothing unlocked", so a payment landing mid-delete leaves the customer untouched.
+   const safe=" AND NOT EXISTS(SELECT 1 FROM orders WHERE user_id=? AND status='paid') AND NOT EXISTS(SELECT 1 FROM entitlements WHERE user_id=?)";
+   const step=sql=>d.prepare(sql+safe).bind(id,id,id);
+   await d.batch([
+    step('DELETE FROM sessions WHERE user_id=?'),
+    step("DELETE FROM orders WHERE status!='paid' AND user_id=?"),
+    step('DELETE FROM booking_items WHERE booking_id IN (SELECT id FROM bookings WHERE user_id=?)'),
+    step('DELETE FROM booking_payments WHERE booking_id IN (SELECT id FROM bookings WHERE user_id=?)'),
+    step('DELETE FROM bookings WHERE user_id=?'),
+    d.prepare('DELETE FROM studio_drafts WHERE owner=?'+safe).bind(id,id,id),
+    d.prepare('DELETE FROM workspaces WHERE owner=?'+safe).bind(id,id,id),
+    d.prepare('DELETE FROM users WHERE id=?'+safe).bind(id,id,id)
+   ]);
+   return json({deleted:true});
   }
   if(name==='coupons'){
    if(request.method==='GET')return json({coupons:await all('SELECT * FROM coupons ORDER BY created_at DESC')});
