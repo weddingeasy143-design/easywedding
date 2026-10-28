@@ -12,6 +12,14 @@ async function rateHit(env,name,request,limit,windowSec){
   if(row&&row.count>limit)fail('Too many attempts. Please wait a little and try again.',429);
  }catch(e){if(e&&e.status===429)throw e;}
 }
+async function emailHit(env,email,limit,windowSec){
+ const now=Math.floor(Date.now()/1000),win=Math.floor(now/windowSec),bucket='fe:'+(await sha256hex(email)).slice(0,24)+':'+win;
+ try{
+  await db(env).prepare('INSERT INTO rate_limits(bucket,count,expires_at) VALUES(?,?,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1').bind(bucket,1,(win+1)*windowSec).run();
+  const row=await db(env).prepare('SELECT count FROM rate_limits WHERE bucket=?').bind(bucket).first();
+  if(row&&row.count>limit)fail('Too many attempts for this email. Please try again in an hour.',429);
+ }catch(e){if(e&&e.status===429)throw e;}
+}
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 const db=env=>{if(!env.DB)fail('Wedding storage is unavailable. Please try again.',503);return env.DB;};
 const textEnc=new TextEncoder();
@@ -166,7 +174,7 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  // Clean URLs: the .html pages redirect to their extension-less address.
- const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright','/register.html':'/register'};
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright','/register.html':'/register','/forgot-password.html':'/forgot-password'};
  if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
  // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
  if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
@@ -350,6 +358,28 @@ export default {async fetch(request,env){
   if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
   return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
  }
+
+ // Forgot password: the email AND the mobile number used when paying must match; then the customer sets a new password.
+ if((path==='/api/auth/forgot'||path==='/api/auth/reset')&&request.method==='POST'){
+  await rateHit(env,'forgot',request,15,600);
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const input=await body(request,4000);
+  const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',phone=typeof input?.phone==='string'?input.phone.replace(/\D/g,'').slice(-10):'';
+  if(email)await emailHit(env,email,10,3600);
+  const noMatch=()=>fail('We could not match these details. Check the email and the mobile number you used when you paid.',404);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)||!/^[6-9]\d{9}$/.test(phone))noMatch();
+  if(email===await adminEmail(env))fail('The admin password is set in Cloudflare (ADMIN_PASSWORD), not on this page.',403);
+  const account=await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first();
+  const matched=account&&await db(env).prepare("SELECT 1 AS ok FROM orders WHERE user_id=? AND status='paid' AND phone_hash=? LIMIT 1").bind(account.id,await sha256hex(email+':'+phone)).first();
+  if(!matched)noMatch();
+  if(path==='/api/auth/forgot')return json({ok:true});
+  const fresh=typeof input?.password==='string'?input.password:'';
+  if(fresh.length<8)fail('Please choose a password of at least 8 characters.');
+  if(fresh.length>72)fail('Please choose a shorter password (72 characters at most).');
+  await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(fresh),account.id).run();
+  await db(env).prepare('DELETE FROM sessions WHERE user_id=?').bind(account.id).run();
+  return json({ok:true});
+ }
  if(path==='/api/auth/logout'&&request.method==='POST'){
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
   const token=sessionToken(request);
@@ -483,7 +513,7 @@ export default {async fetch(request,env){
    if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
    const input=await body(request,5000);
    const slug=String(input?.slug||'').trim().toLowerCase();
-   const RESERVED=['register','boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   const RESERVED=['forgot-password','register','boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
    if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
    const invitationId=String(input?.invitationId||'');
    const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
@@ -512,7 +542,8 @@ export default {async fetch(request,env){
   let coupon=null;if(input?.coupon){coupon=await couponFor(env,input.coupon,amount);amount=coupon.final;}
   const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created',coupon:coupon?coupon.code:null};
   const now=new Date().toISOString();
-  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise,signup_name,signup_email,signup_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0,guestSignup?guestSignup.name:null,guestSignup?guestSignup.email:null,guestSignup?guestSignup.hash:null).run();
+  const phoneHash=await sha256hex(String(authUser.email).toLowerCase()+':'+phone);
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise,signup_name,signup_email,signup_hash,phone_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0,guestSignup?guestSignup.name:null,guestSignup?guestSignup.email:null,guestSignup?guestSignup.hash:null,phoneHash).run();
   try{
    let made;
    if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
@@ -602,7 +633,7 @@ export default {async fetch(request,env){
    const term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
    let sql="SELECT u.id,u.email,u.name,u.created_at,(SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS paid_orders,(SELECT COALESCE(SUM(amount_paise),0) FROM orders o WHERE o.user_id=u.id AND o.status='paid') AS spent,(SELECT group_concat(design_id) FROM entitlements e WHERE e.user_id=u.id) AS designs FROM users u WHERE 1=1";const bind=[];
    if(term){sql+=' AND (lower(u.email) LIKE ? OR lower(u.name) LIKE ?)';bind.push('%'+term+'%','%'+term+'%');}
-   return json({customers:await all(sql+' ORDER BY u.created_at DESC LIMIT 300',...bind)});
+   return json({customers:await all(sql+' ORDER BY u.created_at DESC LIMIT 1000',...bind)});
   }
   if(name==='coupons'){
    if(request.method==='GET')return json({coupons:await all('SELECT * FROM coupons ORDER BY created_at DESC')});
