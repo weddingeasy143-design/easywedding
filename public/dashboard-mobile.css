@@ -1,0 +1,54 @@
+/* Dashboard: clearer menu on every screen, and a proper phone layout (one-line logo, bottom tabs, menu drawer with backdrop, 44px touch targets). */
+.nav-group{margin:18px 10px 6px;font:700 11px/1.2 var(--sans,system-ui);letter-spacing:.14em;text-transform:uppercase;color:#e6c898;opacity:.75}
+.sidebar-close{display:none}
+.bottom-nav,.nav-backdrop{display:none}
+@media(max-width:850px){
+ /* top bar: one clean line */
+ .topbar{height:64px;padding:0 12px;gap:8px;position:sticky;top:0;z-index:20}
+ .mobile-brand{display:block;flex:none;line-height:0}
+ .mobile-brand .brand-logo-crop{width:118px}
+ .breadcrumb{display:block;margin-right:auto;font-size:14px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .breadcrumb>span,.breadcrumb{color:inherit}
+ .breadcrumb>span:first-child{display:none}
+ .top-actions .account-chip,.top-actions [data-action="pdf"],.top-actions #backup-button{display:none!important}
+ #menu-button{min-width:44px;min-height:44px;font-size:22px}
+ /* menu drawer */
+ .sidebar{width:min(300px,86vw);padding-top:20px;overflow-y:auto}
+ .sidebar-close{display:grid;place-items:center;position:absolute;top:10px;right:10px;width:44px;height:44px;border:0;border-radius:50%;background:#ffffff1a;color:#fff7ec;font-size:26px;cursor:pointer}
+ .sidebar .brand{margin-top:34px}
+ .sidebar nav button,.sidebar-bottom .account-button{min-height:48px}
+ .nav-backdrop{position:fixed;inset:0;z-index:24;background:rgba(20,5,10,.6);backdrop-filter:blur(2px)}
+ body.nav-open .nav-backdrop{display:block}
+ body.nav-open{overflow:hidden}
+ /* bottom tabs */
+ .bottom-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:22;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#5a1730,#3b111b);border-top:1px solid #ffffff26;box-shadow:0 -6px 22px rgba(20,5,10,.35)}
+ .bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;border:0;border-radius:12px;background:none;color:#ead9cb;font:600 11px/1.1 var(--sans,system-ui);cursor:pointer;touch-action:manipulation}
+ .bottom-nav button i,.bottom-nav button svg{width:22px;height:22px}
+ .bottom-nav button.on{background:#ffffff1f;color:#ffe29a}
+ #main-content{padding:20px 16px calc(92px + env(safe-area-inset-bottom))}
+ .app-footer{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+ .royal-motion-toggle{bottom:calc(74px + env(safe-area-inset-bottom))!important;left:10px!important}
+ /* touch targets */
+ .button,button.text-link,.text-link{min-height:44px}
+ .text-link{display:inline-flex;align-items:center}
+ input[type=checkbox]{width:24px;height:24px}
+ label:has(>input[type=checkbox]){min-height:44px;display:flex;align-items:center;gap:12px}
+ select,input:not([type=checkbox]):not([type=radio]),textarea{min-height:44px;font-size:16px}
+ .hero-text{max-width:100%}
+}
+@media(max-width:420px){.stats-grid{grid-template-columns:1fr 1fr;gap:10px}.stat-value{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* Invitation studio design cards: the artwork is fully visible, the name sits under it (never on top of it). */
+.invitation-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.template-card{height:auto!important;margin:0!important;display:flex;flex-direction:column;background:#fffaf3;border-radius:12px;padding:0;position:relative}
+.template-card img{height:auto!important;aspect-ratio:2/3;object-fit:cover;object-position:center top;display:block}
+.template-card span{position:static!important;inset:auto!important;background:none!important;color:#4a1425!important;padding:10px 12px 12px!important;font:700 15px/1.3 var(--sans,system-ui)!important;display:block}
+.template-card span small{display:block;margin-top:3px;font:400 12px/1.35 var(--sans,system-ui);color:#7a5b60}
+.template-card.active{border-color:var(--gold,#c99a3d)!important;box-shadow:0 0 0 3px #c99a3d!important}
+.template-card.active::after{content:"Selected \2713";position:absolute;top:8px;right:8px;background:#1d7a3a;color:#fff;font:700 11px/1 var(--sans,system-ui);padding:5px 9px;border-radius:999px}
+.your-design h3{margin:2px 0 6px;font-size:24px}
+@media(min-width:1100px){.invitation-theme-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.invitation-theme-grid{grid-column:1/-1}
+.template-card span small{color:#7a5b60!important;opacity:1!important}
+@media(max-width:850px){.royal-motion-toggle{z-index:20!important}body.nav-open .royal-motion-toggle{display:none!important}}
