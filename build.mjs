@@ -13,6 +13,7 @@ await rm('dist',{recursive:true,force:true});
 await mkdir('dist/server',{recursive:true});
 await cp('public','dist/client',{recursive:true});
 await build({entryPoints:['public/planner.js'],bundle:true,format:'esm',target:'es2022',outfile:'dist/client/planner.js',minify:true});
+await build({entryPoints:['public/bookings.js'],bundle:true,format:'esm',target:'es2022',outfile:'dist/client/bookings.js',minify:true});
 await build({entryPoints:['public/invitation-motion.js'],bundle:true,format:'esm',target:'es2022',outfile:'dist/client/invitation-motion.js',minify:true});
 await build({entryPoints:['server/worker.js'],bundle:true,format:'esm',target:'es2022',platform:'browser',outfile:'dist/server/index.js',minify:true});
 await mkdir('dist/.openai',{recursive:true});
