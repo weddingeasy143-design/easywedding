@@ -19,7 +19,7 @@
       "binding": "DB",
       "database_name": "easy-wedding",
       // Replace with the id printed by: npx wrangler d1 create easy-wedding
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "353076a9-8b19-42d0-9fa0-97d223c408ea",
       "migrations_dir": "drizzle"
     }
   ],
