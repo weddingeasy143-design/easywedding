@@ -100,3 +100,5 @@ body.mode-owner .theme-fieldset .theme-help{display:none}
 .bk-actions{display:flex;gap:10px;margin-top:8px}
 .bk-payform{display:grid;grid-template-columns:130px 140px 130px 1fr auto auto;gap:8px;align-items:end;margin-top:10px}.bk-payform input,.bk-payform select{margin-top:0}
 @media(max-width:700px){.bk-sum,.bk-money{grid-template-columns:1fr}.bk-grid,.bk-adv{grid-template-columns:1fr}.bk-svc{grid-template-columns:1fr 110px 32px}.bk-payform{grid-template-columns:1fr 1fr}}
+
+.ewp-coupon{display:flex;gap:8px;margin:12px 0 4px}.ewp-coupon input{flex:1;padding:10px 12px;border:1px solid #d9c6b2;border-radius:10px;font-size:15px;text-transform:uppercase}.ewp-coupon button{padding:10px 16px}
