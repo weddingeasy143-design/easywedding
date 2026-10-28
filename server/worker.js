@@ -336,7 +336,7 @@ export default {async fetch(request,env){
   if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
   const ownerEmail=await adminEmail(env);
-  if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail('This account does not have admin access. Please sign in with the admin account.',403);
+  if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
   return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
  }
  if(path==='/api/auth/logout'&&request.method==='POST'){
