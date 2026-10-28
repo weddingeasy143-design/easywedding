@@ -95,7 +95,7 @@ function validateState(s){
  return s;
 }
 async function body(req,max=800000){const t=await req.text();if(t.length>max)fail('This wedding plan is too large.',413);try{return JSON.parse(t)}catch{fail('Invalid request.')}}
-const MAINTENANCE_HTML='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Easy Wedding — Opening Very Soon</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#571c24,#3d1119);color:#f7ead2;font-family:Georgia,serif;text-align:center;padding:24px}main{max-width:520px}h1{font-size:2.4rem;margin:.2em 0;color:#e9c979}p{line-height:1.6;font-family:system-ui,sans-serif}a{color:#e9c979}.ring{font-size:2rem;letter-spacing:.3em}</style></head><body><main><div class="ring" aria-hidden="true">&#128141;</div><h1>Easy Wedding</h1><p>We are putting the final touches on something beautiful.</p><p><strong>Opening very soon.</strong></p><p>Questions in the meantime? Call or WhatsApp us on <a href="https://wa.me/918789991983">+91 87899 91983</a> — any day between 10 AM and 8 PM.</p></main><a href=\"/admin.html\" aria-label=\"Admin\" title=\"Admin\" style=\"position:fixed;right:14px;bottom:14px;width:38px;height:38px;border-radius:50%;background:#571c24;border:1px solid #c9a24b;display:flex;align-items:center;justify-content:center;opacity:.85;text-decoration:none\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#e8cf9a\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg></a></body></html>';
+const MAINTENANCE_HTML='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Easy Wedding — Opening Very Soon</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#571c24,#3d1119);color:#f7ead2;font-family:Georgia,serif;text-align:center;padding:24px}main{max-width:520px}h1{font-size:2.4rem;margin:.2em 0;color:#e9c979}p{line-height:1.6;font-family:system-ui,sans-serif}a{color:#e9c979}.ring{font-size:2rem;letter-spacing:.3em}</style></head><body><main><div class="ring" aria-hidden="true">&#128141;</div><h1>Easy Wedding</h1><p>We are putting the final touches on something beautiful.</p><p><strong>Opening very soon.</strong></p><p>Questions in the meantime? Call or WhatsApp us on <a href="https://wa.me/918789991983">+91 87899 91983</a> — any day between 10 AM and 8 PM.</p></main><a href=\"/boss\" aria-label=\"Admin\" title=\"Admin\" style=\"position:fixed;right:14px;bottom:14px;width:38px;height:38px;border-radius:50%;background:#571c24;border:1px solid #c9a24b;display:flex;align-items:center;justify-content:center;opacity:.85;text-decoration:none\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#e8cf9a\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg></a></body></html>';
 async function maintenanceState(env){
  try{
   const rows=await db(env).prepare("SELECT key,value FROM site_settings WHERE key IN ('maintenance','maint_secret')").all();
@@ -113,7 +113,7 @@ export default {async fetch(request,env){
   }
   const cookieOk=!!maint.secret&&(request.headers.get('Cookie')||'').split(';').some(c=>c.trim()==='ew_open='+maint.secret);
   const callback=path.startsWith('/api/payments/webhook/')||path==='/api/payments/payu-return';
-  const adminPath=path==='/admin.html'||path==='/admin.js'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
+  const adminPath=path==='/boss'||path==='/boss/'||path==='/admin.js'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
   let adminOk=false;
   if(!cookieOk&&!adminPath){try{const u=await currentUser(request,env);adminOk=!!u&&u.email.toLowerCase()===(await adminEmail(env));}catch{adminOk=false;}}
   if(!cookieOk&&!callback&&!adminPath&&!adminOk){
@@ -125,6 +125,9 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite.html?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  if(path==='/')return env.ASSETS.fetch(new Request(new URL('/landing.html',url),request));
+ // Admin lives at /boss only; the default /admin and /admin.html paths are not served.
+ if(path==='/boss'||path==='/boss/')return env.ASSETS.fetch(new Request(new URL('/admin.html',url),request));
+ if(path==='/admin'||path==='/admin/'||path==='/admin.html')return new Response('Not found.',{status:404,headers:{'Content-Type':'text/plain; charset=utf-8','X-EW-Origin':EW_ORIGIN}});
  if(!path.startsWith('/api/')){
   if(!/\.[a-zA-Z0-9]+$/.test(path))return env.ASSETS.fetch(new Request(new URL(path.replace(/\/+$/,'')+'.html',url),request));
   return env.ASSETS.fetch(request);
@@ -228,6 +231,8 @@ export default {async fetch(request,env){
   if(password.length<8)fail('Please choose a password of at least 8 characters.');
   if(password.length>72)fail('Please choose a shorter password (72 characters at most).');
   if(await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first())fail('An account with this email already exists. Please log in instead.',409);
+  // With ADMIN_PASSWORD set, the owner email can only be created by logging in with the secret (nobody can register it first).
+  if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase())fail('An account with this email already exists. Please log in instead.',409);
   const id=crypto.randomUUID();
   await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,name,await makePasswordRecord(password),new Date().toISOString()).run();
   return json({user:{id,email,name,admin:email===(await adminEmail(env))}},201,{'Set-Cookie':sessionCookie(await startSession(env,id),2592000)});
@@ -237,6 +242,14 @@ export default {async fetch(request,env){
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
   const input=await body(request,20000);
   const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  // Owner account from Worker secrets: ADMIN_EMAIL + ADMIN_PASSWORD always sign in.
+  // The account is created on first use and its stored password follows the secret.
+  if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase()&&safeEq(password,String(env.ADMIN_PASSWORD))){
+   let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
+   if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
+   else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
+   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),2592000)});
+  }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
   if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
