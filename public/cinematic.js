@@ -68,7 +68,7 @@
     // Lenis smooth scroll, wired to GSAP's ticker (created once).
     if (window.Lenis && !lenis) {
       try {
-        lenis = new window.Lenis({ lerp: 0.09, smoothWheel: true });
+        lenis = new window.Lenis({ lerp: 0.1, smoothWheel: true, wheelMultiplier: 1, touchMultiplier: 1.4 });
         lenis.on('scroll', window.ScrollTrigger.update);
         lenisTicker=function(time){if(lenis)lenis.raf(time*1000);};
         window.__ewLenis=lenis;

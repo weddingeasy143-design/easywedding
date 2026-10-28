@@ -56,3 +56,11 @@
 /* Footer social icons: a full-size tap target above any decoration, no double-tap delay on phones. */
 .socials a,.socials button{position:relative;z-index:3;min-width:44px;min-height:44px;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .site-footer a,.site-footer button{touch-action:manipulation}
+
+/* Smooth scrolling: the page's own smooth-scroll engine (Lenis) must not fight the browser's native smooth scrolling, and the hero image gets its own GPU layer. */
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+.lenis.lenis-stopped{overflow:hidden}
+.lenis.lenis-scrolling iframe{pointer-events:none}
+.cine-hero-bg,[data-parallax]{will-change:transform;backface-visibility:hidden}

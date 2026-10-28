@@ -1,0 +1,22 @@
+[hidden]{display:none!important}
+:root{--maroon:#75152e;--gold:#c99a3d;--cream:#fdf8f1;--ink:#33241d;--mute:#6f5a4c}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--cream);color:var(--ink);font:17px/1.7 Georgia,'Times New Roman',serif;-webkit-font-smoothing:antialiased}
+a{color:var(--maroon)}
+.lg-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px max(5%,18px);background:#fffaf3;border-bottom:1px solid #e7d8c6;position:sticky;top:0;z-index:5}
+.lg-brand img{display:block;width:150px;height:auto}
+.lg-head nav{display:flex;gap:22px;flex-wrap:wrap;font:600 15px/1 system-ui,sans-serif}.lg-head nav a{text-decoration:none;padding:8px 2px}
+.lg-main{max-width:780px;margin:0 auto;padding:52px 22px 40px}
+.lg-eyebrow{margin:0 0 8px;font:700 12px/1 system-ui,sans-serif;letter-spacing:.22em;color:var(--gold)}
+h1{margin:0 0 10px;color:var(--maroon);font-size:clamp(34px,6vw,50px);line-height:1.12;font-weight:400}
+.lg-lead{margin:0 0 28px;color:var(--mute);font-size:19px;font-style:italic}
+.lg-body{background:#fff;border:1px solid #e7d8c6;border-radius:16px;padding:28px clamp(18px,4vw,36px);box-shadow:0 2px 14px rgba(117,21,46,.06)}
+.lg-body>h2,.lg-body .lg-h2{display:none}
+.lg-body h3,.lg-body strong{color:var(--maroon)}.lg-body p{margin:0 0 14px}.lg-body ul,.lg-body ol{margin:0 0 16px;padding-left:22px}.lg-body li{margin:6px 0}
+.lg-body details{border-bottom:1px solid #efe3d2;padding:10px 0}.lg-body summary{cursor:pointer;font-weight:700;color:var(--maroon)}
+.lg-body .button,.lg-btn{display:inline-block;margin:6px 10px 6px 0;padding:12px 22px;border-radius:10px;background:var(--maroon);color:#fff!important;text-decoration:none;font:700 15px/1 system-ui,sans-serif;border:0;cursor:pointer}
+.lg-back{margin:26px 0 0}
+.lg-foot{background:#4a0d1d;color:#f1dcc0;padding:30px max(5%,18px);text-align:center;font:14px/1.7 system-ui,sans-serif}
+.lg-foot nav{display:flex;gap:10px 24px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}.lg-foot a{color:#f1dcc0;text-decoration:none;font-weight:600}.lg-foot a[aria-current]{color:var(--gold)}
+.lg-foot p{margin:0;color:#d9bfa0}
+@media(max-width:600px){.lg-head nav{gap:14px;font-size:14px}.lg-brand img{width:120px}.lg-main{padding-top:34px}}
