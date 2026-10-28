@@ -8,7 +8,7 @@ const root=document.querySelector('#reference-root');
 let config=readConfig(location);
 const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
-const model=invitationModel(config,seed,new URL('../invite.html',location.href),params.get('id'));
+const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'));
 let audio=config.audioUrl;
 if(audio.startsWith('local-audio:')){try{audio=(await resolveSong(audio)).url;}catch{audio='';}}
 model.site.music={aartiUrl:'',weddingUrl:'',universalUrl:audio,universalEnabled:config.music&&!!audio,universalVolume:.55,universalFadeIn:2,universalFadeOut:1,universalTrimStart:0,universalTrimEnd:0};

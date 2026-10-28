@@ -29,7 +29,7 @@ if(!isEvidence){
  if(r.story)wedding.story=r.story;if(r.events)wedding.events=r.events;if(r.gallery)wedding.gallery=r.gallery;
  if(config.gallery.length&&!r.gallery)wedding.gallery=config.gallery.map((src,i)=>({id:'photo-'+i,src,caption:'Our moment '+(i+1),sortOrder:i,isCover:i===0}));
  site.share.whatsappMessage=r.share?.whatsappMessage||"You're invited to the wedding of {groom} & {bride} on {date}! {link}";
- Object.assign(site.share,r.share||{});const snapshotId=new URLSearchParams(location.search).get('id');const guestUrl=new URL('../invite.html',location.href);if(snapshotId){guestUrl.searchParams.set('id',snapshotId);site.share.shareUrl=guestUrl.href}else site.share.shareUrl=invitationUrl(config,guestUrl);
+ Object.assign(site.share,r.share||{});const snapshotId=new URLSearchParams(location.search).get('id');const guestUrl=new URL('../invite',location.href);if(snapshotId){guestUrl.searchParams.set('id',snapshotId);site.share.shareUrl=guestUrl.href}else site.share.shareUrl=invitationUrl(config,guestUrl);
  let audio=config.audioUrl;if(audio.startsWith('local-audio:')){try{audio=(await resolveSong(audio)).url}catch{audio=''}}
  site.music={aartiUrl:'',weddingUrl:'',universalUrl:audio,universalEnabled:config.music&&!!audio,universalVolume:.55,universalFadeIn:2,universalFadeOut:1,universalTrimStart:0,universalTrimEnd:0};
  for(const e of wedding.events){e.venue=config.venue;e.address=[config.venue,config.address,config.city].join(', ');e.mapUrl=site.content.venueMapUrl;}

@@ -2,7 +2,7 @@ import {readConfig,encodeConfig} from '../config.js';
 import {referenceDesigns} from '../reference-designs.js';
 const config=readConfig(location),worlds=document.querySelector('#worlds'),dialog=document.querySelector('#preview-dialog');
 const $=s=>document.querySelector(s);
-const studioUrl=theme=>'/studio.html?demo=1#card='+encodeConfig({...config,theme});
+const studioUrl=theme=>'/studio?demo=1#card='+encodeConfig({...config,theme});
 $('#back-to-studio').href=studioUrl(config.theme);$('#footer-studio').href=studioUrl(config.theme);
 function preview(design,index){
  $('#preview-title').textContent=design.name;$('#preview-number').textContent=String(index+1).padStart(2,'0')+' / '+(design.premium?'PREMIUM ORIGINAL':'WEDDING COLLECTION');
@@ -28,7 +28,7 @@ for(const [index,design] of Object.values(referenceDesigns).entries()){
  const palette=document.createElement('div');palette.className='world-palette';palette.setAttribute('aria-label',design.name+' colour palette');for(const color of design.palette.slice(0,6)){const swatch=document.createElement('span');swatch.style.background=color;swatch.setAttribute('aria-hidden','true');palette.append(swatch);}
  const capacity=document.createElement('p');capacity.className='world-capacity';capacity.textContent='23 photos · 4 events · your song · every section';
  const actions=document.createElement('div');actions.className='world-actions';const view=document.createElement('button');view.type='button';view.textContent='Preview';view.onclick=()=>preview(design,index);
- const edit=document.createElement('a');edit.href='/studio.html?demo=1&template='+design.id;edit.textContent='Use design →';edit.addEventListener('click',()=>{edit.href=studioUrl(design.id);});actions.append(view,edit);
+ const edit=document.createElement('a');edit.href='/studio?demo=1&template='+design.id;edit.textContent='Use design →';edit.addEventListener('click',()=>{edit.href=studioUrl(design.id);});actions.append(view,edit);
  words.append(meta,title,description,palette,capacity,actions);item.append(art,words);worlds.append(item);
 }
 $('#preview-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>$('#preview-stage').replaceChildren());
