@@ -22,6 +22,6 @@
       "database_id": "353076a9-8b19-42d0-9fa0-97d223c408ea",
       "migrations_dir": "drizzle"
     }
-  ],
+  ], "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "easy-wedding-photos" }],
   "observability": { "enabled": true }
 }
