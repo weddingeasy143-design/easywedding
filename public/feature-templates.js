@@ -119,7 +119,7 @@ if (dialog) {
 
   function openPreview(design) {
     title.textContent = design.name;
-    makeLink.href = 'studio?template=' + design.id;
+    makeLink.href = '/register?template=' + design.id;
     if (loading) loading.hidden = false;
     idleTicks = 0;
     pressTicks = 0;

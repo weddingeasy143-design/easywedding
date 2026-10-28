@@ -74,7 +74,7 @@ function renderPay(){const d=payState.pricing;if(!d)return;const row=payState.ad
 $('#pay-pass').addEventListener('click',()=>{resetCoupon();payState.addon=null;payState.design='ALL';$('#pay-design-line').textContent='The All-Designs Pass unlocks every design for your wedding.';renderPay();});
 $('#pay-close').addEventListener('click',()=>$('#pay-dialog').close());
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.append(s);});}
-function onPaid(vd){$('#pay-dialog').close();if(vd&&vd.signedIn){/* the account now exists and is signed in: open the invitation workspace */location.replace('/workspace');return;}if(payState.addon){payState.addon=null;$('#save-status').textContent='Payment received — your add-on is active.';initAddons();return;}$('#save-status').textContent='Payment received — your design is unlocked.';publishShare();}
+function onPaid(vd){$('#pay-dialog').close();if(vd&&vd.signedIn){/* the account now exists and is signed in: open the invitation workspace */location.replace('/dashboard');return;}if(payState.addon){payState.addon=null;$('#save-status').textContent='Payment received — your add-on is active.';initAddons();return;}$('#save-status').textContent='Payment received — your design is unlocked.';publishShare();}
 async function startPayment(){const phone=$('#pay-phone').value.replace(/\D/g,''),err=$('#pay-error');if(!/^[6-9]\d{9}$/.test(phone)){err.textContent='Please enter a valid 10-digit mobile number.';return;}const gateway=document.querySelector('input[name="ewp-gateway"]:checked')?.value;if(!gateway){err.textContent='Please choose a payment option.';return;}const btn=$('#pay-now');btn.disabled=true;err.textContent='';
  try{const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({designId:payState.addon||payState.design,gateway,phone,coupon:payState.coupon?payState.coupon.code:undefined,signup:payState.signup||undefined})});const data=await r.json();if(!r.ok)throw Error(data.error||'Payment could not be started.');
 if(data.relogin){/* an earlier unpaid account was recognised and signed in: continue as that account */await window.EWAuth.refresh();payState.signup=null;document.body.classList.remove('mode-guest');document.body.classList.add('mode-unpaid');btn.disabled=false;return startPayment();}
@@ -89,7 +89,7 @@ try{const r=await fetch('/api/coupon/check',{method:'POST',headers:{'Content-Typ
 catch(e){payState.coupon=null;msg.textContent=e.message;renderPay();}});
 (async()=>{const q=new URLSearchParams(location.search),orderId=q.get('order_id'),payFlag=q.get('payment');if(!orderId&&!payFlag)return;history.replaceState(null,'',location.pathname);
  const afterPay=()=>{if(sessionStorage.getItem('ew_addon_after_pay')){sessionStorage.removeItem('ew_addon_after_pay');$('#save-status').textContent='Payment received — your add-on is active.';initAddons();}else if(sessionStorage.getItem('ew_publish_after_pay')){sessionStorage.removeItem('ew_publish_after_pay');openShare();}};
- if(orderId){try{const v=await fetch('/api/checkout/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});if(v.ok){const vd=await v.json().catch(()=>({}));if(vd.signedIn){location.replace('/workspace');return;}$('#save-status').textContent='Payment received — thank you!';afterPay();}}catch{}}
+ if(orderId){try{const v=await fetch('/api/checkout/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});if(v.ok){const vd=await v.json().catch(()=>({}));if(vd.signedIn){location.replace('/dashboard');return;}$('#save-status').textContent='Payment received — thank you!';afterPay();}}catch{}}
  else if(payFlag==='success'){$('#save-status').textContent='Payment received — thank you!';afterPay();}
  else if(payFlag==='failed'){$('#save-status').textContent='Payment was not completed. You can try again when you create your link.';}})();
 
@@ -196,7 +196,7 @@ async function initFlow(){
  try{const s=await (await fetch('/api/session')).json();user=s.user||null;}catch{}
  if(user){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();owned=d.admin?['ALL']:(d.designs||[]).filter(x=>!x.startsWith('addon-'));}}catch{}}
  const entitled=owned.length>0;
- if(path==='/workspace'||path==='/workspace.html'){if(!user){location.replace('/?auth=login&next=%2Fworkspace');return;}if(!entitled){location.replace('/studio');return;}}
+ if(path==='/dashboard'){if(!user){location.replace('/login?next=%2Fdashboard');return;}if(!entitled){location.replace('/studio');return;}}
  const b=document.body;b.classList.toggle('mode-guest',!user);b.classList.toggle('mode-unpaid',!!user&&!entitled);b.classList.toggle('mode-owner',entitled);
  if(entitled){ownerSetup(owned);document.dispatchEvent(new CustomEvent('ew:owner'));return;}
  $('#share-top').textContent='Preview & continue →';$('#share-bottom').textContent='Preview & continue →';
