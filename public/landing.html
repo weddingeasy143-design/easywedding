@@ -39,24 +39,13 @@
     <div><p class="eyebrow">EASY WEDDING</p><h2 id="auth-title">Welcome back</h2></div>
     <button type="button" id="auth-close" class="icon-button" aria-label="Close">×</button>
   </div>
-  <div class="auth-tabs" role="tablist">
-    <button role="tab" id="tab-login" aria-selected="true">Login</button>
-    <button role="tab" id="tab-register" aria-selected="false">Create account</button>
-  </div>
   <form id="auth-login-form" class="auth-form">
     <label>Email<input name="email" type="text" inputmode="email" required="" placeholder="you@example.com" autocomplete="email"></label>
     <label>Password<input name="password" type="password" required="" placeholder="••••••••" autocomplete="current-password"></label>
     <p class="field-help">Sign in with the email and password you registered with. Forgot your password? <a href="https://wa.me/918789991983?text=Hello%20Easy%20Wedding%2C%20I%20forgot%20my%20password." target="_blank" rel="noopener">WhatsApp us</a> from your number and we will reset it.</p>
+    <p class="field-help">New here? <a href="/register">Create your account</a> — registration has its own page; your account is created when your payment succeeds.</p>
     <p class="auth-error" role="alert" hidden=""></p>
     <button class="button gold wide" type="submit">Login →</button>
-  </form>
-  <form id="auth-register-form" class="auth-form" hidden="">
-    <label>Your name<input name="name" type="text" required="" placeholder="Aarav &amp; Diya" autocomplete="name"></label>
-    <label>Email<input name="email" type="text" inputmode="email" required="" placeholder="you@example.com" autocomplete="email"></label>
-    <label>Password<input name="password" type="password" required="" placeholder="At least 8 characters" autocomplete="new-password"></label>
-    <p class="field-help">Your wedding plan saves to your account and follows you on every device.</p>
-    <p class="auth-error" role="alert" hidden=""></p>
-    <button class="button gold wide" type="submit">Create free account →</button>
   </form>
 </dialog>
 
