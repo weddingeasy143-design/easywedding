@@ -10,7 +10,7 @@ session cookie, stored in D1). Planning and all invitation previews are free. Wh
 couple publishes an invitation the studio asks them to pay for that design (or the
 All-Designs Pass) with Razorpay or Cashfree; the design unlocks as soon as the
 payment is verified (client signature check) or the gateway webhook arrives.
-Prices live in D1 and are edited at `/admin.html`.
+Prices live in D1 and are edited at `/boss`.
 
 1. Install and build: `npm ci`, then `npm run build` (needs Python 3; on Windows
    `python` is used automatically, or set `PYTHON`).
@@ -38,7 +38,7 @@ Prices live in D1 and are edited at `/admin.html`.
      `payment.captured` and `order.paid`, secret = `RAZORPAY_WEBHOOK_SECRET`.
    - Cashfree → `https://<domain>/api/payments/webhook/cashfree` (signed with
      the Cashfree secret key).
-6. Register on the site with the `ADMIN_EMAIL` address to open `/admin.html`.
+6. Register on the site with the `ADMIN_EMAIL` address to open `/boss`.
    There you can switch the shop open, edit prices, see orders, **unlock a design
    manually** for a couple who paid you directly (UPI/WhatsApp), and **reset a
    password** for a couple who forgot theirs (there is no email provider yet).

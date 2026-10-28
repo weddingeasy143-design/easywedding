@@ -5,6 +5,9 @@
 
 # Account that can open /admin.html (prices, orders, maintenance switch).
 ADMIN_EMAIL=you@example.com
+# With ADMIN_PASSWORD set, ADMIN_EMAIL + ADMIN_PASSWORD signs in directly at /boss
+# (the account is created on first login; nobody else can register that email).
+ADMIN_PASSWORD=
 
 # Razorpay — Dashboard → Account & Settings → API Keys.
 # rzp_test_… keys = test mode, rzp_live_… keys = real payments.
