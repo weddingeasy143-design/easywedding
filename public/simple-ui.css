@@ -18,3 +18,24 @@
  .nav-toggle{flex:none;min-width:44px;min-height:44px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* ---- Studio: what is needed vs optional, readable intro, phone-first layout ---- */
+.editor-intro .guide{margin:10px 0 0;padding:12px 14px;border:1px solid #e8c876;border-radius:12px;background:rgba(255,226,154,.12);color:#fff1d6;font:16px/1.5 system-ui,sans-serif}
+.editor-intro .guide b{color:#ffe29a}
+.editor-intro p:not(.eyebrow):not(.guide){color:#f1dcdc}
+.editor-section summary em.req,.editor-section summary em.opt,.guide em.opt{font:700 11px/1 system-ui,sans-serif;font-style:normal;letter-spacing:.04em;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.editor-section summary em.req{background:#e8c876;color:#4a0d1d}
+.editor-section summary em.opt,.guide em.opt{background:rgba(255,255,255,.14);color:#f1dcdc}
+.pb-preview{flex:none;padding:14px 18px;border:2px solid #c99a3d;border-radius:14px;background:#fffaf3;color:#75152e;font:700 15px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+.pay-bar{gap:10px}
+@media(max-width:950px){
+ /* the live preview moves behind the Preview button: the form comes first */
+ .preview-pane{display:none!important}
+ .editor-section summary{min-height:64px}
+ #editor-form input:not([type=checkbox]):not([type=radio]):not([type=file]),#editor-form select,#editor-form textarea{min-height:48px;font-size:16px}
+ #editor-form button,.editor button{min-height:44px}
+ .studio-header #share-top{display:none}
+ .pb-info strong{font-size:14px}.pb-info span{font-size:12px}
+ .pay-big{padding:14px 18px;font-size:16px}
+}
+@media(max-width:480px){.pb-preview{padding:12px 12px;font-size:14px}.pay-big{padding:12px 14px;font-size:15px}.pb-info{flex:1;min-width:0}}

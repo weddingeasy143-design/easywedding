@@ -229,4 +229,5 @@ $('#save-status').textContent='Pay & activate first — your invitation page ope
 }
 document.querySelectorAll('#flow-steps [data-step]').forEach(b=>b.addEventListener('click',()=>goStep(Number(b.dataset.step))));
 $('#pb-pay').addEventListener('click',()=>goStep(3));
+$('#pb-preview')?.addEventListener('click',()=>goStep(2));
 updatePayBar();
