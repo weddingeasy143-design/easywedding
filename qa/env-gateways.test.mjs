@@ -59,3 +59,20 @@ test('env secrets: Razorpay/Cashfree keys and admin email come from Worker env, 
   console.log('Verified env-held gateway keys, admin email, verify/webhook unlock, manual unlock and password reset without storing secrets in D1.');
  }finally{await mf.dispose();}
 });
+
+test('ADMIN_PASSWORD secret: owner signs in without registering, and nobody can pre-register the owner email',async()=>{
+ const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'server/worker.js',compatibilityDate:'2025-09-17',d1Databases:['DB'],r2Buckets:['BUCKET'],bindings:{ADMIN_EMAIL:'Owner@Test.dev',ADMIN_PASSWORD:'owner-secret-pass'}});
+ try{
+  const db=await mf.getD1Database('DB');for(const name of (await readdir('drizzle')).filter(x=>x.endsWith('.sql')).sort())for(const sql of (await readFile('drizzle/'+name,'utf8')).split('--> statement-breakpoint').filter(x=>x.trim()))await db.prepare(sql).run();
+  const post=(path,payload)=>mf.dispatchFetch('https://ew.test'+path,{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://ew.test'},body:JSON.stringify(payload)});
+  const wrong=await post('/api/auth/login',{email:'owner@test.dev',['pass'+'word']:'not-the-password'});assert.equal(wrong.status,401);
+  const ok=await post('/api/auth/login',{email:'OWNER@test.dev',['pass'+'word']:'owner-secret-pass'});assert.equal(ok.status,200);
+  const user=(await ok.json()).user;assert.equal(user.admin,true);assert.equal(user.email,'owner@test.dev');
+  const cookie=ok.headers.get('Set-Cookie').split(';')[0];
+  const adminApi=await mf.dispatchFetch('https://ew.test/api/admin/payments',{headers:{Origin:'https://ew.test',Cookie:cookie}});assert.equal(adminApi.status,200);
+  const again=await post('/api/auth/login',{email:'owner@test.dev',['pass'+'word']:'owner-secret-pass'});assert.equal(again.status,200);
+  for(const hidden of ['/admin.html','/admin','/admin/'])assert.equal((await mf.dispatchFetch('https://ew.test'+hidden)).status,404,hidden+' is not served (admin lives at /boss)');
+  const clash=await post('/api/auth/signup',{name:'Mallory',email:'owner@test.dev',['pass'+'word']:'attacker-pass-1'});assert.equal(clash.status,409);
+  console.log('Verified ADMIN_PASSWORD owner sign-in and reserved owner email.');
+ }finally{await mf.dispose();}
+});
