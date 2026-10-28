@@ -54,7 +54,7 @@ async function razorpayCreate(cfg,order){
 }
 async function cashfreeCreate(cfg,order,user,phone,origin){
  const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
- const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:user.id,customer_name:user.name||'Customer',customer_email:user.email,customer_phone:phone},order_meta:{return_url:origin+'/studio.html?order_id='+order.id}})});
+ const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:user.id,customer_name:user.name||'Customer',customer_email:user.email,customer_phone:phone},order_meta:{return_url:origin+'/studio?order_id='+order.id}})});
  const data=await res.json().catch(()=>null);
  if(!res.ok||!data?.payment_session_id)fail('Payment could not be started. Please try another option.',502);
  return {gateway_order_id:order.id,payload:{gateway:'cashfree',payment_session_id:data.payment_session_id,mode:cfg.mode}};
@@ -122,8 +122,13 @@ export default {async fetch(request,env){
   }
  }
  if(request.method==='GET'&&/^\/[a-z0-9][a-z0-9-]{2,40}$/.test(path)){
-  try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite.html?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
+  try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
+ // Clean URLs: the .html pages redirect to their extension-less address.
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/'};
+ if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
+ // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
+ if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
  if(path==='/')return env.ASSETS.fetch(new Request(new URL('/landing.html',url),request));
  // Admin lives at /boss only; the default /admin and /admin.html paths are not served.
  if(path==='/boss'||path==='/boss/')return env.ASSETS.fetch(new Request(new URL('/admin.html',url),request));
@@ -217,7 +222,7 @@ export default {async fetch(request,env){
    const calc=await sha512hex([cfg.key_secret,get('status'),...udfs,get('email'),get('firstname'),get('productinfo'),get('amount'),get('txnid'),cfg.key_id].join('|'));
    if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(get('txnid')).first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;}}
   }
-  return new Response(null,{status:302,headers:{'Location':'/studio.html?payment='+(ok?'success':'failed')}});
+  return new Response(null,{status:302,headers:{'Location':'/studio?payment='+(ok?'success':'failed')}});
  }
  const authUser=await currentUser(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
@@ -255,6 +260,25 @@ export default {async fetch(request,env){
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
   return json({user:{id:row.id,email:row.email,name:row.name,admin:row.email.toLowerCase()===(await adminEmail(env))}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
  }
+ // Admin-only sign-in used by /boss: a normal registered customer can never get a session here.
+ if(path==='/api/admin/login'&&request.method==='POST'){
+  await rateHit(env,'login',request,20,300);
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const input=await body(request,20000);
+  const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase()&&safeEq(password,String(env.ADMIN_PASSWORD))){
+   let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
+   if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
+   else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
+   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),2592000)});
+  }
+  const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
+  if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
+  if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
+  const ownerEmail=await adminEmail(env);
+  if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail('This account does not have admin access. Please sign in with the admin account.',403);
+  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
+ }
  if(path==='/api/auth/logout'&&request.method==='POST'){
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
   const token=sessionToken(request);
@@ -264,6 +288,61 @@ export default {async fetch(request,env){
  if(!authUser)fail('Sign in to save your wedding workspace.',401);
  const owner=authUser.id;
  if(!['GET','HEAD'].includes(request.method)&&request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+ // ---- My bookings: vendor bookings with their services, the advance and every later payment ----
+ if(path==='/api/bookings'||path.startsWith('/api/bookings/')){
+  const parts=path.split('/').filter(Boolean);
+  const CATS=['pandal','light','dj','catering','decoration','photo','mehndi','makeup','transport','bulk','other'];
+  const money=v=>{const n=Math.round(Number(v)*100);if(!Number.isFinite(n)||n<0||n>100000000000)fail('Please enter a valid amount.');return n;};
+  const day=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))?String(v):'';
+  const clean=(v,n)=>String(v==null?'':v).trim().slice(0,n);
+  const mine=async id=>{const b=await db(env).prepare('SELECT * FROM bookings WHERE id=? AND user_id=?').bind(id,owner).first();if(!b)fail('Booking not found.',404);return b;};
+  const shape=async(rows)=>{
+   if(!rows.length)return [];
+   const ids=rows.map(r=>r.id),marks=ids.map(()=>'?').join(',');
+   const items=(await db(env).prepare('SELECT id,booking_id,service,amount_paise FROM booking_items WHERE booking_id IN ('+marks+') ORDER BY rowid').bind(...ids).all()).results||[];
+   const pays=(await db(env).prepare('SELECT id,booking_id,amount_paise,paid_on,mode,note FROM booking_payments WHERE booking_id IN ('+marks+') ORDER BY paid_on,created_at').bind(...ids).all()).results||[];
+   return rows.map(r=>{const it=items.filter(x=>x.booking_id===r.id),pa=pays.filter(x=>x.booking_id===r.id);const total=it.reduce((s,x)=>s+x.amount_paise,0),paid=pa.reduce((s,x)=>s+x.amount_paise,0);
+    return {id:r.id,vendor:r.vendor_name,phone:r.phone||'',category:r.category,eventDate:r.event_date||'',note:r.note||'',createdAt:r.created_at,
+     items:it.map(x=>({id:x.id,service:x.service,amount:x.amount_paise})),payments:pa.map(x=>({id:x.id,amount:x.amount_paise,paidOn:x.paid_on,mode:x.mode||'',note:x.note||''})),total,paid,balance:total-paid};});
+  };
+  const readItems=input=>{const list=Array.isArray(input?.items)?input.items:[];const out=list.map(x=>({service:clean(x?.service,80),amount:money(x?.amount||0)})).filter(x=>x.service);if(!out.length)fail('Add at least one service, such as Pandal or DJ.');if(out.length>20)fail('A booking can hold up to 20 services.');return out;};
+  const readFields=input=>{const vendor=clean(input?.vendor,80);if(!vendor)fail('Please enter the vendor or contact name.');const phone=clean(input?.phone,20).replace(/[^\d+ ]/g,'');const category=CATS.includes(input?.category)?input.category:'other';return {vendor,phone,category,eventDate:day(input?.eventDate),note:clean(input?.note,300)};};
+  const saveItems=async(bookingId,items)=>{await db(env).prepare('DELETE FROM booking_items WHERE booking_id=?').bind(bookingId).run();for(const it of items)await db(env).prepare('INSERT INTO booking_items(id,booking_id,service,amount_paise) VALUES(?,?,?,?)').bind(crypto.randomUUID(),bookingId,it.service,it.amount).run();};
+  if(parts.length===2){
+   if(request.method==='GET'){const rows=(await db(env).prepare('SELECT * FROM bookings WHERE user_id=? ORDER BY created_at DESC LIMIT 200').bind(owner).all()).results||[];return json({bookings:await shape(rows)});}
+   if(request.method==='POST'){
+    const input=await body(request,20000);const f=readFields(input),items=readItems(input);
+    const count=await db(env).prepare('SELECT COUNT(*) AS n FROM bookings WHERE user_id=?').bind(owner).first();if((count?.n||0)>=200)fail('You have reached the limit of 200 bookings.');
+    const id=crypto.randomUUID(),now=new Date().toISOString(),category=items.length>1&&f.category==='other'?'bulk':f.category;
+    await db(env).prepare('INSERT INTO bookings(id,user_id,vendor_name,phone,category,event_date,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,owner,f.vendor,f.phone,category,f.eventDate,f.note,now,now).run();
+    await saveItems(id,items);
+    const adv=input?.advance&&Number(input.advance.amount)>0?money(input.advance.amount):0,total=items.reduce((s,x)=>s+x.amount,0);
+    if(adv>total)fail('The advance is more than the total amount.');
+    if(adv>0)await db(env).prepare('INSERT INTO booking_payments(id,booking_id,amount_paise,paid_on,mode,note,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,adv,day(input.advance.paidOn)||now.slice(0,10),clean(input.advance.mode,20),'Advance',now).run();
+    const row=await db(env).prepare('SELECT * FROM bookings WHERE id=?').bind(id).first();return json({booking:(await shape([row]))[0]},201);
+   }
+   fail('Not found.',404);
+  }
+  const booking=await mine(parts[2]);
+  if(parts.length===3){
+   if(request.method==='PUT'){const input=await body(request,20000);const f=readFields(input),items=readItems(input);const paid=(await db(env).prepare('SELECT COALESCE(SUM(amount_paise),0) AS s FROM booking_payments WHERE booking_id=?').bind(booking.id).first())?.s||0;if(items.reduce((s,x)=>s+x.amount,0)<paid)fail('The total cannot be lower than the '+(paid/100)+' already paid.');
+    await db(env).prepare('UPDATE bookings SET vendor_name=?,phone=?,category=?,event_date=?,note=?,updated_at=? WHERE id=?').bind(f.vendor,f.phone,f.category,f.eventDate,f.note,new Date().toISOString(),booking.id).run();await saveItems(booking.id,items);
+    const row=await db(env).prepare('SELECT * FROM bookings WHERE id=?').bind(booking.id).first();return json({booking:(await shape([row]))[0]});}
+   if(request.method==='DELETE'){await db(env).prepare('DELETE FROM booking_payments WHERE booking_id=?').bind(booking.id).run();await db(env).prepare('DELETE FROM booking_items WHERE booking_id=?').bind(booking.id).run();await db(env).prepare('DELETE FROM bookings WHERE id=?').bind(booking.id).run();return json({ok:true});}
+   fail('Not found.',404);
+  }
+  if(parts[3]==='payments'){
+   if(parts.length===4&&request.method==='POST'){
+    const input=await body(request,4000);const amount=money(input?.amount);if(amount<=0)fail('Please enter the amount you paid.');
+    const [shaped]=await shape([booking]);if(amount>shaped.balance)fail('That is more than the balance of ₹'+(shaped.balance/100).toLocaleString('en-IN')+'.');
+    const id=crypto.randomUUID(),now=new Date().toISOString();
+    await db(env).prepare('INSERT INTO booking_payments(id,booking_id,amount_paise,paid_on,mode,note,created_at) VALUES(?,?,?,?,?,?,?)').bind(id,booking.id,amount,day(input?.paidOn)||now.slice(0,10),clean(input?.mode,20),clean(input?.note,120),now).run();
+    return json({booking:(await shape([booking]))[0]},201);
+   }
+   if(parts.length===5&&request.method==='DELETE'){await db(env).prepare('DELETE FROM booking_payments WHERE id=? AND booking_id=?').bind(parts[4],booking.id).run();return json({booking:(await shape([booking]))[0]});}
+  }
+  fail('Not found.',404);
+ }
  if(path==='/api/entitlements'&&request.method==='GET')return json({designs:await entitledDesigns(env,owner),admin:await isAdminUser(env,authUser)});
  if(path==='/api/my-invitations'&&request.method==='GET'){
   const res=await db(env).prepare('SELECT invitation_id AS id,partner1,partner2,created_at AS createdAt FROM invitation_owners WHERE owner=? ORDER BY created_at DESC LIMIT 100').bind(owner).all();
@@ -465,7 +544,10 @@ export default {async fetch(request,env){
   if(!await isAdminUser(env,authUser)&&!await hasEntitlement(env,owner,c.theme))fail('Unlock this design to create your shareable invitation link.',402);
   if(c.gallery.length>4){const mineP=await entitledDesigns(env,owner);if(!mineP.includes('addon-gallery')&&!await isAdminUser(env,authUser))fail('More than 4 gallery photos needs the Premium Gallery add-on.',402);}
   c._ew=EW_ORIGIN;
-  const id=crypto.randomUUID();await env.BUCKET.put('invitation-snapshots/'+id,JSON.stringify(c),{httpMetadata:{contentType:'application/json'}});try{await db(env).prepare('INSERT OR REPLACE INTO invitation_owners(invitation_id,owner,partner1,partner2,created_at) VALUES(?,?,?,?,?)').bind(id,owner,c.partner1,c.partner2,new Date().toISOString()).run();}catch{}return json({id,url:'/invite.html?id='+id},201);
+  // ?replace=<id>: the owner edits and saves; the SAME share link then shows the new details.
+  let id=crypto.randomUUID();const replace=url.searchParams.get('replace');
+  if(replace&&/^[0-9a-f-]{36}$/.test(replace)){const own=await db(env).prepare('SELECT owner FROM invitation_owners WHERE invitation_id=?').bind(replace).first();if(own&&own.owner===owner)id=replace;}
+  await env.BUCKET.put('invitation-snapshots/'+id,JSON.stringify(c),{httpMetadata:{contentType:'application/json'}});try{await db(env).prepare('INSERT OR REPLACE INTO invitation_owners(invitation_id,owner,partner1,partner2,created_at) VALUES(?,?,?,?,?)').bind(id,owner,c.partner1,c.partner2,new Date().toISOString()).run();}catch{}return json({id,url:'/invite?id='+id},201);
  }
  if(path==='/api/studio'){
   if(request.method==='GET'){const row=await db(env).prepare('SELECT data FROM studio_drafts WHERE owner=?').bind(owner).first();return json({config:row?JSON.parse(row.data):null});}
