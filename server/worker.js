@@ -155,7 +155,7 @@ export default {async fetch(request,env){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
  }
  // Clean URLs: the .html pages redirect to their extension-less address.
- const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index'};
+ const CLEAN={'/studio.html':'/studio','/invite.html':'/invite','/guests.html':'/guests','/rsvps.html':'/rsvps','/pdf.html':'/pdf','/landing.html':'/','/index.html':'/index','/about.html':'/about','/contact.html':'/contact','/faq.html':'/faq','/privacy.html':'/privacy','/terms.html':'/terms','/refund.html':'/refund','/copyright.html':'/copyright'};
  if(request.method==='GET'&&CLEAN[path])return new Response(null,{status:301,headers:{'Location':CLEAN[path]+url.search,'X-EW-Origin':EW_ORIGIN}});
  // /workspace is the signed-in customer's one-page invitation workspace (same app as the studio, owner mode).
  if(path==='/workspace'||path==='/workspace/')return env.ASSETS.fetch(new Request(new URL('/studio.html',url),request));
@@ -444,7 +444,7 @@ export default {async fetch(request,env){
    if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
    const input=await body(request,5000);
    const slug=String(input?.slug||'').trim().toLowerCase();
-   const RESERVED=['admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   const RESERVED=['boss','workspace','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
    if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
    const invitationId=String(input?.invitationId||'');
    const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
