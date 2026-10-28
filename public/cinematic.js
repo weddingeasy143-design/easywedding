@@ -58,7 +58,7 @@
 
     // Reduced motion: leave everything at its natural (visible) final state.
     if (reduced()) {
-      if(lenis){lenis.destroy();lenis=null;if(lenisTicker)gsap.ticker.remove(lenisTicker);lenisTicker=null;}
+      if(lenis){lenis.destroy();lenis=null;window.__ewLenis=null;if(lenisTicker)gsap.ticker.remove(lenisTicker);lenisTicker=null;}
       gsap.killTweensOf(content.querySelectorAll('[data-reveal],[data-parallax],.cine-hero-bg,.hero-eyebrow,.hero-title .hl-inner,.hero-sub,.hero-cta > *,.hero-count,.hero-scroll-cue'));
       gsap.set(content.querySelectorAll('[data-reveal],.hero-eyebrow,.hero-title .hl-inner,.hero-sub,.hero-cta > *,.hero-count,.hero-scroll-cue'),
         { clearProps: 'all', opacity: 1, x: 0, y: 0 });
@@ -71,6 +71,7 @@
         lenis = new window.Lenis({ lerp: 0.09, smoothWheel: true });
         lenis.on('scroll', window.ScrollTrigger.update);
         lenisTicker=function(time){if(lenis)lenis.raf(time*1000);};
+        window.__ewLenis=lenis;
         gsap.ticker.add(lenisTicker);
         gsap.ticker.lagSmoothing(0);
       } catch (e) { lenis = null; }

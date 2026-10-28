@@ -13,6 +13,15 @@ const $=s=>document.querySelector(s),form=$('#editor-form'),preview=$('#preview'
 try{if(location.hash.includes('card='))config=readConfig(location);else{const saved=localStorage.getItem(STORAGE);if(saved)config=normalizeConfig(JSON.parse(saved));}}catch{$('#save-status').textContent='Sample opened · saved draft unavailable';}
 const selectedTheme=new URLSearchParams(location.search).get('template');if(Object.hasOwn(eventThemes,selectedTheme))config=normalizeConfig({...config,theme:selectedTheme});
 $('#theme-options').innerHTML=Object.entries(eventThemes).map(([key,t],index)=>{const d=referenceDesignFor(key);return `<label class="theme-card ${d.premium?'theme-card-premium':''}" style="--card-ink:${d.palette[2]};--card-paper:${d.palette[0]};--card-gold:${d.palette[5]}"><input type="radio" name="theme" value="${key}"><span class="theme-art"><img src="${d.scene}" alt="${t.name} wedding artwork"><span class="theme-number">${String(index+1).padStart(2,'0')}</span></span><span class="theme-caption"><strong>${t.name}${d.premium?'<span class="premium-badge">PREMIUM</span>':''}</strong><small>${d.description}</small><span class="theme-capacity">${invitationCapacity.photos} photos · full invitation</span></span><i aria-hidden="true">✓</i></label>`}).join('');
+/* "Start with this design" on the homepage opens the studio on that design only; the other designs are not shown. */
+function lockDesign(){
+if(!Object.hasOwn(eventThemes,selectedTheme)||new URLSearchParams(location.search).has('demo'))return;
+document.querySelectorAll('#theme-options .theme-card').forEach(c=>{c.hidden=c.querySelector('input')?.value!==selectedTheme;});
+const legend=document.querySelector('.theme-fieldset legend span');if(legend)legend.textContent='Your chosen design';
+const help=document.querySelector('.theme-help');if(help)help.hidden=true;const cmp=$('#compare-designs');if(cmp)cmp.hidden=true;
+if(!$('#change-design')){const a=document.createElement('a');a.id='change-design';a.className='secondary';a.href='/#pricing';a.textContent='Choose a different design';a.style.cssText='display:inline-block;margin-top:12px';$('#theme-options').after(a);}
+}
+lockDesign();
 function refreshPhotos(){if($('#song-status'))$('#song-status').textContent=config.audioName?(config.audioName+(config.audioUrl.startsWith('local-audio:')?' · Available on this device':' · Uploaded song selected')):'Upload your favourite wedding song.';for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const img=$('#'+key+'-preview');img.hidden=!config[key];if(config[key])img.src=config[key];else img.removeAttribute('src');}}
 const names=Object.keys(DEFAULTS).filter(k=>!['events','version','reference'].includes(k));
 function fillForm(){for(const key of names){const field=form.elements.namedItem(key);if(!field)continue;if(key==='theme'){field.value=config.theme;}else if(key==='gallery')field.value=config.gallery.join('\n');else if(field.type==='checkbox')field.checked=config[key];else field.value=config[key]??'';}const lh0=form.elements['lang-hi'];if(lh0)lh0.checked=(config.languages||[]).includes('hi');renderEvents();updateContact();refreshPhotos();renderReferenceEditor(form,config,()=>refresh());}
@@ -90,7 +99,7 @@ let ewEntitlements=[],ewMyInvitations=[];
 const ewOwns=id=>ewEntitlements.includes(id)||(id==='addon-personal'&&ewEntitlements.includes('ALL'));
 function openAddonPay(id){resetCoupon();payState.addon=id;payState.design=null;$('#pay-error').textContent='';$('#pay-design-line').textContent='Add '+(ADDON_NAMES[id]||'this add-on')+' to your wedding — one-time payment, yours with this account.';$('#pay-dialog').showModal();loadPricing();}
 function fillInviteSelect(sel){if(!sel)return;sel.replaceChildren();if(!ewMyInvitations.length){const o=document.createElement('option');o.textContent='Publish your invitation first';o.value='';sel.append(o);return;}for(const inv of ewMyInvitations){const o=document.createElement('option');o.value=inv.id;o.textContent=(inv.partner1||'')+' & '+(inv.partner2||'');sel.append(o);}}
-function updatePdfLink(){const sel=$('#pdf-invite'),a=$('#pdf-open');if(!sel||!a)return;a.href=sel.value?('/pdf.html?id='+sel.value):'/pdf.html';}
+function updatePdfLink(){const sel=$('#pdf-invite'),a=$('#pdf-open');if(!sel||!a)return;a.href=sel.value?('/pdf?id='+sel.value):'/pdf';}
 function updateSlugStatus(msg){const st=$('#slug-status');if(st)st.textContent=msg||'';}
 async function initAddons(){
  const list=$('#addons-list');if(!list)return;
@@ -171,7 +180,7 @@ function ownerSetup(owned){
  root.innerHTML='<p class="eyebrow">YOUR INVITATION · ACTIVE ✓</p><h2 id="ov-title"></h2><p class="ov-sub">Payment received — your account is active. Your template, share link and everything you can edit are on this one page.</p><label class="ov-label">Your share link<input id="ov-link" readonly placeholder="Your link appears here"></label><div class="ov-actions"><button id="ov-copy" class="primary" type="button">Copy link</button><a id="ov-open" class="secondary" target="_blank" rel="noopener">Open invitation ↗</a><a id="ov-wa" class="secondary" target="_blank" rel="noopener">Share on WhatsApp</a><button id="ov-update" class="secondary" type="button">Save &amp; update link</button></div><div class="ov-extra"><img id="ov-qr" alt="QR code for your invitation" hidden width="120" height="120"><p><a href="/rsvps">Guest replies (RSVP)</a> · <a href="/guests">Guest list</a></p></div><p id="ov-status" role="status"></p>';
  root.hidden=false;
  const all=owned.includes('ALL');
- document.querySelectorAll('#theme-options .theme-card').forEach(card=>{const v=card.querySelector('input')?.value;if(!all&&!owned.includes(v))card.hidden=true;});
+ document.querySelectorAll('#theme-options .theme-card').forEach(card=>{const v=card.querySelector('input')?.value;card.hidden=!all&&!owned.includes(v);});$('#change-design')?.remove();
  const legend=document.querySelector('.theme-fieldset legend span');if(legend)legend.textContent=all?'Your designs':'Your template';
  const help=document.querySelector('.theme-help');if(help)help.hidden=true;const cmp=$('#compare-designs');if(cmp)cmp.hidden=true;
  if(!all&&!owned.includes(config.theme)){config=normalizeConfig({...config,theme:owned[0]});fillForm();refresh(false);}

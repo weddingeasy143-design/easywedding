@@ -75,7 +75,7 @@ if (dialog) {
   function tick() {
     let doc = null;
     try { doc = frame.contentDocument; } catch (err) { doc = null; }
-    /* invite.html first shows its own "Preparing…" page, then hands over to
+    /* invite first shows its own "Preparing…" page, then hands over to
        reference/render.html. Keep our loader up until the real card is there. */
     const onCard = !!doc && !!doc.body && /\/reference\/render\.html$/.test(doc.location.pathname);
     if (onCard) {
@@ -119,12 +119,12 @@ if (dialog) {
 
   function openPreview(design) {
     title.textContent = design.name;
-    makeLink.href = 'studio.html?template=' + design.id;
+    makeLink.href = 'studio?template=' + design.id;
     if (loading) loading.hidden = false;
     idleTicks = 0;
     pressTicks = 0;
     startedAt = Date.now();
-    frame.src = 'invite.html?template=' + design.id;
+    frame.src = 'reference/render.html?template=' + design.id;
     stopAutoplay();
     pollTimer = setInterval(tick, 900);
   }
@@ -168,7 +168,7 @@ if (dialog) {
 
   /* Pricing cards, hero thumbnails and the studio band all play the same
      preview. Delegated, because the studio band is rebuilt by another module;
-     links keep their invite.html href as the no-JS fallback. */
+     links keep their invite href as the no-JS fallback. */
   document.addEventListener('click', (event) => {
     const trigger = event.target.closest('[data-preview]');
     const design = trigger && referenceDesigns[trigger.dataset.preview];
