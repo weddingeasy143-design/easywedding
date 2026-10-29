@@ -25,19 +25,25 @@ const MUSIC_KEY = "chandan-pinki-music";
 const STABILITY_MS = 700;
 const DUCK_LEVEL = 0.12;
 
+// In-memory copy: an Android WebView without DOM storage (sessionStorage is null) or a
+// private window must still remember "music on", or the first tap would never start it.
+const memorySession = new Map<string, string>();
 function safeSessionSet(key: string, value: string) {
+  memorySession.set(key, value);
   try {
     sessionStorage.setItem(key, value);
   } catch {
-    /* private mode etc. */
+    /* private mode, WebView without DOM storage etc. */
   }
 }
 function safeSessionGet(key: string): string | null {
   try {
-    return sessionStorage.getItem(key);
+    const v = sessionStorage.getItem(key);
+    if (v !== null) return v;
   } catch {
-    return null;
+    /* fall through to the in-memory copy */
   }
+  return memorySession.has(key) ? memorySession.get(key)! : null;
 }
 
 interface ResolvedZone {
@@ -474,10 +480,13 @@ class DynamicMusicEngine {
   private hookGestureRetry() {
     if (this.gestureHooked || typeof window === "undefined") return;
     this.gestureHooked = true;
+    // On phones a touch only counts as a user gesture at pointerup / touchend / click
+    // (pointerdown is too early for touch), so listen to all of them: the very first
+    // tap ("Tap to reveal") starts the song.
+    const events = ["pointerdown", "pointerup", "touchend", "click", "keydown"];
     const disarm = () => {
       this.gestureHooked = false;
-      window.removeEventListener("pointerdown", retry);
-      window.removeEventListener("keydown", retry);
+      for (const name of events) window.removeEventListener(name, retry, true);
     };
     const retry = () => {
       if (!this.isOn()) {
@@ -487,8 +496,7 @@ class DynamicMusicEngine {
       if (this.player.playing) disarm();
       else void this.playActive();
     };
-    window.addEventListener("pointerdown", retry);
-    window.addEventListener("keydown", retry);
+    for (const name of events) window.addEventListener(name, retry, true);
   }
 
   private hookVideos() {
