@@ -18,8 +18,11 @@
   if(path!=='/')return;
   fetch('/api/site-info').then(r=>r.ok?r.json():null).then(d=>{
    if(d&&d.playStore)document.querySelectorAll('[data-play-store]').forEach(a=>{a.href=d.playStore;a.hidden=false;});
-   if(d&&d.testerUrl)document.querySelectorAll('[data-play-tester]').forEach(a=>{a.href=d.testerUrl;a.hidden=false;});
-   if(d&&(d.playStore||d.testerUrl))document.querySelectorAll('[data-play-wrap]').forEach(wrap=>{wrap.hidden=false;const b=wrap.querySelector('[data-play-badge]');if(b){b.href=d.playStore||d.testerUrl;b.hidden=false;}});
+   const groupUrl=d&&(d.groupUrl||(d.testerUrl&&d.testerUrl.includes('groups.google.com')?d.testerUrl:null));
+   const testingUrl=d&&(d.testingUrl||(d.testerUrl&&d.testerUrl.includes('play.google.com/apps/')?d.testerUrl:null));
+   if(groupUrl)document.querySelectorAll('[data-play-tester]').forEach(a=>{a.href=groupUrl;a.hidden=false;});
+   if(testingUrl)document.querySelectorAll('[data-play-testing]').forEach(a=>{a.href=testingUrl;a.hidden=false;});
+   if(d&&(d.playStore||groupUrl||testingUrl))document.querySelectorAll('[data-play-wrap]').forEach(wrap=>{wrap.hidden=false;const b=wrap.querySelector('[data-play-badge]');if(b){b.href=d.playStore||testingUrl||groupUrl;b.hidden=false;}});
    const text=d&&d.banner&&d.banner.text;if(!text)return;
    if(safe(()=>sessionStorage.getItem('ew_banner_x')===text,false))return;
    const bar=document.createElement('div');bar.className='ew-banner';bar.setAttribute('role','status');

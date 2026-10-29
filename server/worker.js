@@ -154,8 +154,10 @@ async function maintenanceState(env){
   return {on:map.maintenance==='1',secret:typeof map.maint_secret==='string'?map.maint_secret:''};
  }catch{return {on:false,secret:''};}
 }
-async function appLinks(env){const none={playStore:'',testerUrl:'',testerOn:false};try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='app_links'").first();const v=row?JSON.parse(row.value):null;return v&&typeof v.playStore==='string'?{playStore:v.playStore,testerUrl:typeof v.testerUrl==='string'?v.testerUrl:'',testerOn:v.testerOn===true}:none;}catch{return none;}}
+async function appLinks(env){const none={playStore:'',groupUrl:'',testingUrl:'',testerUrl:'',testerOn:false};try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='app_links'").first();const v=row?JSON.parse(row.value):null;if(!v||typeof v.playStore!=='string')return none;let group=typeof v.groupUrl==='string'?v.groupUrl:'',testing=typeof v.testingUrl==='string'?v.testingUrl:'';const legacy=typeof v.testerUrl==='string'?v.testerUrl:'';if(legacy&&!group&&!testing){if(legacy.includes('groups.google.com'))group=legacy;else if(legacy.includes('play.google.com/apps/'))testing=legacy;}else if(legacy&&!group&&legacy.includes('groups.google.com'))group=legacy;else if(legacy&&!testing&&legacy.includes('play.google.com/apps/'))testing=legacy;return{playStore:v.playStore,groupUrl:group,testingUrl:testing,testerUrl:group||testing,testerOn:v.testerOn===true};}catch{return none;}}
 const TESTER_URL=/^https:\/\/(groups\.google\.com\/(g\/[A-Za-z0-9_.-]+|forum\/[A-Za-z0-9_.\/#!-]+)|play\.google\.com\/apps\/(testing|internaltest)\/[A-Za-z0-9_.\/-]+)$/;
+const GROUP_URL=/^https:\/\/groups\.google\.com\/(g\/[A-Za-z0-9_.-]+|forum\/[A-Za-z0-9_.\/#!-]+)$/;
+const TESTING_URL=/^https:\/\/play\.google\.com\/apps\/(testing|internaltest)\/[A-Za-z0-9_.\/-]+$/;
 const PLAY_URL=/^https:\/\/play\.google\.com\/store\/apps\/details\?id=[A-Za-z0-9_.]+(&[A-Za-z0-9_.=%&-]*)?$/;
 async function previewMusicRow(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='preview_music'").first();return row?JSON.parse(row.value):null;}catch{return null;}}
 export default {async fetch(request,env){
@@ -259,7 +261,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/site-info'&&request.method==='GET'){
   const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
-  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null},200,{'Cache-Control':'public, max-age=60'});
+  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null},200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/api/coupon/check'&&request.method==='POST'){
   await rateHit(env,'coupon',request,30,600);
@@ -658,10 +660,16 @@ export default {async fetch(request,env){
   if(name==='applinks'){
    if(request.method==='GET')return json(await appLinks(env));
    if(request.method==='PUT'){
-    const input=await body(request,2000),url=String(input?.playStore||'').trim(),testerUrl=String(input?.testerUrl||'').trim(),testerOn=input?.testerOn===true;
+    const input=await body(request,2000),url=String(input?.playStore||'').trim(),testerOn=input?.testerOn===true;
+    const hasSplit=typeof input?.groupUrl==='string'||typeof input?.testingUrl==='string';
+    let groupUrl=String(input?.groupUrl||'').trim(),testingUrl=String(input?.testingUrl||'').trim();
+    const legacyUrl=String(input?.testerUrl||'').trim();
+    if(legacyUrl&&!GROUP_URL.test(legacyUrl)&&!TESTING_URL.test(legacyUrl))fail('Paste the full tester link: your Google Group link (https://groups.google.com/g/...) or the Play testing link (https://play.google.com/apps/testing/...).',400);
+    if(!hasSplit&&legacyUrl){if(GROUP_URL.test(legacyUrl))groupUrl=legacyUrl;else testingUrl=legacyUrl;}
     if(url&&!PLAY_URL.test(url))fail('Paste the full Google Play link, for example https://play.google.com/store/apps/details?id=in.easywedding.app',400);
-    if(testerUrl&&!TESTER_URL.test(testerUrl))fail('Paste the full tester link: your Google Group link (https://groups.google.com/g/...) or the Play testing link.',400);
-    const saved={playStore:url,testerUrl,testerOn:testerOn&&!!testerUrl};
+    if(groupUrl&&!GROUP_URL.test(groupUrl))fail('Paste the full tester group link, for example https://groups.google.com/g/your-testers-group',400);
+    if(testingUrl&&!TESTING_URL.test(testingUrl))fail('Paste the full testing app link, for example https://play.google.com/apps/testing/in.easywedding.app',400);
+    const saved={playStore:url,groupUrl,testingUrl,testerUrl:groupUrl||testingUrl,testerOn:testerOn&&!!(groupUrl||testingUrl)};
     await d.prepare("INSERT INTO site_settings(key,value) VALUES('app_links',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(saved)).run();
     return json(saved);
    }
