@@ -2,7 +2,7 @@
 import {syncReferenceWedding,validReferenceDate} from './reference-config.js';
 import {renderReferenceEditor,readReferenceEditor} from './reference-editor.js';
 import {validateSong,prepareLocalSong} from './audio-upload.js';
-import {prepareLocalPhoto,browserOnlySession} from './photo-upload.js';
+import {prepareLocalPhoto,compressPhoto,browserOnlySession} from './photo-upload.js';
 import {ceremonyMotifs,ornament} from './ceremony-art.js';
 import {weddingThemes as eventThemes,weddingPreset as eventPreset} from './wedding-themes.js';
 import {invitationCapacity} from './reference-capacity.js';
@@ -53,7 +53,7 @@ if(typeof fetch==='function'&&!browserOnlySession()){const initial=JSON.stringif
 form.addEventListener('change',async event=>{
  const input=event.target,key=input.dataset.invitationUpload,file=input.files?.[0];if(!key||!file)return;
  const status=$('#'+key+'-status');input.disabled=true;status.textContent='Uploading photograph…';
- try{if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024)throw Error('Choose a JPG, PNG or WebP under 8 MB.');let result;if(browserOnlySession()){result={url:await prepareLocalPhoto(file)};}else{const data=new FormData();data.set('file',file);const response=await fetch('/api/invitation-photos',{method:'POST',body:data});result=await response.json();if(!response.ok)throw Error(result.error||'Sign in to upload, or open the demo studio.');}form.elements[key].value=result.url;refresh();status.textContent='Photo uploaded. Your invitation preview is updated.';}catch(error){status.textContent=error.message;}finally{input.disabled=false;input.value='';}
+ try{if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');let result;if(browserOnlySession()){result={url:await prepareLocalPhoto(file)};}else{const data=new FormData();data.set('file',await compressPhoto(file));const response=await fetch('/api/invitation-photos',{method:'POST',body:data});result=await response.json();if(!response.ok)throw Error(result.error||'Sign in to upload, or open the demo studio.');}form.elements[key].value=result.url;refresh();status.textContent='Photo uploaded. Your invitation preview is updated.';}catch(error){status.textContent=error.message;}finally{input.disabled=false;input.value='';}
 });
 form.addEventListener('click',event=>{const button=event.target.closest('[data-clear-image]');if(!button)return;const key=button.dataset.clearImage;form.elements[key].value='';$('#'+key+'-status').textContent='Photo removed from this invitation.';refresh();});
 

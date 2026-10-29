@@ -4,12 +4,12 @@ import {attachInvitationFlorals} from './invitation-florals.js';
 import {attachFloralMotion} from './floral-motion.js';
 import {ceremonyMotifs,ornament} from './ceremony-art.js';
 import {weddingThemes as eventThemes} from './wedding-themes.js';
-import {readConfig,normalizeConfig,DEFAULTS,dateParts,formatTime,eventTimestamp,countdownParts,mapsUrl,rsvpDestination,rsvpUrl,calendarFile} from './config.js';
+import {readConfig,normalizeConfig,isSamplePreview,withSample,DEFAULTS,dateParts,formatTime,eventTimestamp,countdownParts,mapsUrl,rsvpDestination,rsvpUrl,calendarFile} from './config.js';
 import {GardenMusic} from './music.js';
 import {goldBurst} from './ambient.js';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
 let config,opened=false,opening=false,openingTimer,countdownTimer,scratchCleanup=()=>{},noticeTimer,galleryTimer,galleryIndex=0,galleryPlaying=!reduced.matches;
-try{config=readConfig(window.location);}catch{$('#link-warning').hidden=false;$('#link-warning').textContent='This invitation link is incomplete. A sample is shown; please ask the sender for a new link.';config=normalizeConfig();}
+try{config=readConfig(window.location);if(isSamplePreview(window.location))config=withSample(config,window.location.href);}catch{$('#link-warning').hidden=false;$('#link-warning').textContent='This invitation link is incomplete. A sample is shown; please ask the sender for a new link.';config=normalizeConfig();}
 const music=new GardenMusic(playing=>{$('#music-toggle').setAttribute('aria-pressed',String(playing));$('#music-toggle').setAttribute('aria-label',playing?'Pause invitation music and effects':'Play invitation music and effects');$('#music-label').textContent=playing?'Sound on':'Sound off';});
 const floralStory=attachInvitationFlorals($('#invitation'),cue=>music.effect(cue));
 function notice(message){clearTimeout(noticeTimer);$('#guest-notice').textContent=message;$('#guest-notice').hidden=false;noticeTimer=setTimeout(()=>$('#guest-notice').hidden=true,5500);}

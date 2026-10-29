@@ -47,41 +47,102 @@ export async function renderDesign(state,event,format,theme,layout='heirloom'){
 export async function downloadDesign(canvas,name){const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw Error('The card could not be exported. Please generate it again.');const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.hidden=true;document.body.append(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},30000);return blob;}
 export async function exportWeddingPDF(state){
  const {jsPDF}=await import('jspdf');await document.fonts.ready;
- const p=state.profile,t=budgetTotals(state),W=1440,H=2036;
+ const p=state.profile,t=budgetTotals(state),W=1440,H=2036,M=90,CW=W-2*M;
+ const C={deep:'#4b0b20',maroon:'#75152e',gold:'#c99a3d',goldLight:'#efcc87',ivory:'#fffaf3',card:'#ffffff',zebra:'#fbf5ea',line:'#e6d8c3',ink:'#3a1220',muted:'#7a5b60',good:'#2e7d4f',bad:'#a62640'};
+ const SERIF='"Cormorant Garamond", Georgia, serif',SANS='"DM Sans", Arial, sans-serif';
  const themeKey=state.events[0]?.invitationTheme||'royal-prestige',themeArt='assets/'+(eventThemes[themeKey]||eventThemes['royal-prestige']).image;
  let bgImg=null;
  for(const src of [p.invitationPhoto,p.photo1,p.photo2,themeArt].filter(Boolean)){try{bgImg=await loadImage(src);break;}catch{}}
  const weddingDate=new Date(p.date+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ const today=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+ const couple=p.partner1+' & '+p.partner2;
+ const pages=[];let canvas,ctx,y;
+ const font=(size,family=SANS,weight='')=>`${weight?weight+' ':''}${size}px ${family}`;
+ const fit=(value,max,size,family=SANS,weight='')=>{ctx.font=font(size,family,weight);let s=String(value??'');if(ctx.measureText(s).width<=max)return s;while(s.length>1&&ctx.measureText(s+'…').width>max)s=s.slice(0,-1);return s+'…';};
+ const put=(value,x,yy,{size=26,family=SANS,weight='',color=C.ink,align='left',max=CW,track=0}={})=>{ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='alphabetic';if('letterSpacing' in ctx)ctx.letterSpacing=track+'px';ctx.font=font(size,family,weight);ctx.fillText(fit(value,max,size,family,weight),x,yy);if('letterSpacing' in ctx)ctx.letterSpacing='0px';};
+ const rr=(x,yy,w,h,r,fill,stroke,lw=2)=>{ctx.beginPath();ctx.roundRect(x,yy,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}};
+ const diamond=(cx,cy,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx+r,cy);ctx.lineTo(cx,cy+r);ctx.lineTo(cx-r,cy);ctx.closePath();ctx.fill();};
+ const flourish=(cx,yy,width,color)=>{ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-width/2,yy);ctx.lineTo(cx-18,yy);ctx.moveTo(cx+18,yy);ctx.lineTo(cx+width/2,yy);ctx.stroke();diamond(cx,yy,8,color);diamond(cx-width/2,yy,4,color);diamond(cx+width/2,yy,4,color);};
+ function fresh(){canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;ctx=canvas.getContext('2d');pages.push(canvas);}
+ /* ---------- cover ---------- */
+ fresh();
+ const wash=ctx.createLinearGradient(0,0,W,H);wash.addColorStop(0,C.maroon);wash.addColorStop(.55,C.deep);wash.addColorStop(1,'#2a0612');ctx.fillStyle=wash;ctx.fillRect(0,0,W,H);
+ if(bgImg){ctx.save();ctx.globalAlpha=.2;const r=Math.max(W/bgImg.width,H/bgImg.height),sw=W/r,sh=H/r;ctx.drawImage(bgImg,(bgImg.width-sw)/2,(bgImg.height-sh)/2,sw,sh,0,0,W,H);ctx.restore();}
+ const vign=ctx.createRadialGradient(W/2,H/2,300,W/2,H/2,1250);vign.addColorStop(0,'rgba(42,6,18,0)');vign.addColorStop(1,'rgba(20,3,9,.65)');ctx.fillStyle=vign;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle=C.goldLight;ctx.lineWidth=3;ctx.strokeRect(60,60,W-120,H-120);ctx.lineWidth=1;ctx.strokeRect(84,84,W-168,H-168);
+ for(const [x,yy] of [[84,84],[W-84,84],[84,H-84],[W-84,H-84]])diamond(x,yy,12,C.goldLight);
+ put('EASY WEDDING',W/2,260,{size:26,color:C.goldLight,align:'center',track:10});
+ flourish(W/2,310,360,C.goldLight);
+ put('WEDDING PLAN & BUDGET',W/2,520,{size:34,color:C.goldLight,align:'center',track:12});
+ put(p.partner1,W/2,790,{size:150,family:SERIF,weight:'600',color:'#fff5e7',align:'center',max:1100});
+ put('&',W/2,930,{size:96,family:SERIF,color:C.goldLight,align:'center'});
+ put(p.partner2,W/2,1090,{size:150,family:SERIF,weight:'600',color:'#fff5e7',align:'center',max:1100});
+ flourish(W/2,1210,520,C.goldLight);
+ put(weddingDate,W/2,1330,{size:54,family:SERIF,color:'#fff5e7',align:'center'});
+ put([p.city,p.guests?p.guests+' guests':''].filter(Boolean).join('   ·   '),W/2,1400,{size:30,color:C.goldLight,align:'center',track:3});
+ rr(W/2-300,1560,600,150,18,'rgba(255,255,255,.07)','rgba(239,204,135,.55)',2);
+ put('TOTAL BUDGET TARGET',W/2,1620,{size:21,color:C.goldLight,align:'center',track:6});
+ put(rupees(p.budget),W/2,1680,{size:58,family:SERIF,weight:'600',color:'#fff5e7',align:'center'});
+ put('Prepared '+today+' · easywedding.in',W/2,H-130,{size:22,color:'rgba(255,245,231,.7)',align:'center',track:2});
+ /* ---------- content pages ---------- */
+ function newPage(){
+  fresh();ctx.fillStyle=C.ivory;ctx.fillRect(0,0,W,H);
+  const band=ctx.createLinearGradient(0,0,W,0);band.addColorStop(0,C.deep);band.addColorStop(1,C.maroon);ctx.fillStyle=band;ctx.fillRect(0,0,W,138);
+  ctx.fillStyle=C.gold;ctx.fillRect(0,138,W,5);
+  put('EASY WEDDING',M,84,{size:24,color:C.goldLight,track:8});
+  put(couple+'  ·  '+weddingDate,W-M,84,{size:25,family:SERIF,weight:'600',color:'#fff5e7',align:'right',max:900});
+  y=215;
+ }
+ const room=h=>{if(y+h>H-150)newPage();};
+ function heading(title,note){if(y>330)y+=30;room(190);diamond(M+8,y-12,8,C.gold);put(title,M+34,y,{size:50,family:SERIF,weight:'600',color:C.maroon,max:CW-34});if(note)put(note,W-M,y-4,{size:22,color:C.muted,align:'right',max:520});y+=22;ctx.strokeStyle=C.line;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(M,y);ctx.lineTo(W-M,y);ctx.stroke();ctx.strokeStyle=C.gold;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(M,y);ctx.lineTo(M+120,y);ctx.stroke();y+=42;}
+ function tiles(items){const gap=24,w=(CW-gap*(items.length-1))/items.length,h=170;room(h+40);items.forEach((it,i)=>{const x=M+i*(w+gap);rr(x,y,w,h,18,C.card,C.line,2);ctx.fillStyle=it.color||C.gold;ctx.fillRect(x+24,y,w-48,6);put(it.label.toUpperCase(),x+w/2,y+58,{size:19,color:C.muted,align:'center',track:3,max:w-24});put(it.value,x+w/2,y+122,{size:it.value.length>11?42:50,family:SERIF,weight:'600',color:it.color||C.maroon,align:'center',max:w-24});});y+=h+40;}
+ function progress(label,done,total,color){const ratio=total>0?Math.min(1,done/total):0;room(110);put(label,M,y,{size:25,weight:'500',color:C.ink,max:760});put(Math.round(ratio*100)+'%',W-M,y,{size:25,weight:'600',color:color,align:'right'});y+=22;rr(M,y,CW,26,13,'#efe4d0');if(ratio>0){const g=ctx.createLinearGradient(M,0,M+CW,0);g.addColorStop(0,color);g.addColorStop(1,C.gold);rr(M,y,Math.max(26,CW*ratio),26,13,g);}y+=70;}
+ function table(cols,rows,{foot=[]}={}){
+  const rowH=64,head=()=>{room(rowH*3);rr(M,y,CW,58,12,C.maroon);let x=M;for(const c of cols){put(c.label.toUpperCase(),c.align==='right'?x+c.w-18:x+18,y+37,{size:18,weight:'700',color:C.goldLight,align:c.align||'left',track:2,max:c.w-30});x+=c.w;}y+=58;};
+  head();let i=0;
+  for(const row of rows){if(y+rowH>H-150){newPage();head();}if(i%2===0){ctx.fillStyle=C.zebra;ctx.fillRect(M,y,CW,rowH);}let x=M;for(const c of cols){const v=typeof row[c.key]==='object'&&row[c.key]!==null?row[c.key].text:row[c.key],color=typeof row[c.key]==='object'&&row[c.key]!==null?row[c.key].color:C.ink;put(v,c.align==='right'?x+c.w-18:x+18,y+41,{size:23,weight:c.bold?'600':'',color,align:c.align||'left',max:c.w-32});x+=c.w;}ctx.strokeStyle=C.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(M,y+rowH);ctx.lineTo(W-M,y+rowH);ctx.stroke();y+=rowH;i++;}
+  for(const f of foot){if(y+rowH>H-150)newPage();const strong=f.strong;if(strong){rr(M,y+6,CW,rowH,12,C.maroon);}put(f.label,W-M-330,y+(strong?49:43),{size:strong?27:23,weight:strong?'700':'500',color:strong?C.goldLight:C.muted,align:'right',max:520});put(f.value,W-M-18,y+(strong?49:43),{size:strong?30:25,family:strong?SERIF:SANS,weight:'700',color:strong?'#fff5e7':(f.color||C.ink),align:'right',max:300});y+=strong?rowH+14:rowH-6;}
+  y+=36;
+ }
+ /* --- budget at a glance --- */
+ newPage();heading('Budget at a glance','All amounts in Indian rupees');
+ tiles([{label:'Budget target',value:rupees(p.budget)},{label:'Total estimate',value:rupees(t.total)},{label:'Paid so far',value:rupees(t.paid),color:C.good},{label:'Still to pay',value:rupees(t.remaining),color:C.maroon}]);
+ const within=t.unallocated>=0;room(120);rr(M,y,CW,92,16,within?'#eaf5ee':'#fbe9ec',within?'#b9dcc6':'#efb6bf',2);ctx.fillStyle=within?C.good:C.bad;ctx.beginPath();ctx.arc(M+52,y+46,20,0,Math.PI*2);ctx.fill();put(within?'✓':'!',M+52,y+57,{size:30,weight:'700',color:'#fff',align:'center'});put(within?'You are within budget':'You are over budget',M+96,y+40,{size:28,weight:'700',color:within?C.good:C.bad,max:700});put((within?'Budget remaining: ':'Over budget by: ')+rupees(Math.abs(t.unallocated))+'  ·  includes '+p.contingency+'% contingency',M+96,y+74,{size:22,color:C.muted,max:1100});y+=132;
+ progress('Paid against total estimate',t.paid,t.total,C.good);
+ const byCat=new Map();for(const row of state.budget){const v=(Number(row.quantity)||0)*(Number(row.rate)||0);byCat.set(row.category||'Other',(byCat.get(row.category||'Other')||0)+v);}
+ let cats=[...byCat.entries()].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);if(cats.length>6){const rest=cats.slice(5).reduce((s,[,v])=>s+v,0);cats=[...cats.slice(0,5),['Other',rest]];}
+ if(cats.length&&t.subtotal>0){
+  heading('Where the money goes','Share of estimated costs');room(420);
+  const palette=[C.maroon,C.gold,'#a85d3b','#5f8a6b','#4f6d9a','#b98aa0'],cx=M+210,cy=y+200,R=190,r=112;let a0=-Math.PI/2;
+  cats.forEach(([,v],i)=>{const a1=a0+v/t.subtotal*Math.PI*2;ctx.beginPath();ctx.arc(cx,cy,R,a0,a1);ctx.arc(cx,cy,r,a1,a0,true);ctx.closePath();ctx.fillStyle=palette[i%palette.length];ctx.fill();ctx.strokeStyle=C.ivory;ctx.lineWidth=4;ctx.stroke();a0=a1;});
+  put('TOTAL',cx,cy-6,{size:17,color:C.muted,align:'center',track:4});put(rupees(t.subtotal),cx,cy+34,{size:32,family:SERIF,weight:'700',color:C.maroon,align:'center',max:190});
+  cats.forEach(([name,v],i)=>{const ly=y+56+i*58;rr(M+470,ly-24,28,28,8,palette[i%palette.length]);put(name,M+516,ly,{size:26,weight:'500',max:340});put(rupees(v),W-M-130,ly,{size:26,weight:'600',align:'right',max:240});put(Math.round(v/t.subtotal*100)+'%',W-M,ly,{size:24,color:C.muted,align:'right'});});
+  y+=cy-y+R+60;
+ }
+ /* --- cost table --- */
+ heading('Complete cost estimate',state.budget.length+' item'+(state.budget.length===1?'':'s'));
+ if(!state.budget.length){put('No costs added yet.',M,y,{size:26,color:C.muted});y+=70;}
+ else table([{key:'item',label:'Item',w:370,bold:true},{key:'cat',label:'Category',w:230},{key:'qty',label:'Qty',w:80,align:'right'},{key:'rate',label:'Rate',w:170,align:'right'},{key:'est',label:'Estimate',w:200,align:'right'},{key:'paid',label:'Paid',w:210,align:'right'}],
+  state.budget.map(row=>({item:row.title,cat:row.category,qty:String(row.quantity),rate:rupees(row.rate),est:rupees((Number(row.quantity)||0)*(Number(row.rate)||0)),paid:{text:rupees(row.paid),color:Number(row.paid)>0?C.good:C.muted}})),
+  {foot:[{label:'Subtotal',value:rupees(t.subtotal)},{label:'Contingency ('+p.contingency+'%)',value:rupees(t.contingency)},{label:'Paid so far',value:rupees(t.paid),color:C.good},{label:'Balance to pay',value:rupees(t.remaining),color:C.maroon},{label:'TOTAL ESTIMATE',value:rupees(t.total),strong:true}]});
+ /* --- celebrations --- */
+ const events=[...state.events].sort((a,b)=>a.date.localeCompare(b.date));
+ if(events.length){heading('Your celebrations',events.length+' events');for(const ev of events){room(150);rr(M,y,CW,128,18,C.card,C.line,2);rr(M,y,128,128,18,C.maroon);ctx.fillRect(M+100,y,28,128);const d=new Date(ev.date+'T12:00:00');put(String(d.getDate()),M+64,y+76,{size:60,family:SERIF,weight:'700',color:'#fff5e7',align:'center'});put(d.toLocaleDateString('en-IN',{month:'short'}).toUpperCase(),M+64,y+110,{size:20,color:C.goldLight,align:'center',track:4});ctx.fillStyle=C.maroon;ctx.fillRect(M+100,y,28,128);put(ev.name,M+164,y+52,{size:36,family:SERIF,weight:'700',color:C.maroon,max:700});put((ev.time||'')+' IST',W-M-28,y+50,{size:25,weight:'600',color:C.gold,align:'right',max:260});put(ev.venue||'Venue to be confirmed',M+164,y+90,{size:24,color:C.ink,max:760});if(ev.dress)put('Dress code: '+ev.dress,W-M-28,y+90,{size:21,color:C.muted,align:'right',max:430});y+=150;}y+=14;}
+ /* --- checklist --- */
+ if(state.tasks.length){const done=state.tasks.filter(x=>x.done).length;heading('Wedding checklist',done+' of '+state.tasks.length+' done');progress('Planning progress',done,state.tasks.length,C.good);for(const task of state.tasks){room(78);rr(M,y-30,38,38,10,task.done?C.good:C.card,task.done?C.good:C.gold,3);if(task.done){ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(M+9,y-10);ctx.lineTo(M+17,y-2);ctx.lineTo(M+30,y-21);ctx.stroke();}put(task.title,M+64,y,{size:27,weight:'500',color:task.done?C.muted:C.ink,max:820});put('Due '+task.due+(task.owner?' · '+task.owner:''),W-M,y,{size:21,color:C.muted,align:'right',max:330});ctx.strokeStyle=C.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(M,y+24);ctx.lineTo(W-M,y+24);ctx.stroke();y+=70;}y+=20;}
+ /* --- vendors --- */
+ if(state.vendors.length){heading('Your wedding team',state.vendors.length+' vendors');table([{key:'name',label:'Vendor',w:340,bold:true},{key:'cat',label:'Category',w:230},{key:'status',label:'Status',w:170},{key:'quote',label:'Quote',w:250,align:'right'},{key:'dep',label:'Deposit',w:270,align:'right'}],state.vendors.map(v=>({name:v.name,cat:v.category,status:{text:v.status,color:v.status==='Booked'?C.good:C.muted},quote:rupees(v.quote),dep:rupees(v.deposit)})));}
+ /* --- shopping --- */
+ if(state.shopping.length){heading('Wedding shopping',state.shopping.length+' items');table([{key:'item',label:'Item',w:460,bold:true},{key:'ev',label:'For',w:260},{key:'who',label:'Person',w:170},{key:'bud',label:'Budget',w:200,align:'right'},{key:'st',label:'Status',w:170}],state.shopping.map(i=>({item:i.title,ev:i.event,who:i.person,bud:rupees(i.budget),st:{text:i.done?'Bought':'To buy',color:i.done?C.good:C.muted}})));}
+ if(p.notes){heading('Your notes');ctx.font=font(26);for(const part of lines(ctx,p.notes,CW)){room(52);put(part,M,y,{size:26,color:C.ink});y+=44;}}
+ /* ---------- footers with "Page n of N" ---------- */
+ const total=pages.length;
  const pdf=new jsPDF({unit:'mm',format:'a4',compress:true});
- let canvas,ctx,y,page=0;
- function frame(){ctx.strokeStyle='#bd9760';ctx.lineWidth=3;ctx.strokeRect(55,55,W-110,H-110);ctx.strokeStyle='#bd976080';ctx.lineWidth=1;ctx.strokeRect(75,75,W-150,H-150);}
- function background(){ctx.fillStyle='#fffcf5';ctx.fillRect(0,0,W,H);if(bgImg){ctx.save();ctx.globalAlpha=.5;cover(ctx,bgImg,0,0,W,H);ctx.restore();ctx.fillStyle='rgba(255,252,245,.35)';ctx.fillRect(0,0,W,H);}}
- function footer(){text(ctx,'EASY WEDDING · PRIVATE WEDDING PLAN',100,H-103,900,20,'Arial','#90786a','left');text(ctx,'Page '+page,W-110,H-103,180,20,'Arial','#90786a','right');}
- function pushPage(){pdf.addImage(canvas.toDataURL('image/jpeg',.91),'JPEG',0,0,210,297,undefined,'FAST');}
- canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;ctx=canvas.getContext('2d');page=1;
- background();frame();
- const cw=1060,ch=1120,cx=(W-cw)/2,cy=(H-ch)/2;
- ctx.fillStyle='#fffdf8';ctx.beginPath();ctx.roundRect(cx,cy,cw,ch,22);ctx.fill();ctx.strokeStyle='#bd9760';ctx.lineWidth=2;ctx.stroke();
- text(ctx,'TOGETHER WITH THEIR FAMILIES',W/2,cy+165,920,27,'Arial','#9c753d');
- text(ctx,p.partner1,W/2,cy+330,960,88,'"Cormorant Garamond", Georgia','#651c32');
- text(ctx,'&',W/2,cy+435,960,56,'"Cormorant Garamond", Georgia','#9c753d');
- text(ctx,p.partner2,W/2,cy+545,960,88,'"Cormorant Garamond", Georgia','#651c32');
- ctx.strokeStyle='#d9c6a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-170,cy+640);ctx.lineTo(W/2+170,cy+640);ctx.stroke();
- text(ctx,'invite you to celebrate their wedding',W/2,cy+715,920,31,'Arial','#67534e');
- text(ctx,weddingDate,W/2,cy+800,920,36,'"Cormorant Garamond", Georgia','#651c32');
- text(ctx,p.city+'  ·  '+p.guests+' guests',W/2,cy+865,920,30,'Arial','#9c753d');
- text(ctx,'W E D D I N G   P L A N',W/2,cy+ch-95,920,24,'Arial','#9c753d');
- footer();pushPage();
- function newPage(){pdf.addPage();page++;canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;ctx=canvas.getContext('2d');background();frame();text(ctx,'E A S Y   W E D D I N G   /   W E D D I N G   P L A N',100,130,1100,24,'Arial','#9c753d','left');text(ctx,p.partner1+' & '+p.partner2,100,230,1240,66,'"Cormorant Garamond", Georgia','#651c32','left');text(ctx,weddingDate+'  ·  '+p.city+'  ·  '+p.guests+' guests',100,283,1220,28,'Arial','#67534e','left');footer();y=360;}
- function space(height){if(y+height>H-175)newPage();}
- function line(value,size=28,color='#493a36'){ctx.font=`${size}px Arial`;const wrapped=lines(ctx,value,1210);for(const part of wrapped){space(size*1.65);text(ctx,part,110,y,1210,size,'Arial',color,'left');y+=size*1.55;}}
- function section(value){space(120);y+=25;text(ctx,value,110,y,1210,43,'"Cormorant Garamond", Georgia','#651c32','left');y+=50;ctx.strokeStyle='#d9c6a6';ctx.beginPath();ctx.moveTo(110,y-10);ctx.lineTo(1330,y-10);ctx.stroke();y+=28;}
- newPage();section('Your wedding budget');line('Budget target: '+rupees(p.budget));line('Estimated costs: '+rupees(t.subtotal));line('Contingency ('+p.contingency+'%): '+rupees(t.contingency));line('Total estimate: '+rupees(t.total),34,'#651c32');line('Paid: '+rupees(t.paid)+'    Remaining: '+rupees(t.remaining));line((t.unallocated>=0?'Budget remaining: ':'Over budget: ')+rupees(Math.abs(t.unallocated)));y+=20;line('Planning figures are entered by you. Confirm final prices and availability with each vendor.',23,'#79675d');
- section('Every celebration');for(const event of [...state.events].sort((a,b)=>a.date.localeCompare(b.date))){space(165);line(event.name+'  |  '+event.date+'  |  '+event.time+' IST',31,'#651c32');line(event.venue||'Venue to be confirmed',27);if(event.dress)line('Dress code: '+event.dress,25);if(event.notes)line(event.notes,25);y+=22;}
- section('Complete cost estimate');if(!state.budget.length)line('No costs added yet.');for(const row of state.budget){space(160);line(row.title+'  ·  '+row.category,30,'#651c32');line(row.quantity+' × '+rupees(row.rate)+' = '+rupees(row.quantity*row.rate)+'    |    Paid: '+rupees(row.paid),26);if(row.notes)line(row.notes,23);y+=22;}
- section('Wedding checklist');for(const task of state.tasks){line((task.done?'✓ ':'□ ')+task.title,27);line('Due '+task.due+(task.owner?' · '+task.owner:''),22,'#877266');y+=16;}
- if(state.vendors.length){section('Your wedding team');for(const v of state.vendors){space(145);line(v.name+' · '+v.status,30,'#651c32');line(v.category+' · '+(v.area||p.city),25);if(v.phone)line('Phone: '+v.phone,25);line('Quote: '+rupees(v.quote)+' · Deposit: '+rupees(v.deposit),25);if(v.notes)line(v.notes,24);y+=20;}}
- if(state.shopping.length){section('Wedding shopping');for(const i of state.shopping){line((i.done?'Bought: ':'To buy: ')+i.title,27);line(i.event+' · '+i.person+' · Budget '+rupees(i.budget),23,'#877266');if(i.notes)line(i.notes,23);y+=18;}}
- if(p.notes){section('Your notes');line(p.notes,27);}
- pushPage();pdf.setProperties({title:p.partner1+' & '+p.partner2+' · Wedding plan',subject:'Wedding events and cost estimate',creator:'Easy Wedding'});return pdf.output('blob');
+ pages.forEach((cv,i)=>{
+  ctx=cv.getContext('2d');
+  if(i>0){ctx.strokeStyle=C.line;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(M,H-96);ctx.lineTo(W-M,H-96);ctx.stroke();put('Prepared with Easy Wedding · Figures are your planning estimates — confirm final prices with each vendor.',M,H-52,{size:19,color:C.muted,max:1000});put('Page '+(i+1)+' of '+total,W-M,H-52,{size:20,weight:'600',color:C.maroon,align:'right'});}
+  if(i>0)pdf.addPage();
+  pdf.addImage(cv.toDataURL('image/jpeg',.92),'JPEG',0,0,210,297,undefined,'FAST');
+ });
+ pdf.setProperties({title:couple+' · Wedding plan & budget',subject:'Wedding events, budget and cost estimate',creator:'Easy Wedding'});return pdf.output('blob');
 }

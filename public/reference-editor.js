@@ -1,7 +1,7 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
 import {referenceFields,referenceDefaults} from './reference-fields.js';
 import {getReferencePath,setReferencePath,refreshReferenceDates} from './reference-config.js';
-import {prepareLocalPhoto,browserOnlySession} from './photo-upload.js';
+import {prepareLocalPhoto,compressPhoto,browserOnlySession} from './photo-upload.js';
 
 const uploads=new Map();
 export function referenceForConfig(config){
@@ -27,7 +27,7 @@ export function renderReferenceEditor(form,config,changed){
    const upload=document.createElement('div');upload.className='photo-upload';upload.append(img,file,remove,status);section.append(upload);
    const update=()=>{img.hidden=!input.value;if(input.value)img.src=input.value;else img.removeAttribute('src');changed()};
    input.addEventListener('change',update);remove.onclick=()=>{uploads.set(field.path,(uploads.get(field.path)||0)+1);input.value='';status.textContent='Photo removed.';update()};
-   file.onchange=async()=>{const selected=file.files?.[0];if(!selected)return;const version=(uploads.get(field.path)||0)+1;uploads.set(field.path,version);file.disabled=true;status.textContent='Uploading photograph…';try{if(!['image/jpeg','image/png','image/webp'].includes(selected.type)||selected.size>8*1024*1024)throw Error('Choose a JPG, PNG or WebP under 8 MB.');let url;if(browserOnlySession())url=await prepareLocalPhoto(selected,60000);else{const body=new FormData();body.set('file',selected);const response=await fetch('/api/invitation-photos',{method:'POST',body});const result=await response.json();if(!response.ok)throw Error(result.error||'Photo upload failed.');url=result.url}if(uploads.get(field.path)!==version)return;input.value=url;status.textContent='Photo uploaded. Preview updated.';update()}catch(e){if(uploads.get(field.path)===version)status.textContent=e.message}finally{file.disabled=false;file.value=''}};
+   file.onchange=async()=>{const selected=file.files?.[0];if(!selected)return;const version=(uploads.get(field.path)||0)+1;uploads.set(field.path,version);file.disabled=true;status.textContent='Uploading photograph…';try{if(!['image/jpeg','image/png','image/webp'].includes(selected.type))throw Error('Choose a JPG, PNG or WebP photograph.');let url;if(browserOnlySession())url=await prepareLocalPhoto(selected,60000);else{const body=new FormData();body.set('file',await compressPhoto(selected));const response=await fetch('/api/invitation-photos',{method:'POST',body});const result=await response.json();if(!response.ok)throw Error(result.error||'Photo upload failed.');url=result.url}if(uploads.get(field.path)!==version)return;input.value=url;status.textContent='Photo uploaded. Preview updated.';update()}catch(e){if(uploads.get(field.path)===version)status.textContent=e.message}finally{file.disabled=false;file.value=''}};
   }
  }
 }
