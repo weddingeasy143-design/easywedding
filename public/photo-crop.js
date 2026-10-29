@@ -25,7 +25,7 @@ export function cropGeometry({natW,natH,view,zoom,x,y}){
 
 export async function cropPhoto(file,{title='Crop your photo'}={}){
  if(!TYPES.includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');
- if(file.size>8*1024*1024)throw Error('Choose a photograph under 8 MB.');
+ if(file.size>60*1024*1024)throw Error('Choose a photograph under 60 MB.');
  const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
  const natW=bitmap.width,natH=bitmap.height,url=URL.createObjectURL(file);
  if(!document.getElementById('ew-crop-style')){const s=document.createElement('style');s.id='ew-crop-style';s.textContent=CSS;document.head.append(s);}

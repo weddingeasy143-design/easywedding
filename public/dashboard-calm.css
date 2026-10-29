@@ -49,3 +49,10 @@ body.royal-planner,.royal-planner .workspace{background:var(--calm-bg)}
 .royal-planner #main-content :is(.cine-hero,.marquee) :is(h1,h2,h3,strong,small){color:#fff5e7}
 .royal-planner #main-content .cine-hero :is(.eyebrow,.hero-eyebrow){color:#efcc87}
 .royal-planner #main-content .cine-hero :is(.hero-sub,.hero-count span){color:#fff5e7}
+
+/* Menu: the page you are on is unmistakable */
+.royal-planner .sidebar nav button{border-left:4px solid transparent}
+.royal-planner .sidebar nav button.active,.royal-planner .sidebar nav button[aria-current=page]{background:linear-gradient(135deg,#ffe6b4,#efcc87 50%,#d8a954);color:#3b0c1a;font-weight:700;border-left-color:#fff5e7;box-shadow:0 6px 18px rgba(20,3,9,.35),inset 0 1px 0 #fff8;border-radius:10px}
+.royal-planner .sidebar nav button.active .nav-icon,.royal-planner .sidebar nav button.active i,.royal-planner .sidebar nav button.active svg,.royal-planner .sidebar nav button[aria-current=page] svg{color:#3b0c1a;stroke:#3b0c1a;opacity:1}
+.royal-planner .bottom-nav button.on{background:linear-gradient(135deg,#ffe6b4,#efcc87);color:#3b0c1a;font-weight:700}
+.royal-planner .bottom-nav button.on svg,.royal-planner .bottom-nav button.on i{color:#3b0c1a;stroke:#3b0c1a}
