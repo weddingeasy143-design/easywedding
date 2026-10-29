@@ -1,5 +1,6 @@
 import {normalizeConfig} from '../public/config.js';
-import {validAudioHeader} from '../public/audio-upload.js';
+import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
+import {exportAccountZip,eraseAccountData} from './account-data.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
 async function rateHit(env,name,request,limit,windowSec){
@@ -152,6 +153,7 @@ async function maintenanceState(env){
   return {on:map.maintenance==='1',secret:typeof map.maint_secret==='string'?map.maint_secret:''};
  }catch{return {on:false,secret:''};}
 }
+async function previewMusicRow(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='preview_music'").first();return row?JSON.parse(row.value):null;}catch{return null;}}
 export default {async fetch(request,env){
  const url=new URL(request.url),path=url.pathname;
  const maint=await maintenanceState(env);
@@ -221,6 +223,13 @@ export default {async fetch(request,env){
   const object=await env.BUCKET?.get('invitation/'+id);if(!object)fail('Photo not found.',404);
   return new Response(object.body,{headers:{'Content-Type':object.httpMetadata.contentType,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'}});
  }
+/* Public preview music: the track the owner picked in the admin console. Played in public invitation previews. */
+ if(path==='/api/preview-music'&&request.method==='GET'){
+  const m=await previewMusicRow(env),key=m?.id?'site/preview-music/'+m.id:'',head=key?await env.BUCKET?.head(key):null;if(!head)fail('No preview music.',404);
+  const headers={'Content-Type':head.httpMetadata?.contentType||'audio/mpeg','Cache-Control':'public, max-age=3600','X-Content-Type-Options':'nosniff','Accept-Ranges':'bytes','Access-Control-Allow-Origin':'*'};const range=request.headers.get('Range');
+  if(range){const r=/^bytes=(\d*)-(\d*)$/.exec(range);if(!r||(!r[1]&&!r[2]))return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const start=r[1]?Number(r[1]):Math.max(0,head.size-Number(r[2])),end=r[1]?(r[2]?Math.min(Number(r[2]),head.size-1):head.size-1):head.size-1;if(start>end||start>=head.size)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+head.size}});const part=await env.BUCKET.get(key,{range:{offset:start,length:end-start+1}});return new Response(part.body,{status:206,headers:{...headers,'Content-Range':`bytes ${start}-${end}/${head.size}`,'Content-Length':String(end-start+1)}});}
+  const object=await env.BUCKET.get(key);return new Response(object.body,{headers:{...headers,'Content-Length':String(head.size)}});
+ }
  if(path.startsWith('/api/invitation-audio/')&&request.method==='GET'){
   const id=path.slice('/api/invitation-audio/'.length);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))fail('Song not found.',404);
   const key='invitation-audio/'+id,head=await env.BUCKET?.head(key);if(!head)fail('Song not found.',404);const headers={'Content-Type':head.httpMetadata.contentType,'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','Accept-Ranges':'bytes'};const range=request.headers.get('Range');
@@ -246,7 +255,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/site-info'&&request.method==='GET'){
   const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
-  return json({banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null},200,{'Cache-Control':'public, max-age=60'});
+  const pm=await previewMusicRow(env);return json({banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null},200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/api/coupon/check'&&request.method==='POST'){
   await rateHit(env,'coupon',request,30,600);
@@ -417,6 +426,19 @@ export default {async fetch(request,env){
  if(!authUser)fail('Sign in to save your wedding workspace.',401);
  const owner=authUser.id;
  if(!['GET','HEAD'].includes(request.method)&&request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+ // ---- Your data: download everything as a ZIP, or erase everything permanently (DPDP Act rights) ----
+ if(path==='/api/account/export'&&request.method==='GET'){
+  if(guestOrder)fail('Sign in to download your data.',401);
+  return new Response(exportAccountZip(env,authUser),{headers:{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="easy-wedding-my-data.zip"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-EW-Origin':EW_ORIGIN}});
+ }
+ if(path==='/api/account/delete'&&request.method==='POST'){
+  if(guestOrder)fail('Sign in to delete your account.',401);
+  const input=await body(request,2000);
+  if(input?.confirm!=='DELETE')fail('Type DELETE (in capital letters) to confirm.',400);
+  if(await isAdminUser(env,authUser))fail('The admin account cannot be deleted here.',409);
+  await eraseAccountData(env,authUser.id,{eraseOrders:false});
+  return json({deleted:true},200,{'Set-Cookie':sessionCookie('',0)});
+ }
  // ---- My bookings: vendor bookings with their services, the advance and every later payment ----
  if(path==='/api/bookings'||path.startsWith('/api/bookings/')){
   const parts=path.split('/').filter(Boolean);
@@ -589,7 +611,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','pending','coupons','banner','system'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','system','music'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -602,7 +624,7 @@ export default {async fetch(request,env){
    const customers=await one('SELECT COUNT(*) AS n FROM users'),newCustomers=await one('SELECT COUNT(*) AS n FROM users WHERE created_at>=?',istStart(today));
    const visitors=await one('SELECT COUNT(DISTINCT visitor) AS n,COUNT(*) AS views FROM visits WHERE day=?',today);
    const revenueDaily=await all("SELECT date(created_at,'+330 minutes') AS day,SUM(amount_paise) AS paise,COUNT(*) AS n FROM orders WHERE status='paid' AND created_at>=? GROUP BY 1 ORDER BY 1",istStart(istDay(13)));
-   const recent=await all('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,u.email,u.name FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 8');
+   const recent=await all('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,COALESCE(u.email,\'deleted account\') AS email,COALESCE(u.name,\'\') AS name FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 8');
    const newest=await all('SELECT email,name,created_at FROM users ORDER BY created_at DESC LIMIT 5');
    const gateways=[];for(const g of GATEWAYS){const row=await gatewayRow(env,g).catch(()=>null);gateways.push({gateway:g,ready:usable(row),mode:row?.mode||'test',fromEnv:!!envGateway(env,g)});}
    const maint=await one("SELECT value FROM site_settings WHERE key='maintenance'");
@@ -624,10 +646,33 @@ export default {async fetch(request,env){
   }
   if(name==='orders'){
    const st=q.get('status')||'',term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
-   let sql='SELECT o.id,o.design_id,o.amount_paise,o.discount_paise,o.coupon,o.gateway,o.status,o.created_at,u.email,u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE 1=1';const bind=[];
+   let sql='SELECT o.id,o.design_id,o.amount_paise,o.discount_paise,o.coupon,o.gateway,o.status,o.created_at,COALESCE(u.email,\'deleted account\') AS email,COALESCE(u.name,\'\') AS name FROM orders o LEFT JOIN users u ON u.id=o.user_id WHERE 1=1';const bind=[];
    if(['paid','created','failed'].includes(st)){sql+=' AND o.status=?';bind.push(st);}
    if(term){sql+=' AND (lower(u.email) LIKE ? OR lower(u.name) LIKE ? OR o.id LIKE ?)';bind.push('%'+term+'%','%'+term+'%',term+'%');}
    return json({orders:await all(sql+' ORDER BY o.created_at DESC LIMIT 300',...bind)});
+  }
+  if(name==='music'){
+   if(request.method==='GET')return json({music:await previewMusicRow(env)});
+   if(request.method==='DELETE'){const cur=await previewMusicRow(env);if(cur?.id)await env.BUCKET?.delete('site/preview-music/'+cur.id);await d.prepare("DELETE FROM site_settings WHERE key='preview_music'").run();return json({music:null});}
+   if(request.method==='POST'){
+    if(!env.BUCKET)fail('Storage is unavailable.',503);const max=20*1024*1024;if(Number(request.headers.get('Content-Length'))>max+1024*1024)fail('Choose a song under 20 MB.',413);
+    const data=await request.formData(),file=data.get('file');
+    if(!file||typeof file==='string'||!AUDIO_TYPES.includes(file.type)||file.size<12||file.size>max)fail('Choose an MP3, WAV, OGG or M4A song under 20 MB.');
+    const bytes=new Uint8Array(await file.arrayBuffer());if(!validAudioHeader(bytes.slice(0,16),file.type))fail('That file is not a supported audio recording.');
+    const id=crypto.randomUUID(),prev=await previewMusicRow(env),meta={id,name:String(file.name||'preview-music').slice(0,120),size:file.size,type:file.type,uploadedAt:new Date().toISOString()};
+    await env.BUCKET.put('site/preview-music/'+id,bytes,{httpMetadata:{contentType:file.type}});
+    await d.prepare("INSERT INTO site_settings(key,value) VALUES('preview_music',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(meta)).run();
+    if(prev?.id)await env.BUCKET.delete('site/preview-music/'+prev.id);
+    return json({music:meta},201);
+   }
+   fail('Not found.',404);
+  }
+  if(name==='customers'&&request.method==='DELETE'){
+   let cid='';try{cid=decodeURIComponent(seg[3]||'');}catch{fail('Not found.',404);}
+   const u=cid?await one('SELECT id,email FROM users WHERE id=?',cid):null;
+   if(!u)fail('That customer was not found. They may already be deleted.',404);
+   if(String(u.email).toLowerCase()===await adminEmail(env))fail('The admin account cannot be deleted.',409);
+   return json(await eraseAccountData(env,u.id,{eraseOrders:q.get('erase_orders')==='1'}));
   }
   if(name==='customers'){
    const term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
@@ -742,7 +787,7 @@ export default {async fetch(request,env){
    const settings=await db(env).prepare('SELECT * FROM payment_settings').all();
    const gateways=(settings.results||[]).map(r=>{const fromEnv=envGateway(env,r.gateway);if(fromEnv)r={...r,...fromEnv};const x=extraOf(r);return {fromEnv:!!fromEnv,gateway:r.gateway,enabled:!!r.enabled,mode:r.mode,key_id:r.key_id||'',has_secret:!!r.key_secret,client_version:x.client_version||'',webhook_username:x.webhook_username||'',has_webhook_secret:!!x['webhook_'+'secret'],has_webhook_password:!!x['webhook_'+'password']};});
    const priceRows=await db(env).prepare('SELECT * FROM prices').all();
-   const orderRows=await db(env).prepare('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,u.email FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 50').all();
+   const orderRows=await db(env).prepare('SELECT o.id,o.design_id,o.amount_paise,o.gateway,o.status,o.created_at,COALESCE(u.email,\'deleted account\') AS email FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT 50').all();
    return json({gateways,prices:priceRows.results||[],orders:orderRows.results||[]});
   }
   if(request.method==='PUT'){
