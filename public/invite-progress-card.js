@@ -9,12 +9,12 @@ export function progressCardHtml(data,share=''){
  const valid=data&&Number.isFinite(Number(data.percent))&&Array.isArray(data.items);
  if(!valid||Number(data.percent)<=0)return `<p class="eyebrow">YOUR INVITATION</p><h2 class="ip-title">Start your invitation</h2><p class="ip-note">Add your names, date and venue in the Invitation Studio. It takes a few minutes and you can change everything later.</p><div class="ip-actions"><a class="button" href="/studio">Open Invitation Studio</a></div>`;
  const percent=Math.max(0,Math.min(100,Math.round(Number(data.percent)))),complete=!!data.complete&&percent===100;
- const missing=data.items.filter(item=>item&&!item.done).slice(0,3);
+ const stepOf=item=>Math.max(1,Math.min(8,Number(item.step)||1));
  const bar=`<div class="ip-bar" role="progressbar" aria-label="Invitation completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
- const list=missing.length?`<p class="ip-next">Add next for the best result:</p><ul class="ip-missing">${missing.map(item=>`<li><a href="/studio?step=${Math.max(1,Math.min(8,Number(item.step)||1))}">${esc(item.label)}</a></li>`).join('')}</ul>`:'';
+ const ticks=`<ul class="ip-ticks">${data.items.filter(item=>item&&item.label).map(item=>item.done?`<li class="ip-tick done"><span aria-hidden="true">\u2713</span>${esc(item.label)}</li>`:`<li class="ip-tick"><a href="/studio?step=${stepOf(item)}"><span aria-hidden="true">\u25cb</span>${esc(item.label)}</a></li>`).join('')}</ul>`;
  const done=complete?`<p class="ip-success" role="status">${esc(data.message||'Best result! Your invitation is 100% complete. Share it with everyone you love.')}</p>`:'';
  const actions=`<div class="ip-actions"><a class="button" href="/studio">Open Invitation Studio</a>${complete?`<a class="button secondary ip-share" href="${esc(share||'/studio?step=9')}">View / share invitation</a>`:''}</div>`;
- return `<p class="eyebrow">YOUR INVITATION</p><h2 class="ip-title">Your invitation</h2><p class="ip-percent"><strong>${percent}%</strong> complete</p>${bar}${done}${list}${actions}`;
+ return `<div class="ip-head"><p class="eyebrow">YOUR INVITATION</p><p class="ip-percent"><strong>${percent}%</strong> complete</p></div>${bar}${ticks}${done}${actions}`;
 }
 function paint(el,data){if(!el||!el.isConnected)return;el.classList.remove('ip-loading');el.classList.toggle('ip-complete',!!(data&&data.complete));el.classList.toggle('ip-start',!(data&&Number(data.percent)>0));el.innerHTML=progressCardHtml(data,shareUrl);}
 

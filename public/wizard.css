@@ -314,3 +314,13 @@ body.wz .wz-complete-text{margin:0 0 6px;font-weight:600;font-size:13px}
 body.wz .wz-complete-bar{height:6px;border-radius:999px;background:#f1e6d6;overflow:hidden}
 body.wz .wz-complete-bar span{display:block;height:100%;width:0;border-radius:inherit;background:#c99a3d;transition:width .4s ease}
 body.wz .wz-complete.done .wz-complete-bar span{background:#2f8a4c}
+
+/* Inside the Android app: no website header, no big intro, no duplicate percent box,
+   no bookings section (bookings live on their own page/tab) and no side preview column
+   (the app opens the preview full-screen) — the editor steps get the whole screen. */
+body.in-app .studio-header{display:none}
+body.in-app .wz-intro{display:none}
+body.in-app #wz-complete{display:none!important}
+body.in-app #bookings{display:none!important}
+body.in-app .wz-preview{display:none}
+body.in-app .wz-layout{grid-template-columns:minmax(0,1fr);max-width:720px;padding-top:10px}

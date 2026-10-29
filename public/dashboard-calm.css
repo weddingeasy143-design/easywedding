@@ -65,13 +65,13 @@ body.royal-planner,.royal-planner .workspace{background:var(--calm-bg)}
 .royal-planner .data-panel .danger-zone .button.danger{margin-top:10px;width:100%}
 .royal-planner .data-panel .danger-zone .button.danger:disabled{opacity:.45;cursor:not-allowed}
 /* "Your invitation" completion card at the top of Overview */
-.royal-planner #main-content .ip-card{margin:18px clamp(16px,4vw,40px) 22px;padding:20px 22px;background:var(--calm-card);color:var(--calm-ink);border:1px solid var(--calm-line);border-radius:14px;box-shadow:0 2px 10px rgba(90,40,30,.07)}
+.royal-planner #main-content .ip-card{margin:14px clamp(16px,4vw,40px) 18px;padding:14px 18px;background:var(--calm-card);color:var(--calm-ink);border:1px solid var(--calm-line);border-radius:14px;box-shadow:0 2px 10px rgba(90,40,30,.07)}
 .royal-planner #main-content .ip-card .eyebrow{margin:0 0 4px}
 .royal-planner #main-content .ip-title{margin:0 0 6px;font-size:22px}
 .royal-planner #main-content .ip-note{margin:4px 0 0;color:var(--calm-muted)}
 .royal-planner #main-content .ip-percent{margin:4px 0 10px;color:var(--calm-muted)}
-.royal-planner #main-content .ip-percent strong{font-size:34px;line-height:1;margin-right:6px;color:var(--calm-ink)}
-.royal-planner #main-content .ip-bar{height:10px;border-radius:999px;background:#f3e9d9;border:1px solid var(--calm-line);overflow:hidden}
+.royal-planner #main-content .ip-percent strong{font-size:20px;line-height:1;margin-right:6px;color:var(--calm-ink)}
+.royal-planner #main-content .ip-bar{height:5px;border-radius:999px;background:#f3e9d9;border:1px solid var(--calm-line);overflow:hidden}
 .royal-planner #main-content .ip-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#c99a3d,#b9812c);transition:width .4s ease}
 .royal-planner #main-content .ip-next{margin:14px 0 4px;font-weight:600}
 .royal-planner #main-content .ip-missing{margin:0;padding-left:20px;display:grid;gap:4px}
@@ -81,3 +81,14 @@ body.royal-planner,.royal-planner .workspace{background:var(--calm-bg)}
 .royal-planner #main-content .ip-success{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:#eaf5ec;color:#1d5e33;border:1px solid #b8dcc2;font-weight:600}
 .royal-planner #main-content .ip-complete .ip-bar span{background:linear-gradient(90deg,#3f9a5c,#1d7a3a)}
 @media (max-width:600px){.royal-planner #main-content .ip-card{margin:14px 16px 18px;padding:16px}.royal-planner #main-content .ip-actions .button{flex:1 1 100%}}
+
+/* Compact invitation progress: one-line head, thin bar, tick pills (done = \2713, todo = link) */
+.royal-planner #main-content .ip-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.royal-planner #main-content .ip-head .eyebrow{margin:0}
+.royal-planner #main-content .ip-head .ip-percent{margin:0}
+.royal-planner #main-content .ip-ticks{list-style:none;margin:10px 0 2px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.royal-planner #main-content .ip-tick{font-size:12.5px;line-height:1.35;border:1px solid var(--calm-line);border-radius:999px;padding:3px 10px;color:var(--calm-muted);background:#fff}
+.royal-planner #main-content .ip-tick span{margin-right:5px}
+.royal-planner #main-content .ip-tick.done{color:#1d5e33;border-color:#b8dcc2;background:#eaf5ec;font-weight:600}
+.royal-planner #main-content .ip-tick a{color:inherit;text-decoration:none}
+.royal-planner #main-content .ip-tick a:hover{text-decoration:underline;text-underline-offset:3px}

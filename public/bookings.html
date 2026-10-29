@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#75152e"><title>My Bookings · Easy Wedding</title><meta name="description" content="Your wedding bookings in one place: vendors, advances, every payment and the balance still to pay."><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="brand.css"><script type="module" src="bookings.js"></script><script defer src="auth.js"></script><link rel="canonical" href="https://easywedding.in/bookings"><meta name="robots" content="noindex,follow"><link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/seo/favicon-32.png"><link rel="apple-touch-icon" href="/assets/seo/apple-touch-icon.png"><style>
+.bk-page{max-width:880px;margin:0 auto;padding:26px 18px 64px}
+.bk-page .bookings{margin-top:6px;border-top:0;padding-top:0}
+.bk-back{display:inline-block;margin:0 0 6px;font-size:14px}
+</style></head>
+<body><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div>
+<header class="studio-header"><a class="brand" href="./" aria-label="Easy Wedding home"><span class="brand-logo-crop"><img src="assets/brand/easy-wedding-logo.png" alt="Easy Wedding" width="2048" height="682"></span></a><div class="header-actions"><a href="/studio" class="secondary">Invitation Studio</a><a href="/dashboard" class="secondary">Wedding workspace</a></div></header>
+<main class="bk-page">
+<a class="bk-back" href="/dashboard">← Back to your wedding workspace</a>
+<section id="bookings" class="bookings" hidden aria-label="My bookings"></section>
+</main>
+<script type="module">
+/* Bookings live on their own page now (the Android app gives them their own tab too).
+   bookings.js starts on the studio's owner signal; this page sends the same signal
+   once the visitor is confirmed signed in. */
+try{
+ const s=await (await fetch('/api/session',{credentials:'same-origin'})).json();
+ if(!s||!s.user){location.replace('/login?next=%2Fbookings');}
+ else{document.body.classList.add('mode-owner');document.dispatchEvent(new CustomEvent('ew:owner'));}
+}catch{document.body.classList.add('mode-owner');document.dispatchEvent(new CustomEvent('ew:owner'));}
+</script>
+</body></html>

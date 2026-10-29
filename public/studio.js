@@ -10,6 +10,10 @@ import {referenceDesignFor} from './reference-designs.js';
 import {DEFAULTS,normalizeConfig,readConfig,encodeConfig,invitationUrl,rsvpDestination,safeImageUrl,validDate,validTime} from './config.js';
 import {videoEmbedUrl} from './video-embed.js';
 import {createWizard,priceRow,fillPriceChips,REVIEW_STEP,DONE_STEP} from './wizard.js';
+/* Android app (window.EWApp bridge): the app supplies its own header, progress card and tab bar,
+   so the studio page drops its duplicated chrome there and the editor gets the full height. */
+if(window.EWApp)document.body.classList.add('in-app');
+addEventListener('load',()=>{if(window.EWApp)document.body.classList.add('in-app');});
 const $=s=>document.querySelector(s),form=$('#editor-form'),preview=$('#preview'),STORAGE='wedcanvas:invitation:v2',WIZARD_STORAGE='wedcanvas:wizard:v1';let config=normalizeConfig(DEFAULTS),updateTimer,songUploadVersion=0,wizard=null,payPricing=null,errorSeq=0;
 try{if(location.hash.includes('card='))config=readConfig(location);else{const saved=localStorage.getItem(STORAGE);if(saved)config=normalizeConfig(JSON.parse(saved));}}catch{$('#save-status').textContent='Sample opened · saved draft unavailable';}
 const selectedTheme=new URLSearchParams(location.search).get('template');if(Object.hasOwn(eventThemes,selectedTheme))config=normalizeConfig({...config,theme:selectedTheme});
