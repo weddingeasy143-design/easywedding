@@ -71,14 +71,15 @@ function card(b){
 }
 function draw(){
  const sum=totals(state.bookings);
- root.replaceChildren(
+ /* DOM replaceChildren() turns null into the text "null": hand it only real nodes */
+ root.replaceChildren(...[
   h('div',{class:'bk-head'},h('div',null,h('p',{class:'eyebrow'},'MY BOOKINGS'),h('h2',null,'Vendors & payments'),h('p',{class:'bk-sub'},'Pandal, light, DJ, catering — who you booked, how much, the advance and every payment.')),
    h('div',{class:'bk-head-actions'},h('button',{type:'button',class:'primary',onclick:()=>{state.adding=true;state.editing=null;draw();}},'+ Add booking'),state.bookings.length?h('button',{type:'button',class:'secondary',onclick:()=>downloadPdf(state.bookings)},'Download all (PDF)'):null)),
   h('div',{class:'bk-sum'},h('div',null,h('small',null,'Total booked'),h('b',null,rupees(sum.total))),h('div',null,h('small',null,'Paid so far'),h('b',{class:'ok'},rupees(sum.paid))),h('div',null,h('small',null,'Balance due'),h('b',{class:sum.balance>0?'due':'ok'},rupees(sum.balance)))),
   state.message?h('p',{class:'bk-msg',role:'status'},state.message):null,
   state.adding?h('div',{class:'bk-card'},h('h3',null,'New booking'),bookingForm(null)):null,
   ...state.bookings.map(b=>state.editing===b.id?h('div',{class:'bk-card'},h('h3',null,'Edit booking'),bookingForm(b)):card(b)),
-  !state.bookings.length&&!state.adding?h('p',{class:'bk-empty'},'No booking yet. Press “Add booking” to save your first vendor.'):null);
+  !state.bookings.length&&!state.adding?h('p',{class:'bk-empty'},'No booking yet. Press “Add booking” to save your first vendor.'):null].filter(Boolean));
 }
 
 /* ---- PDF ---- */
