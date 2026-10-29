@@ -198,4 +198,4 @@ if (dialog) {
   });
 }
 
-/* Card prices are refreshed from /api/pricing by catalog.js. */
+/* Card prices are refreshed from the pricing API by catalog.js. */

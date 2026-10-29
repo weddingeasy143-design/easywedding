@@ -27,13 +27,16 @@
     document.body.classList.add('motion-ready');
     document.addEventListener('focusin',function(e){var el=e.target.closest('[data-reveal]');if(el){el.classList.add('is-visible');revealObserver.unobserve(el);}});
   }
+  /* Optional reading-progress bar: the catalogue homepage has none, so every use is guarded. */
   var progress=$('#page-progress'),framePending=false;
   function updateProgress(){framePending=false;var range=document.documentElement.scrollHeight-window.innerHeight;progress.value=range>0?Math.min(100,Math.max(0,window.scrollY/range*100)):0;}
-  window.addEventListener('scroll',function(){if(!framePending){framePending=true;requestAnimationFrame(updateProgress);}},{passive:true});
-  window.addEventListener('resize',updateProgress);updateProgress();
+  if(progress){
+    window.addEventListener('scroll',function(){if(!framePending){framePending=true;requestAnimationFrame(updateProgress);}},{passive:true});
+    window.addEventListener('resize',updateProgress);updateProgress();
+  }
   if(typeof window.IntersectionObserver==='function'){
     var sectionObserver=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;document.querySelectorAll('#site-links a').forEach(function(link){if(link.getAttribute('href')==='#'+entry.target.id)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');});});},{rootMargin:'-25% 0px -50% 0px',threshold:0});
-    document.querySelectorAll('#top,#features,#how,#studio,.dash-band,#love,.final-cta').forEach(function(section){sectionObserver.observe(section);});
+    document.querySelectorAll('#top,#pricing,#includes,#features,#how,#faq,#studio,.dash-band,#love,.final-cta,.cat-final').forEach(function(section){sectionObserver.observe(section);});
   }
   document.addEventListener('click',function(e){var b=e.target.closest('[data-signout]');if(!b)return;e.preventDefault();if(window.EWAuth)window.EWAuth.signOut();});
 
@@ -58,6 +61,8 @@
     var L=window.__ewLenis,pad=parseInt(getComputedStyle(document.documentElement).scrollPaddingTop,10)||0;
     if(L){L.scrollTo(target||0,{offset:target?-pad:0});}
     else{glideTo(target?Math.max(0,Math.round(target.getBoundingClientRect().top+window.pageYOffset-pad)):0);}
+    /* Keyboard users who follow the skip link land inside the catalogue, not back at the header. */
+    if(target&&a.classList.contains('skip-link')){if(!target.hasAttribute('tabindex'))target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(err){}}
     try{if(location.hash||location.search.indexOf('auth=')>=0)history.replaceState(null,'',location.pathname);}catch(err){}
   });
   if(location.hash){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}
