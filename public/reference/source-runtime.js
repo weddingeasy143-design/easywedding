@@ -1,4 +1,4 @@
-import {readConfig,encodeConfig,rsvpDestination} from '../config.js';
+import {readConfig,encodeConfig,rsvpDestination,isSamplePreview,withSample} from '../config.js';
 import {resolveSong} from '../audio-upload.js';
 import {invitationModel} from '../reference-model.js';
 import {referenceDesignFor,referenceMotionFor} from '../reference-designs.js';
@@ -6,6 +6,12 @@ import {installReferenceDesign} from '../reference-theme-motion.js';
 
 const root=document.querySelector('#reference-root');
 let config=readConfig(location);
+/* A public preview (a visitor looking at a design before buying) shows a finished sample: sample couple, sample photographs and the preview music the owner chose in the admin console.
+   A real invitation (#card=…, ?id=…, ?to=…) is never touched. */
+if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
+ config=withSample(config,location.href);
+ try{const info=await (await fetch('/api/site-info',{credentials:'omit'})).json();if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
+}
 const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
 const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'));

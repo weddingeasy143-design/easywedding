@@ -1,5 +1,5 @@
 import {referenceDefaults} from '../reference-fields.js';
-import {readConfig,encodeConfig,invitationUrl,rsvpDestination} from '../config.js';
+import {readConfig,encodeConfig,invitationUrl,rsvpDestination,isSamplePreview,withSample} from '../config.js';
 import {referenceForConfig} from '../reference-editor.js';
 import {resolveSong} from '../audio-upload.js';
 import {invitationQRCode} from '../reference-qr.js';
@@ -11,6 +11,12 @@ document.querySelector('#reference-root').dataset.loading='configuration';
 const source=await fetch('./source-data.json').then(r=>r.json());
 document.querySelector('#reference-root').dataset.loading='components';
 let config=readConfig(location),isEvidence=new URLSearchParams(location.search).get('source')==='1';
+/* A public preview (a visitor looking at a design before buying) shows a finished sample: sample couple, sample photographs and the preview music the owner chose in the admin console.
+   A real invitation (#card=…, ?id=…, ?to=…) is never touched. */
+if(!isEvidence&&isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
+ config=withSample(config,location.href);
+ try{const info=await (await fetch('/api/site-info',{credentials:'omit'})).json();if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
+}
 const design=referenceDesignFor(config.theme);
 if(!isEvidence){document.body.dataset.ganeshIcon=config.ganeshIcon;window.__referenceGaneshEnabled=config.ganeshIcon!=='none';window.__referenceThemeMotion=referenceMotionFor(design);installReferenceDesign(design);}
 window.__referenceCredit=isEvidence?' Developed by Chandan Kumar Mahato':' Crafted with Easy Wedding';
