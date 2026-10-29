@@ -1,0 +1,76 @@
+# Easy Wedding — full details
+
+Website: https://easywedding.in/
+Owner: Chandan Kumar Mahato
+Country and currency: India, INR
+Support: WhatsApp and phone +91 87899 91983, 10 AM to 8 PM IST, every day
+
+## What it is
+Easy Wedding lets an Indian couple create a cinematic, animated wedding invitation that guests open on any phone with no app, and plan the wedding in one place: events (Haldi, Mehendi, Sangeet, Wedding, Reception), budget in INR, checklist, vendors and bookings, outfits, cards and posters. Invitations can include photographs, venue directions, a wedding song, a countdown, RSVP by WhatsApp and a Hindi version.
+
+## How it works
+1. Choose a design on the home page. Every design can be previewed free with sample names.
+2. Create your account: enter your name, email, mobile number and a password, then pay once. The account is created only after payment succeeds.
+3. Log in to your dashboard, add your names, photographs, venue and events, and preview the invitation.
+4. Publish and share the invitation link with guests on WhatsApp.
+Payments are processed securely through Razorpay (UPI, cards and netbanking).
+
+## Invitation designs and prices (INR, one-time per design)
+- Premium Original (Cinematic curtain & doors · 23 photos): ₹799 (regular ₹999)
+- Crimson Vows (Rose drift · royal gates): ₹599 (regular ₹699)
+- Peacock Promise (Feather sway · peacock fan): ₹599 (regular ₹699)
+- Starlit Vows (Moonlit float · starlight reveal): ₹599 (regular ₹699)
+- Golden Phere (Marigold flutter · golden curtain): ₹599 (regular ₹699)
+- Ivory Jasmine (Jasmine breeze · silk reveal): ₹399 (regular ₹499)
+- Botanical Forever (Leaf sway · garden unfold): ₹399 (regular ₹499)
+- Wisteria Vows (Wisteria cascade · violet veil): ₹399 (regular ₹499)
+- Champagne Forever (Candlelight drift · editorial reveal): ₹399 (regular ₹499)
+- Blush Lotus (Lotus bloom · petal drift): ₹399 (regular ₹499)
+- Sacred Courtyard (Terracotta warmth · courtyard fold): ₹399 (regular ₹499)
+- All-Designs Wedding Pass: all 11 designs unlocked for one wedding — ₹1,199 (regular ₹1,499)
+Optional extras (for example Hindi version, PDF, photo gallery, short link) start at ₹99. Grand Opening prices are for a limited period.
+
+## Dashboard features
+Overview with countdown, events, budget planner with PDF export, checklist, vendors and bookings, outfit ideas, cards and posters, AI design helper, wedding profile.
+
+## Frequently asked questions
+Q: Is Easy Wedding free?
+A: Planning is free — the workspace, budget, checklist and all 11 invitation previews cost nothing. You pay only when you publish your own invitation: at Grand Opening prices a single design is ₹399–₹799 (regular ₹499–₹999), and the All-Designs Pass is ₹1,199 (regular ₹1,499).
+
+Q: How do I pay?
+A: When you create your invitation link in the studio, pick a payment option and pay with UPI (Google Pay, PhonePe, Paytm and other UPI apps), a debit or credit card, or netbanking. Your design unlocks the moment your payment succeeds.
+
+Q: What do I get after paying?
+A: Your chosen design unlocks instantly. Create your shareable invitation link and QR code with your own photos, words and wedding song. One payment covers one design for one wedding — the All-Designs Pass covers all 11.
+
+Q: Can I edit my invitation after paying?
+A: Yes. Edit your details any time and create a fresh link — each link holds a snapshot of your details, so make a new link after editing. Your unlocked design stays yours.
+
+Q: How do guests open invitations?
+A: Share your invitation link or QR code. Guests tap to open it on any phone — no app to install and no sign-in needed.
+
+Q: Do I need to install anything?
+A: No. Plan in your browser on a phone, tablet or computer — and your guests open invitations without any app.
+
+Q: Are there any extra charges?
+A: No hidden charges. The design price covers your invitation link and QR code for your whole wedding. Optional extras — personal links for each guest, a Hindi version, a printable PDF, a larger photo gallery and a short link — are priced separately in the studio, from ₹99.
+
+Q: Can I get a refund?
+A: See our refund & cancellation policy . If a payment went through but your design did not unlock, contact us and we will fix it the same day.
+
+Q: Where is my plan stored?
+A: Your wedding plan is saved to your Easy Wedding account, so it is there on every phone and computer you sign in on. You can also use Download backup in your wedding profile to keep a copy of your own.
+
+Q: Can I try it first?
+A: Open the live demo to explore a complete sample wedding.
+
+Q: How do I contact you?
+A: Call or WhatsApp us at +91 87899 91983 , between 10 AM and 8 PM — or chat on WhatsApp .
+
+## Links
+- Home: https://easywedding.in/
+- Create account: https://easywedding.in/register
+- FAQ: https://easywedding.in/faq
+- Privacy: https://easywedding.in/privacy
+- Terms: https://easywedding.in/terms
+- Refunds: https://easywedding.in/refund

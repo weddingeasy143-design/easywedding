@@ -1,0 +1,20 @@
+# Easy Wedding
+
+> Easy Wedding (easywedding.in) is an Indian website for creating animated digital wedding invitations and planning a wedding. Couples pick one of 11 invitation designs, preview it free, pay once, then add their names, photos, venue and events and share one link with guests on WhatsApp. The same account includes a planner for events, budget, checklist, vendors and outfits. Prices are in Indian rupees (INR), from ₹399 per design.
+
+## Key pages
+- [Home](https://easywedding.in/): What Easy Wedding is, all 11 designs with live previews and prices, how it works
+- [Create account](https://easywedding.in/register): Choose a design, enter details and pay; the account is created after payment
+- [Invitation Studio](https://easywedding.in/studio): Edit and preview an animated invitation
+- [FAQ and help](https://easywedding.in/faq): Answers about payment, editing, sharing and refunds
+- [About](https://easywedding.in/about): Who runs Easy Wedding
+- [Contact](https://easywedding.in/contact): WhatsApp +91 87899 91983, support 10 AM to 8 PM IST every day
+
+## Policies
+- [Privacy policy](https://easywedding.in/privacy)
+- [Terms of service](https://easywedding.in/terms)
+- [Refunds and cancellations](https://easywedding.in/refund)
+- [Copyright](https://easywedding.in/copyright)
+
+## Optional
+- [Full details for AI assistants](https://easywedding.in/llms-full.txt): Pricing table, how it works and the full FAQ in plain text

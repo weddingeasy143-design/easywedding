@@ -1,5 +1,151 @@
+# Easy Wedding — public pages are open to search engines and AI assistants.
+# Private areas (admin, account, API) are not crawled; /login and /invite carry noindex.
+
 User-agent: *
 Allow: /
 Disallow: /boss
 Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Googlebot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Bingbot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: GPTBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Claude-User
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: CCBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Bytespider
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: DuckAssistBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: YouBot
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
+User-agent: MistralAI-User
+Allow: /
+Disallow: /boss
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /workspace
+
 Sitemap: https://easywedding.in/sitemap.xml
