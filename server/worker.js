@@ -1,6 +1,7 @@
 import {normalizeConfig} from '../public/config.js';
 import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
 import {exportAccountZip,eraseAccountData} from './account-data.js';
+import {inviteProgress} from './invite-progress.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
 async function rateHit(env,name,request,limit,windowSec){
@@ -859,6 +860,8 @@ export default {async fetch(request,env){
   if(replace&&/^[0-9a-f-]{36}$/.test(replace)){const own=await db(env).prepare('SELECT owner FROM invitation_owners WHERE invitation_id=?').bind(replace).first();if(own&&own.owner===owner)id=replace;}
   await env.BUCKET.put('invitation-snapshots/'+id,JSON.stringify(c),{httpMetadata:{contentType:'application/json'}});try{await db(env).prepare('INSERT OR REPLACE INTO invitation_owners(invitation_id,owner,partner1,partner2,created_at) VALUES(?,?,?,?,?)').bind(id,owner,c.partner1,c.partner2,new Date().toISOString()).run();}catch{}return json({id,url:'/invite?id='+id},201);
  }
+ /* How complete the owner's invitation draft is (dashboard card + Android app). No draft yet = 0 %. */
+ if(path==='/api/invitation-progress'&&request.method==='GET'){const row=await db(env).prepare('SELECT data FROM studio_drafts WHERE owner=?').bind(owner).first();let config=null;try{config=row?JSON.parse(row.data):null;}catch{}return json(inviteProgress(config),200,{'Cache-Control':'no-store'});}
  if(path==='/api/studio'){
   if(request.method==='GET'){const row=await db(env).prepare('SELECT data FROM studio_drafts WHERE owner=?').bind(owner).first();return json({config:row?JSON.parse(row.data):null});}
   if(request.method==='PUT'){const c=await body(request,250000);if(!c||!bounded(c.partner1,70)||!bounded(c.partner2,70))fail('Invalid invitation.');await db(env).prepare('INSERT INTO studio_drafts(owner,data,updated_at) VALUES(?,?,?) ON CONFLICT(owner) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').bind(owner,JSON.stringify(c),new Date().toISOString()).run();return json({saved:true});}
