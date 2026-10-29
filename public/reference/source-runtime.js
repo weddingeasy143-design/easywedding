@@ -72,6 +72,7 @@ window.addEventListener('message',event=>{
   location.hash='card='+encodeConfig(event.data.config);location.reload();
  }
  if(event.data?.type==='wedcanvas:replay')window.dispatchEvent(new Event('wedding:replay'));
- if(event.data?.type==='wedcanvas:open')window.dispatchEvent(new Event('wedding:open'));
+ /* A late open request (autoplay) must never throw a visitor who has already scrolled back to the cover. */
+ if(event.data?.type==='wedcanvas:open'&&window.scrollY<=24)window.dispatchEvent(new Event('wedding:open'));
 });
 parent.postMessage({type:'wedcanvas:ready'},location.origin);
