@@ -22,13 +22,15 @@ try{config=readConfig(location)}catch{config=null}
 // watermark so it can't stand in for a real invitation. Previews framed inside
 // the studio or the homepage stay clean.
 function showPreviewRibbon(){
- if(window.self!==window.top)return;
+ const wm=new URLSearchParams(location.search).get('wm')==='1';
+ if(window.self!==window.top&&!wm)return;
  const style=document.createElement('style');
  style.textContent='.ew-preview-mark{position:fixed;inset:0;z-index:2147483646;pointer-events:none;background-image:url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="260" height="180"><text x="20" y="110" transform="rotate(-28 130 90)" font-family="Georgia,serif" font-size="34" letter-spacing="6" fill="rgba(117,21,46,0.16)">PREVIEW</text></svg>')+'")}'
   +'.ew-preview-bar{position:fixed;left:0;right:0;top:0;z-index:2147483647;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px;background:#5e1220;color:#fff7e8;font:600 13px/1.4 system-ui,sans-serif;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}'
   +'.ew-preview-bar a{color:#3a0a18;background:#e8c876;border-radius:999px;padding:6px 14px;text-decoration:none;font-weight:700;white-space:nowrap}';
  document.head.append(style);
  const mark=document.createElement('div');mark.className='ew-preview-mark';mark.setAttribute('aria-hidden','true');
+ if(window.self!==window.top){document.body.append(mark);return;}
  const bar=document.createElement('div');bar.className='ew-preview-bar';bar.setAttribute('role','note');
  const text=document.createElement('span');text.textContent='Preview only · unlock this design to share it with your guests';
  const link=document.createElement('a');link.href='/studio'+(config?.theme?'?template='+encodeURIComponent(config.theme):'');link.textContent='Unlock & share →';

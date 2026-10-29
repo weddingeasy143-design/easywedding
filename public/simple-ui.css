@@ -70,3 +70,14 @@
 .play-badge b{display:block;font:700 19px/1.15 system-ui,sans-serif}
 .play-badge:hover{background:#222}
 .play-badge:focus-visible{outline:3px solid #efcc87;outline-offset:3px}
+
+/* ---- Studio v2: photos & music first, advanced fields tucked away ---- */
+.editor-section summary em.rec{background:#1d7a3a;color:#fff}
+.media-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.media-grid .song-upload{grid-column:1/-1;border:2px solid #e8c876;background:rgba(255,226,154,.10);border-radius:14px;padding:16px}
+.media-grid .song-upload label{font-size:17px}
+.media-grid .photo-upload{border-radius:14px}
+.media-grid .photo-upload img{width:100%;max-height:170px;object-fit:cover;border-radius:10px}
+.advanced-wrap>summary .step{opacity:.7}
+.image-links{margin-top:14px}
+@media(max-width:560px){.media-grid{grid-template-columns:1fr}}

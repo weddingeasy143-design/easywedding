@@ -79,6 +79,9 @@ if (dialog) {
        reference/render.html. Keep our loader up until the real card is there. */
     const onCard = !!doc && !!doc.body && /\/reference\/render\.html$/.test(doc.location.pathname);
     if (onCard) {
+      /* The visitor has started scrolling the invitation: autoplay must never press anything again,
+         or its "open invitation" press (the cover button is still near the top) throws them back to the top. */
+      if (doc.defaultView && doc.defaultView.scrollY > 24) { stopAutoplay(); return; }
       const text = doc.body.textContent || '';
       /* Later stage first: once the card is showing, its open control is the
          goal — an off-screen leftover of the reveal screen must not starve it. */
@@ -114,12 +117,18 @@ if (dialog) {
       const view = frame.contentWindow;
       view.addEventListener('keydown', (event) => { if (event.key === 'Escape') dialog.close(); });
       view.document.documentElement.style.scrollbarWidth = 'none';
+      /* Wheel and touch scrolling move the page directly (no CSS smoothing lag) and never chain to the page behind. */
+      view.document.documentElement.style.scrollBehavior = 'auto';
+      view.document.documentElement.style.overscrollBehavior = 'contain';
+      /* Any touch, wheel, key or click by the visitor means they are in control: stop autoplay. */
+      /* Only real input counts (isTrusted): autoplay's own synthetic presses must not stop itself. */
+      ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((type) => view.addEventListener(type, (event) => { if (event.isTrusted) stopAutoplay(); }, { passive: true }));
     } catch (err) { /* about:blank or navigated away */ }
   });
 
   function openPreview(design) {
     title.textContent = design.name;
-    makeLink.href = '/register?template=' + design.id;
+    makeLink.href = '/studio?template=' + design.id;
     if (loading) loading.hidden = false;
     idleTicks = 0;
     pressTicks = 0;
@@ -189,21 +198,4 @@ if (dialog) {
   });
 }
 
-/* The cards ship with launch prices; refresh them from /api/pricing so an
-   admin price edit shows here too. Any failure keeps the printed prices. */
-const rupees = (paise) => '₹' + Math.round(paise / 100).toLocaleString('en-IN');
-fetch('/api/pricing').then((r) => (r.ok ? r.json() : null)).then((pricing) => {
-  if (!pricing || !Array.isArray(pricing.designs)) return;
-  pricing.designs.forEach((row) => {
-    const card = document.querySelector('[data-design="' + CSS.escape(row.id) + '"]');
-    const price = card && card.querySelector('.ewp-price');
-    if (!price || !(row.current > 0)) return;
-    const was = price.querySelector('s');
-    const now = price.querySelector('strong');
-    const save = price.querySelector('span');
-    now.textContent = rupees(row.current);
-    const discounted = row.regular > row.current;
-    if (was) { was.textContent = rupees(row.regular); was.hidden = !discounted; }
-    if (save) { save.textContent = 'Save ' + rupees(row.regular - row.current); save.hidden = !discounted; }
-  });
-}).catch(() => {});
+/* Card prices are refreshed from /api/pricing by catalog.js. */
