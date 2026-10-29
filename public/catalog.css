@@ -225,3 +225,16 @@ dialog.tpl-dialog{width:fit-content;max-width:calc(100% - 24px);max-height:calc(
  .cat-card:hover,.cat-card:hover .cat-thumb img{transform:none}
  .tpl-loading::before{animation:none}
 }
+/* Google Play badge + tester link: in the header beside Login, and inside the phone menu */
+.nav-play[hidden],.mob-play[hidden],.play-badge[hidden],.play-tester[hidden]{display:none}
+.nav-play{display:none;flex-direction:column;align-items:flex-start;gap:2px;margin-right:6px}
+.nav-play .play-badge{margin:0;min-height:36px;padding:4px 12px 4px 10px;gap:8px;border-radius:9px}
+.nav-play .play-badge b{font-size:14px}
+.nav-play .play-badge small{font-size:8px}
+.nav-play .play-tester{font-size:12px;font-weight:600;color:var(--maroon);text-decoration:underline;min-height:0;line-height:1.2}
+@media (min-width:960px){.nav-play:not([hidden]){display:flex}.mob-play{display:none!important}}
+.nav-play .play-badge,.site-links a{white-space:nowrap}
+@media (min-width:960px) and (max-width:1199px){.nav-cta .btn-wa{display:none}}
+.mob-play{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--line)}
+.mob-play .play-badge{margin:0;min-height:44px;padding:4px 14px 4px 12px;border-radius:10px}
+.mob-play .play-tester{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1.5px solid var(--gold);border-radius:999px;color:var(--maroon);font-weight:600;font-size:14px;text-decoration:none}

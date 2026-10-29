@@ -199,8 +199,8 @@ async function loadSystem(){
 
 
 // ---- Android app: the Google Play link behind the homepage button ----
-async function loadApplinks(){const d=await api('/api/admin/applinks');$('#pl-url').value=d.playStore||'';const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;}
-$('#pl-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#pl-status');st.textContent='Saving…';try{const d=await send('/api/admin/applinks',{playStore:$('#pl-url').value.trim()});const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;st.textContent=d.playStore?'Saved. The Google Play button is now live on the homepage.':'Saved. The Google Play button is hidden.';}catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not save. Please try again.';}});
+async function loadApplinks(){const d=await api('/api/admin/applinks');$('#pl-url').value=d.playStore||'';$('#pl-tester').value=d.testerUrl||'';$('#pl-tester-on').checked=!!d.testerOn;const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;}
+$('#pl-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#pl-status');st.textContent='Saving…';try{const d=await send('/api/admin/applinks',{playStore:$('#pl-url').value.trim(),testerUrl:$('#pl-tester').value.trim(),testerOn:$('#pl-tester-on').checked});const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;st.textContent=(d.playStore||(d.testerOn&&d.testerUrl))?'Saved. The Google Play button is live on the homepage'+(d.testerOn&&d.testerUrl?' with the tester link.':'.'):'Saved. The Google Play button is hidden.';}catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not save. Please try again.';}});
 
 // ---- Preview music: the song played in public design previews ----
 function paintMusic(m){
