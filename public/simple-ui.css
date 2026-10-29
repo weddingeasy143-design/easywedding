@@ -62,3 +62,11 @@
  .site-footer .foot-cols a{display:flex;align-items:center;min-height:44px}
  .site-footer .foot-nowrap{white-space:nowrap}
 }
+
+/* Google Play button: shown only once the owner has added the Play Store link in the admin console */
+.play-badge{display:inline-flex;align-items:center;gap:12px;margin:16px 0 4px;padding:9px 20px 9px 16px;border-radius:12px;background:#111;color:#fff;text-decoration:none;border:1px solid #6b6b6b;min-height:52px}
+.play-badge[hidden]{display:none}
+.play-badge small{display:block;font:600 10px/1 system-ui,sans-serif;letter-spacing:.12em;color:#ddd}
+.play-badge b{display:block;font:700 19px/1.15 system-ui,sans-serif}
+.play-badge:hover{background:#222}
+.play-badge:focus-visible{outline:3px solid #efcc87;outline-offset:3px}

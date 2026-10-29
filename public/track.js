@@ -17,6 +17,7 @@
  const banner=()=>{
   if(path!=='/')return;
   fetch('/api/site-info').then(r=>r.ok?r.json():null).then(d=>{
+   if(d&&d.playStore)document.querySelectorAll('[data-play-store]').forEach(a=>{a.href=d.playStore;a.hidden=false;});
    const text=d&&d.banner&&d.banner.text;if(!text)return;
    if(safe(()=>sessionStorage.getItem('ew_banner_x')===text,false))return;
    const bar=document.createElement('div');bar.className='ew-banner';bar.setAttribute('role','status');

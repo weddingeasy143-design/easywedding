@@ -197,6 +197,11 @@ async function loadSystem(){
 }
 
 
+
+// ---- Android app: the Google Play link behind the homepage button ----
+async function loadApplinks(){const d=await api('/api/admin/applinks');$('#pl-url').value=d.playStore||'';const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;}
+$('#pl-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#pl-status');st.textContent='Saving…';try{const d=await send('/api/admin/applinks',{playStore:$('#pl-url').value.trim()});const t=$('#pl-test');t.hidden=!d.playStore;if(d.playStore)t.href=d.playStore;st.textContent=d.playStore?'Saved. The Google Play button is now live on the homepage.':'Saved. The Google Play button is hidden.';}catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not save. Please try again.';}});
+
 // ---- Preview music: the song played in public design previews ----
 function paintMusic(m){
  const box=clear($('#mu-current'));
@@ -215,7 +220,7 @@ $('#mu-remove').addEventListener('click',async()=>{if(!confirm('Remove the previ
  btn.addEventListener('click',()=>set(!side.classList.contains('open')));back.addEventListener('click',()=>set(false));
  document.querySelectorAll('#ad-nav a').forEach(x=>x.addEventListener('click',()=>set(false)));addEventListener('keydown',e=>{if(e.key==='Escape')set(false);});})();
 // ---- Routing, login, start-up ----
-const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:loadSettings,music:loadMusic,system:loadSystem};
+const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
 function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);
