@@ -1,22 +1,35 @@
 import {readConfig,encodeConfig,rsvpDestination,isSamplePreview,withSample} from '../config.js';
 import {resolveSong} from '../audio-upload.js';
+import {withTimeout} from '../safe-wait.js';
 import {invitationModel} from '../reference-model.js';
 import {referenceDesignFor,referenceMotionFor} from '../reference-designs.js';
 import {installReferenceDesign} from '../reference-theme-motion.js';
 
 const root=document.querySelector('#reference-root');
+/* Rendering never waits on audio, photos, IndexedDB or the network for longer than this. */
+const AUDIO_WAIT_MS=2500,SAFETY_MS=6000;
+/* Safety net: low-end phones and Android WebViews must never be left on a blurred or half-drawn screen. */
+const lite=/; wv\)/.test(navigator.userAgent||'')||new URLSearchParams(location.search).has('lite');
+const safetyStyle=document.createElement('style');safetyStyle.id='ew-safety-style';
+safetyStyle.textContent='html.ew-lite *,html.ew-lite *::before,html.ew-lite *::after,html.ew-force-visible *,html.ew-force-visible *::before,html.ew-force-visible *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}html.ew-force-visible #reference-root{opacity:1!important;visibility:visible!important;filter:none!important}';
+document.head.append(safetyStyle);
+if(lite)document.documentElement.classList.add('ew-lite');
+setTimeout(()=>{
+ document.documentElement.classList.add('ew-force-visible');
+ if(root&&root.dataset.loading!=='ready'){const waiting=root.querySelector('.invitation-loading');if(waiting&&!waiting.querySelector('button')){const again=document.createElement('button');again.type='button';again.textContent='Reload';again.onclick=()=>location.reload();waiting.replaceChildren('Still preparing your invitation… ',again);}}
+},SAFETY_MS);
 let config=readConfig(location);
 /* A public preview (a visitor looking at a design before buying) shows a finished sample: sample couple, sample photographs and the preview music the owner chose in the admin console.
    A real invitation (#card=…, ?id=…, ?to=…) is never touched. */
 if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
  config=withSample(config,location.href);
- try{const info=await (await fetch('/api/site-info',{credentials:'omit'})).json();if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
+ try{const info=await withTimeout(fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()),AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
 }
 const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
 const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'));
 let audio=config.audioUrl;
-if(audio.startsWith('local-audio:')){try{audio=(await resolveSong(audio)).url;}catch{audio='';}}
+if(audio.startsWith('local-audio:')){try{audio=(await withTimeout(resolveSong(audio),AUDIO_WAIT_MS,{url:''})).url||'';}catch{audio='';}}
 model.site.music={aartiUrl:'',weddingUrl:'',universalUrl:audio,universalEnabled:config.music&&!!audio,universalVolume:.55,universalFadeIn:2,universalFadeOut:1,universalTrimStart:0,universalTrimEnd:0};
 window.__easyWedding={...model,config,design,motion:referenceMotionFor(design),musicEnabled:config.music&&!!audio};
 document.body.dataset.ganeshIcon=config.ganeshIcon;
