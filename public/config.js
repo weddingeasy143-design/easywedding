@@ -52,9 +52,9 @@ export function calendarFile(c){const start=eventTimestamp(c);const stamp=t=>new
 /* Public previews (a visitor looking at a design before buying) show a finished sample: a sample couple and sample photographs.
    Real invitations never use this — it applies only when the link carries no invitation of its own. */
 const SAMPLE_PAIRS=[['Rupesh','Usha'],['Chandan','Pinki'],['Goutam','Sweety']];
-export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','groom.webp','bride.webp','venue.webp']});
+export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','gallery-haldi.webp','gallery-walk.webp','venue.webp']});
 export function sampleCouple(theme){const i=Math.max(0,Object.keys(eventThemes).indexOf(theme)),[groom,bride]=SAMPLE_PAIRS[i%SAMPLE_PAIRS.length];return {groom,bride};}
 export function isSamplePreview(location){const hash=new URLSearchParams(location.hash.slice(1)),p=new URLSearchParams(location.search);return !hash.has('card')&&!p.has('bride')&&!p.has('groom');}
-/* Flip to true once the sample photographs exist in assets/samples/. */
-export const SAMPLE_PHOTOS_READY=false;
-export function withSample(c,base){const {groom,bride}=sampleCouple(c.theme),u=f=>new URL('assets/samples/'+f,base).href,named={...c,partner1:groom,partner2:bride,groomName:groom,brideName:bride};if(!SAMPLE_PHOTOS_READY)return named;return {...named,photoUrl:u(SAMPLE_PHOTOS.photoUrl),groomPhoto:u(SAMPLE_PHOTOS.groomPhoto),bridePhoto:u(SAMPLE_PHOTOS.bridePhoto),venuePhotoUrl:u(SAMPLE_PHOTOS.venuePhotoUrl),gallery:SAMPLE_PHOTOS.gallery.map(u)};}
+/* Sample photographs for public previews live in assets/samples/. */
+export const SAMPLE_PHOTOS_READY=true;
+export function withSample(c,base){const {groom,bride}=sampleCouple(c.theme),u=f=>new URL('assets/samples/'+f,base).href,named={...c,partner1:groom,partner2:bride,groomName:groom,brideName:bride,venue:'The Royal Palace Gardens',address:'Palace Road, Civil Lines',city:'Jaipur, Rajasthan'};if(!SAMPLE_PHOTOS_READY)return named;return {...named,photoUrl:u(SAMPLE_PHOTOS.photoUrl),groomPhoto:u(SAMPLE_PHOTOS.groomPhoto),bridePhoto:u(SAMPLE_PHOTOS.bridePhoto),venuePhotoUrl:u(SAMPLE_PHOTOS.venuePhotoUrl),gallery:SAMPLE_PHOTOS.gallery.map(u)};}

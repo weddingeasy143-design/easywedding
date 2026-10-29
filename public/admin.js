@@ -33,7 +33,7 @@ const inr=p=>'₹'+(Math.round(Number(p)||0)/100).toLocaleString('en-IN',{maximu
 const num=n=>(Number(n)||0).toLocaleString('en-IN');
 const when=iso=>{const t=new Date(iso);return isNaN(t)?'':t.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});};
 const SRC={google:'Google',facebook:'Facebook',instagram:'Instagram',whatsapp:'WhatsApp',chatgpt:'ChatGPT',ai_chat:'Other AI chats (Gemini, Claude…)',direct:'Direct / typed link',search_other:'Other search engines',youtube:'YouTube',twitter:'X / Twitter',referral:'Other websites',campaign:'Campaign links'};
-const PAGES={dashboard:'Dashboard',analytics:'Analytics',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',settings:'Website & banner',system:'System health'};
+const PAGES={dashboard:'Dashboard',analytics:'Analytics',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',settings:'Website & banner',system:'System health',music:'Preview music'};
 const istDays=n=>Array.from({length:n},(_,k)=>new Date(Date.now()+19800000-(n-1-k)*86400000).toISOString().slice(0,10));
 const hourLabel=h=>(h%12||12)+(h<12?' am':' pm');
 async function api(path,opts){const r=await fetch(path,opts);const d=await r.json().catch(()=>({}));if(!r.ok){const e=Error(d.error||'Request failed.');e.status=r.status;throw e;}return d;}
@@ -144,12 +144,24 @@ async function resetFor(email){
 }
 async function loadCustomers(){
  const d=await api('/api/admin/customers?q='+encodeURIComponent($('#cu-q').value.trim()));
- const rows=d.customers.map(u=>{const acts=el('div');const g=el('button','ad-btn sm','Unlock');g.type='button';g.addEventListener('click',()=>{$('#grant-email').value=u.email;$('#grant-form').scrollIntoView({behavior:'smooth',block:'center'});});const r=el('button','ad-btn sm','Reset password');r.type='button';r.style.marginLeft='6px';r.addEventListener('click',()=>resetFor(u.email));acts.append(g,r);
+ const rows=d.customers.map(u=>{const acts=el('div');const g=el('button','ad-btn sm','Unlock');g.type='button';g.addEventListener('click',()=>{$('#grant-email').value=u.email;$('#grant-form').scrollIntoView({behavior:'smooth',block:'center'});});const r=el('button','ad-btn sm','Reset password');r.type='button';r.style.marginLeft='6px';r.addEventListener('click',()=>resetFor(u.email));const x=el('button','ad-btn sm danger','Delete all data');x.type='button';x.style.marginLeft='6px';x.addEventListener('click',()=>eraseCustomer(u));acts.append(g,r,x);
   return [u.name,u.email,planCell(u.designs),inr(u.spent),when(u.created_at),acts];});
  $('#cu-count').textContent=d.customers.length+' registered user'+(d.customers.length===1?'':'s');
  clear($('#customers-table')).append(table(['Name','Email','Plan taken','Paid','Registered',''],rows,'No customers match.'));
 }
 // Pending sign-ups: people who started payment, or old accounts that never paid. The owner can clear them out.
+/* Permanently erase one customer's data (their right under the DPDP Act, or a request made to you). Payment records are made anonymous unless you also choose to erase them. */
+async function eraseCustomer(u){
+ const who=(u.name||u.email)+' ('+u.email+')',st=$('#pd-status');
+ const typed=prompt('PERMANENT DELETE for '+who+'.\n\nThis erases their login, wedding plan, invitations, photographs, songs, guest replies, bookings and unlocked designs from the server. It cannot be undone and no copy is kept.\n\nIf they paid, refund them first if they are owed one.\n\nType DELETE to continue.');
+ if(typed===null)return;
+ if(typed.trim()!=='DELETE'){alert('Nothing was deleted. You must type DELETE exactly.');return;}
+ const erase=confirm('Also erase their payment (order) records?\n\nOK = erase them completely.\nCancel = keep the payment records but anonymous (no name or email) — recommended, because tax and accounting law may require you to keep them.');
+ st.textContent='Deleting '+u.email+'…';
+ try{await api('/api/admin/customers/'+encodeURIComponent(u.id)+(erase?'?erase_orders=1':''),{method:'DELETE'});st.textContent='All data for '+u.email+' was permanently deleted.';}
+ catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not delete. Please try again.';return;}
+ await Promise.all([loadCustomers(),loadPending()]).catch(handleErr);
+}
 async function removePending(p){
  const st=$('#pd-status'),who=(p.name||p.email)+' ('+p.email+')';
  const msg=p.kind==='order'?'Delete the unfinished sign-up for '+who+'? This removes their started payment (order) only. No account was created yet. If this person already paid, refund them first — a deleted order cannot be completed later. This cannot be undone.'
@@ -184,8 +196,26 @@ async function loadSystem(){
  list.append(row('Records',el('span',null,c)),row('Server time',el('span',null,when(d.time))));
 }
 
+
+// ---- Preview music: the song played in public design previews ----
+function paintMusic(m){
+ const box=clear($('#mu-current'));
+ if(!m){box.append(el('p','ad-empty','No preview music yet. Public previews are silent until you upload a song.'));$('#mu-remove').hidden=true;return;}
+ const audio=el('audio');audio.controls=true;audio.preload='none';audio.src='/api/preview-music?v='+encodeURIComponent(m.id);
+ box.append(el('p','mu-name',m.name),el('p','ad-sub',((Number(m.size)||0)/1048576).toFixed(1)+' MB · uploaded '+when(m.uploadedAt)),audio);$('#mu-remove').hidden=false;
+}
+async function loadMusic(){const d=await api('/api/admin/music');paintMusic(d.music);}
+$('#mu-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#mu-status'),file=$('#mu-file').files[0];if(!file){st.textContent='Choose a song first (MP3, WAV, OGG or M4A, up to 20 MB).';return;}
+ st.textContent='Uploading…';try{const body=new FormData();body.set('file',file);const d=await api('/api/admin/music',{method:'POST',body});paintMusic(d.music);$('#mu-file').value='';st.textContent='Saved. Public previews now play this song when a visitor opens an invitation.';}catch(err){if(err.status===401||err.status===403){handleErr(err);return;}st.textContent=err.message||'Could not upload. Please try again.';}});
+$('#mu-remove').addEventListener('click',async()=>{if(!confirm('Remove the preview music? Public previews will be silent until you upload another song.'))return;try{await api('/api/admin/music',{method:'DELETE'});paintMusic(null);$('#mu-status').textContent='Removed.';}catch(err){if(err.status===401||err.status===403){handleErr(err);return;}$('#mu-status').textContent=err.message||'Could not remove. Please try again.';}});
+
+// ---- Mobile menu ----
+(function(){const side=$('#ad-side'),back=$('#ad-backdrop'),btn=$('#ad-menu');if(!side||!btn)return;
+ const set=open=>{side.classList.toggle('open',open);back.hidden=!open;btn.setAttribute('aria-expanded',String(open));btn.setAttribute('aria-label',open?'Close menu':'Open menu');document.body.classList.toggle('ad-noscroll',open);};
+ btn.addEventListener('click',()=>set(!side.classList.contains('open')));back.addEventListener('click',()=>set(false));
+ document.querySelectorAll('#ad-nav a').forEach(x=>x.addEventListener('click',()=>set(false)));addEventListener('keydown',e=>{if(e.key==='Escape')set(false);});})();
 // ---- Routing, login, start-up ----
-const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:loadSettings,system:loadSystem};
+const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:loadSettings,music:loadMusic,system:loadSystem};
 function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);

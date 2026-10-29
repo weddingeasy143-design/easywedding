@@ -56,3 +56,11 @@ body.royal-planner,.royal-planner .workspace{background:var(--calm-bg)}
 .royal-planner .sidebar nav button.active .nav-icon,.royal-planner .sidebar nav button.active i,.royal-planner .sidebar nav button.active svg,.royal-planner .sidebar nav button[aria-current=page] svg{color:#3b0c1a;stroke:#3b0c1a;opacity:1}
 .royal-planner .bottom-nav button.on{background:linear-gradient(135deg,#ffe6b4,#efcc87);color:#3b0c1a;font-weight:700}
 .royal-planner .bottom-nav button.on svg,.royal-planner .bottom-nav button.on i{color:#3b0c1a;stroke:#3b0c1a}
+
+/* Your data: red is used here because deleting is the one truly dangerous action */
+.royal-planner .data-panel .danger-zone{margin-top:18px;border:1.5px solid #e8a5a0;border-radius:12px;background:#fdf3f2;padding:12px 14px}
+.royal-planner .data-panel .danger-zone summary{cursor:pointer;font-weight:700;color:#8a1c1c;min-height:44px;display:flex;align-items:center}
+.royal-planner .data-panel .danger-zone p{color:#5c2a2a}
+.royal-planner .data-panel .danger-zone input{margin:8px 0 6px;max-width:260px;font-weight:700;letter-spacing:.12em;text-transform:none}
+.royal-planner .data-panel .danger-zone .button.danger{margin-top:10px;width:100%}
+.royal-planner .data-panel .danger-zone .button.danger:disabled{opacity:.45;cursor:not-allowed}

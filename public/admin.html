@@ -17,24 +17,14 @@
 </main>
 
 <div id="admin-panel" class="ad-shell" hidden>
+ <div id="ad-backdrop" class="ad-backdrop" hidden></div>
  <aside class="ad-side" id="ad-side">
   <div class="ad-logo">Easy<span>Wedding</span></div>
-  <nav id="ad-nav" aria-label="Admin sections">
-   <a href="#/dashboard" data-page="dashboard"><i>▦</i>Dashboard</a>
-   <a href="#/analytics" data-page="analytics"><i>◔</i>Analytics</a>
-   <a href="#/orders" data-page="orders"><i>☰</i>Orders</a>
-   <a href="#/payments" data-page="payments"><i>₹</i>Payments</a>
-   <a href="#/designs" data-page="designs"><i>✦</i>Designs &amp; prices</a>
-   <a href="#/addons" data-page="addons"><i>＋</i>Add-ons</a>
-   <a href="#/coupons" data-page="coupons"><i>％</i>Coupons &amp; offers</a>
-   <a href="#/customers" data-page="customers"><i>☺</i>Customers</a>
-   <a href="#/settings" data-page="settings"><i>⚙</i>Website &amp; banner</a>
-   <a href="#/system" data-page="system"><i>✓</i>System health</a>
-  </nav>
+  <nav id="ad-nav" aria-label="Admin sections"><p class="ad-nav-group">Overview</p><a href="#/dashboard" data-page="dashboard"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Dashboard</span></a><a href="#/analytics" data-page="analytics"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Analytics</span></a><p class="ad-nav-group">Sales</p><a href="#/orders" data-page="orders"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Orders</span></a><a href="#/payments" data-page="payments"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span>Payments</span></a><a href="#/designs" data-page="designs"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H16c3.3 0 6-2.7 6-6 0-4.9-4.5-8.4-10-8.4Z"/></svg><span>Designs &amp; prices</span></a><a href="#/addons" data-page="addons"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg><span>Add-ons</span></a><a href="#/coupons" data-page="coupons"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2H2v10l9.3 9.3a1 1 0 0 0 1.4 0l8.6-8.6a1 1 0 0 0 0-1.4Z"/><path d="M7 7h.01"/></svg><span>Coupons &amp; offers</span></a><p class="ad-nav-group">People</p><a href="#/customers" data-page="customers"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg><span>Customers</span></a><p class="ad-nav-group">Website</p><a href="#/settings" data-page="settings"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z"/></svg><span>Website &amp; banner</span></a><a href="#/music" data-page="music"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Preview music</span></a><a href="#/system" data-page="system"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>System health</span></a></nav>
   <a class="ad-viewsite" href="/" target="_blank" rel="noopener">View website ↗</a>
  </aside>
  <div class="ad-main">
-  <header class="ad-top"><h1 id="ad-title">Dashboard</h1><div class="ad-top-r"><span id="ad-me"></span><button id="ad-signout" class="ad-btn" type="button">Sign out</button></div></header>
+  <header class="ad-top"><button id="ad-menu" class="ad-menu" type="button" aria-label="Open menu" aria-controls="ad-side" aria-expanded="false"><svg class="ad-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><h1 id="ad-title">Dashboard</h1><div class="ad-top-r"><span id="ad-me" class="ad-me"></span><button id="ad-signout" class="ad-btn" type="button">Sign out</button></div></header>
   <main class="ad-content">
 
    <section data-page="dashboard" id="pg-dashboard">
@@ -124,6 +114,20 @@
     <div class="ad-card"><h3>Homepage announcement banner</h3><p class="ad-sub">A thin strip shown at the top of the homepage — for offers, festival notices, etc.</p>
      <form id="banner-form" class="ad-form"><label class="ad-field" style="grid-column:1/-1">Banner text<input id="bn-text" maxlength="160" placeholder="🎉 Grand Opening offer — all designs at launch prices this month!"></label><label class="ad-check"><input id="bn-on" type="checkbox"> Show banner</label><button class="ad-btn primary" type="submit">Save banner</button></form><p id="bn-status" class="ad-status" role="status"></p></div>
    </section>
+   <section data-page="music" id="pg-music" hidden>
+    <div class="ad-card">
+     <h3>Preview music</h3>
+     <p class="ad-sub">This song plays when a visitor opens a design preview on the homepage or the pricing section, so previews feel alive. Upload a new song any time to replace it.</p>
+     <div id="mu-current" class="mu-current"></div>
+     <form id="mu-form" class="mu-form">
+      <label class="ad-field">Choose a song (MP3, WAV, OGG or M4A, up to 20 MB)<input id="mu-file" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,.mp3,.wav,.ogg,.m4a"></label>
+      <div class="ad-savebar"><button class="ad-btn primary" type="submit">Upload &amp; use this song</button><button id="mu-remove" class="ad-btn danger" type="button" hidden>Remove music</button></div>
+      <p id="mu-status" class="ad-status" role="status"></p>
+     </form>
+     <p class="ad-sub">Browsers and phones only allow sound after a tap, so the song starts when the visitor taps <b>Open invitation</b>. Use a song you own or have the licence to play publicly. Couples add their own song for their own invitation in the studio (<i>Your wedding song</i>).</p>
+    </div>
+   </section>
+
 
    <section data-page="system" id="pg-system" hidden>
     <div class="ad-card"><h3>System health</h3><p class="ad-sub">Checks only — secrets are never shown here.</p><div id="sys-list"></div></div>
