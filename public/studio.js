@@ -63,7 +63,7 @@ fillForm();refresh(false);
 // Cloud drafts are owned by the signed-in visitor. Legacy device drafts remain recoverable.
 let cloudReady=false,cloudSaving=false,cloudPending=false,cloudTimer;
 function queueCloudSave(){cloudPending=true;if(cloudReady){clearTimeout(cloudTimer);cloudTimer=setTimeout(saveCloud,500);}}
-async function saveCloud(){if(!cloudReady||cloudSaving||!cloudPending)return;cloudSaving=true;cloudPending=false;const snapshot=JSON.stringify(config);try{const r=await fetch('/api/studio',{method:'PUT',headers:{'Content-Type':'application/json'},body:snapshot});if(!r.ok)throw Error();$('#save-status').textContent='Invitation saved to your account';}catch{$('#save-status').textContent='Cloud save unavailable · device draft kept';}finally{cloudSaving=false;if(cloudPending)saveCloud();}}
+async function saveCloud(){if(!cloudReady||cloudSaving||!cloudPending)return;cloudSaving=true;cloudPending=false;const snapshot=JSON.stringify(config);try{const r=await fetch('/api/studio',{method:'PUT',headers:{'Content-Type':'application/json'},body:snapshot});if(!r.ok)throw Error();$('#save-status').textContent='Invitation saved to your account';updateCompletion();}catch{$('#save-status').textContent='Cloud save unavailable · device draft kept';}finally{cloudSaving=false;if(cloudPending)saveCloud();}}
 if(typeof fetch==='function'&&!browserOnlySession()){const initial=JSON.stringify(config);fetch('/api/studio').then(async r=>{if(!r.ok)return;const data=await r.json();cloudReady=true;if(data.config&&!location.hash.includes('card=')&&JSON.stringify(config)===initial){/* A design picked on the homepage (?template=) wins over the saved draft's design, so the paywall charges for what was chosen. */config=normalizeConfig({...data.config,...(Object.hasOwn(eventThemes,selectedTheme)?{theme:selectedTheme}:{})});fillForm();refresh(false);$('#save-status').textContent='Invitation loaded from your account';}else if(cloudPending||location.hash.includes('card=')){cloudPending=true;saveCloud();}}).catch(()=>{});}
 
 form.addEventListener('change',async event=>{
@@ -159,10 +159,20 @@ function primaryAction(){if(isOwner()){updateOwnerLink();return;}openPreviewStep
 /* The pay button on the Review step: owners save their link, everyone else goes to account + payment. */
 function payAction(){if(isOwner()){updateOwnerLink();return;}clearTimeout(updateTimer);refresh();openShare();}
 /* Full-screen preview (watermarked until the design is paid for). Free for everyone, no checks needed. */
-function openPreviewStep(){clearTimeout(updateTimer);refresh();$('#pv-title').textContent=eventThemes[config.theme].name+' · your preview';$('#pv-continue').textContent='Make it yours →';$('#pv-continue').hidden=isOwner();$('#preview-full').src='reference/render.html'+(previewMark()?'?wm=1':'')+'#card='+encodeConfig(config);$('#preview-dialog').showModal();}
+/* Inside the Android app (window.EWApp bridge) the app shows the preview in its own full-screen WebView instead. */
+const PREVIEW_TIMEOUT_MS=10000;let previewTimer=null;
+function previewStatus(){let s=$('#pv-status');if(!s){s=document.createElement('div');s.id='pv-status';s.className='pv-status';s.setAttribute('role','status');$('#preview-full').before(s);}return s;}
+function previewLoaded(){const frame=$('#preview-full');if(frame.dataset.loading!=='1')return;frame.dataset.loading='';clearTimeout(previewTimer);const s=$('#pv-status');if(s){s.hidden=true;s.replaceChildren();}}
+function previewSlow(href){const frame=$('#preview-full');if(frame.dataset.loading!=='1')return;const s=previewStatus(),p=document.createElement('p'),a=document.createElement('a');p.textContent='Your preview is taking longer than usual.';a.href=href;a.target='_blank';a.rel='noopener';a.className='primary pv-newtab';a.textContent='Open preview in a new tab';s.replaceChildren(p,a);s.hidden=false;s.classList.add('pv-slow');}
+function openPreviewStep(){clearTimeout(updateTimer);refresh();const src='reference/render.html'+(previewMark()?'?wm=1':'')+'#card='+encodeConfig(config);if(window.EWApp&&typeof window.EWApp.openPreview==='function'&&window.EWApp.openPreview(new URL(src,location.href).href))return;
+ $('#pv-title').textContent=eventThemes[config.theme].name+' · your preview';$('#pv-continue').textContent='Make it yours →';$('#pv-continue').hidden=isOwner();
+ const frame=$('#preview-full'),dialog=$('#preview-dialog'),status=previewStatus();status.classList.remove('pv-slow');status.textContent='Loading your preview…';status.hidden=false;
+ frame.dataset.loading='1';clearTimeout(previewTimer);previewTimer=setTimeout(()=>previewSlow(new URL(src,location.href).href),PREVIEW_TIMEOUT_MS);frame.src=src;
+ if(typeof dialog.showModal==='function'){try{dialog.showModal();}catch{dialog.setAttribute('open','');}}else dialog.setAttribute('open','');}
+$('#preview-full').addEventListener('load',previewLoaded);
 $('#pv-back').addEventListener('click',()=>{$('#preview-dialog').close();});
 $('#pv-continue').addEventListener('click',()=>{$('#preview-dialog').close();openShare();});
-$('#preview-dialog').addEventListener('close',()=>{$('#preview-full').src='about:blank';});
+$('#preview-dialog').addEventListener('close',()=>{clearTimeout(previewTimer);const frame=$('#preview-full');frame.dataset.loading='';frame.src='about:blank';});
 async function migrateLocalPhotos(){
  const nodes=[...form.querySelectorAll('input,textarea')].filter(n=>typeof n.value==='string'&&n.value.includes('data:image/'));
  if(!nodes.length)return;
@@ -272,5 +282,17 @@ function goStep(n){if(n===REVIEW_STEP&&wizard.current===REVIEW_STEP){payAction()
 $('#pb-pay').addEventListener('click',()=>goStep(REVIEW_STEP));
 $('#pb-preview')?.addEventListener('click',openPreviewStep);
 updatePrices();
+// ---- Owners: slim "N% complete" bar above the steps (GET /api/invitation-progress), refreshed after every cloud save ----
+function updateCompletion(){
+ if(!isOwner()||typeof fetch!=='function')return;
+ fetch('/api/invitation-progress',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{
+  if(!d||!Number.isFinite(Number(d.percent)))return;const card=$('#wz-card');if(!card)return;
+  let box=$('#wz-complete');if(!box){box=document.createElement('div');box.id='wz-complete';box.className='wz-complete';box.innerHTML='<p class="wz-complete-text"></p><div class="wz-complete-bar" role="progressbar" aria-label="Invitation completion" aria-valuemin="0" aria-valuemax="100"><span></span></div>';card.prepend(box);}
+  const pct=Math.max(0,Math.min(100,Math.round(Number(d.percent))));box.hidden=false;box.classList.toggle('done',!!d.complete);
+  box.querySelector('.wz-complete-text').textContent=d.complete?'Your invitation is 100% complete.':'Your invitation is '+pct+'% complete';
+  const bar=box.querySelector('.wz-complete-bar');bar.setAttribute('aria-valuenow',String(pct));bar.firstElementChild.style.width=pct+'%';
+ }).catch(()=>{});
+}
+document.addEventListener('ew:owner',updateCompletion);
 wizard.start(new URLSearchParams(location.search).get('step')?0:savedStep());
 initFlow();
