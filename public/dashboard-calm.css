@@ -1,0 +1,51 @@
+/* Dashboard: calm ivory work area. Maroon is kept for the menu, the top bar and the hero only, so red is never confused with errors or warnings. */
+.royal-planner{--calm-bg:#f8f2e8;--calm-card:#fffdf9;--calm-line:#e6d8c3;--calm-ink:#3a1220;--calm-muted:#6b5058;--calm-link:#8a5a14}
+body.royal-planner,.royal-planner .workspace{background:var(--calm-bg)}
+.royal-planner :is(#main-content,dialog){--ink:var(--calm-ink);--muted:var(--calm-muted);--paper:var(--calm-card);--line:var(--calm-line);--wine:#75152e;--wine-dark:#5a1226;--gold:#b9812c;--gold-dark:var(--calm-link);color:var(--calm-ink);color-scheme:light}
+.royal-planner #main-content{background:var(--calm-bg)}
+/* the hero and ticker stay as the one rich red moment */
+.royal-planner :is(.cine-hero,.marquee){--ink:#fff5e7;--muted:#ead4c5;--wine:#efcc87;--gold:#efcc87;color:#fff5e7;color-scheme:dark}
+/* cards and panels */
+.royal-planner #main-content :is(.panel,.stat,.event-card,.cine-card,.cine-band,.quick-card,.photo-upload,.opacity-control,.loading-card,.event-tile,.empty,.upload-box,.prompt-box,.welcome-layout,.ai-photo,.provider-choice){background:var(--calm-card);color:var(--calm-ink);border-color:var(--calm-line);box-shadow:0 2px 10px rgba(90,40,30,.07)}
+.royal-planner #main-content :is(.cine-card-body,.event-card-header){background:#f3e9d9;color:var(--calm-ink)}
+.royal-planner #main-content :is(.cine-head h2,.cine-card-title,.cine-stat-value,.opacity-control output,h1,h2,h3,h4,strong,legend,th){color:var(--calm-ink)}
+.royal-planner #main-content :is(.cine-stat-label,.cine-stat-note,.art-caption,.field-help,.page-heading p,.breadcrumb,#save-state,.opacity-endpoints,.source-note,.photo-upload small,.ai-photo small,.bridge-status,.task-line.done strong,small,label small){color:var(--calm-muted)}
+.royal-planner #main-content :is(.eyebrow){color:var(--calm-link)}
+.royal-planner #main-content :is(.text-link,.panel a,.quick-card .icon){color:var(--calm-link)}
+.royal-planner #main-content label{color:var(--calm-ink)}
+.royal-planner #main-content :is(.cine-hero,.cine-hero *) :is(.text-link){color:#efcc87}
+.royal-planner .budget-ring::before{background:var(--calm-card)}
+.royal-planner .budget-table th{background:#f3e9d9;color:var(--calm-muted)}
+.royal-planner .notice{background:#fff4d8;color:#5c3a00;border-color:#e8c56a}
+.royal-planner .notice.error{background:#fdecea;color:#8a1c1c;border-color:#e8a5a0}
+.royal-planner #global-message{background:#fff4d8;color:#5c3a00;border-color:#e8c56a}
+.royal-planner :is(.tab-button,.chip,.filter-button,.segmented button){color:var(--calm-ink);border-color:var(--calm-line);background:#fff}
+.royal-planner :is(.tab-button.active,.chip.active,.filter-button.active,.segmented button.active){color:#3b0c1a;background:#efcc87;border-color:#c99a3d}
+.royal-planner :is(.window-header,.studio-window,.design-editor,.filter-bar){background:var(--calm-card);border-color:var(--calm-line);color:var(--calm-ink)}
+.royal-planner #main-content .ai-photo-empty{background:#f3e9d9;color:var(--calm-link)}
+.royal-planner #main-content .overview-portrait{background:#5a1226;color:#fff5e7}
+.royal-planner #main-content .overview-portrait :is(figcaption,strong,span){color:#fff5e7}
+/* ghost buttons are readable on ivory */
+.royal-planner #main-content :is(.button.ghost,.button.secondary,.secondary){background:#fff;color:#75152e;border:1.5px solid #c99a3d;box-shadow:none}
+.royal-planner #main-content :is(.button.ghost,.button.secondary,.secondary):hover{background:#fff4d8}
+.royal-planner #main-content .cine-hero :is(.button.ghost,.button.secondary){background:#36091255;color:#fff5e7;border:1px solid #e5be7770}
+/* forms */
+.royal-planner :is(#main-content,dialog) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),textarea,select){background:#fff;color:var(--calm-ink);border-color:#d9c6a8;caret-color:#75152e}
+.royal-planner :is(#main-content,dialog) :is(input,textarea)::placeholder{color:#8f7a70}
+.royal-planner :is(#main-content,dialog) input[type=file]{color:var(--calm-muted)}
+.royal-planner :is(#main-content,dialog) input::file-selector-button{background:#f3e9d9;color:#75152e;border-color:#d9c6a8}
+.royal-planner :is(#main-content,dialog) :is(input,select,textarea):focus{border-color:#b9812c}
+.royal-planner :is(#main-content,dialog) :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #b9812c}
+/* pop-up forms */
+.royal-planner dialog{background:var(--calm-card);border-color:var(--calm-line);box-shadow:0 30px 80px rgba(40,10,20,.35)}
+.royal-planner dialog::backdrop{background:rgba(40,10,20,.55);backdrop-filter:blur(3px)}
+.royal-planner dialog :is(h1,h2,h3,label,p,strong){color:var(--calm-ink)}
+.royal-planner dialog :is(.field-help,small){color:var(--calm-muted)}
+.royal-planner dialog :is(.button.ghost,.button.secondary,.secondary,.text-link){background:#fff;color:#75152e;border:1.5px solid #c99a3d}
+.royal-planner .app-footer{background:#eadfce;color:var(--calm-muted)}
+/* red means danger only */
+.royal-planner :is(.button.danger,.text-link.danger){background:#a62640;color:#fff;border-color:#a62640}
+/* hero text keeps its light-on-red colours */
+.royal-planner #main-content :is(.cine-hero,.marquee) :is(h1,h2,h3,strong,small){color:#fff5e7}
+.royal-planner #main-content .cine-hero :is(.eyebrow,.hero-eyebrow){color:#efcc87}
+.royal-planner #main-content .cine-hero :is(.hero-sub,.hero-count span){color:#fff5e7}

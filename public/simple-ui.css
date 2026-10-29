@@ -39,3 +39,26 @@
  .pay-big{padding:14px 18px;font-size:16px}
 }
 @media(max-width:480px){.pb-preview{padding:12px 12px;font-size:14px}.pay-big{padding:12px 14px;font-size:15px}.pb-info{flex:1;min-width:0}}
+
+/* ---- Homepage sections: one idea per block, easy to scan ---- */
+.foot-hours{display:block;font-size:12px;opacity:.75}
+.ewp-cta{justify-content:center}
+.love-section .love-stats{margin-top:8px}
+@media(max-width:760px){
+ .ewp-head h2{font-size:clamp(28px,8vw,36px);line-height:1.15}
+ .ewp-head p{font-size:16px;line-height:1.55}
+ .ewp-buy{display:flex;align-items:center;justify-content:center;min-height:48px}
+ .ewp-thumb{min-height:44px}
+ .step-link{min-height:44px}
+ .feature-card .card-action{min-height:44px;display:inline-flex;align-items:center}
+ .love-stats{grid-template-columns:1fr 1fr}
+ .love-stat strong{font-size:15px}.love-stat span{font-size:13px}
+ .foot-cols a,.foot-cols span{font-size:15px}
+}
+@media(max-width:420px){.love-stats{grid-template-columns:1fr}}
+@media(max-width:560px){
+ .site-footer .foot-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px 16px}
+ .site-footer .foot-cols>div:nth-child(2){grid-column:1/-1;order:3}
+ .site-footer .foot-cols a{display:flex;align-items:center;min-height:44px}
+ .site-footer .foot-nowrap{white-space:nowrap}
+}
