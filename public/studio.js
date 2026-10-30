@@ -300,3 +300,14 @@ function updateCompletion(){
 document.addEventListener('ew:owner',updateCompletion);
 wizard.start(new URLSearchParams(location.search).get('step')?0:savedStep());
 initFlow();
+
+/* In the app (EWApp bridge present) the form's small status lines are easy to miss and the live-preview
+   pane is hidden, so mirror every status update (photo/song upload, cloud save) into a big toast the
+   couple cannot miss. Website behaviour is unchanged. */
+if(window.EWApp){
+  const toast=document.createElement('div');toast.id='app-toast';toast.setAttribute('role','status');
+  document.body.appendChild(toast);let toastTimer;
+  const showToast=text=>{const t=(text||'').trim();if(!t)return;toast.textContent=t;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),4000);};
+  const watch=el=>{new MutationObserver(()=>showToast(el.textContent)).observe(el,{childList:true,characterData:true,subtree:true});};
+  document.querySelectorAll('[id$="-status"]').forEach(watch);
+}

@@ -324,3 +324,8 @@ body.in-app #wz-complete{display:none!important}
 body.in-app #bookings{display:none!important}
 body.in-app .wz-preview{display:none}
 body.in-app .wz-layout{grid-template-columns:minmax(0,1fr);max-width:720px;padding-top:10px}
+
+/* App-only upload feedback: chunky status chips in the form + a big toast mirroring status updates. */
+body.in-app [id$="-status"]{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:999px;background:#F6E7C8;color:#4B0B20;font-weight:600}
+body.in-app #app-toast{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;background:#4B0B20;color:#F8F2E8;padding:14px 18px;border-radius:14px;font-size:15px;font-weight:600;text-align:center;box-shadow:0 10px 30px rgba(75,11,32,.35);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .25s ease,transform .25s ease}
+body.in-app #app-toast.show{opacity:1;transform:none}
