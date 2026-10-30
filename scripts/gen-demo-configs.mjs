@@ -17,6 +17,7 @@ const P = {
   us: A + 'current-6def8ed83b4f.jpg', haldi: A + 'current-6d739b6d29e5.png',
   mehendi: A + 'current-cd4d616c71ec.jpg', reception: A + 'current-62d344ffd89e.jpg',
   groom2: A + 'ai-groom2.jpg', bride2: A + 'ai-bride2.jpg',
+  wedland1: A + 'ai-wedland1.jpg', wedland2: A + 'ai-wedland2.jpg', wedland3: A + 'ai-wedland3.jpg',
   lake: A + 'ai-couple-lake.jpg', venue2: A + 'ai-venue2.jpg',
   sCouple: A + 'current-4d31a609d04f.jpg', sGroom: A + 'current-234c8f91fdc1.jpg',
   sBride: A + 'current-823d1cc4ff47.jpg', sVenue: A + 'current-a1240688e514.jpg',
@@ -146,7 +147,12 @@ for (const [i, d] of D.entries()) {
   ref.story = ref.story.map((s, j) => ({ ...s, title: d.story[j][0], description: d.story[j][1], photo: [P.meet, P.road, invite][j] }));
   const times = { haldi: d.h, mehendi: d.m, wedding: d.time, reception: d.r };
   const offsets = { haldi: -2, mehendi: -1, wedding: 0, reception: 2 };
-  const images = { haldi: P.haldi, mehendi: P.mehendi, wedding: hero, reception: i % 3 === 0 ? invite : P.reception };
+  /* Event cards share one wide frame: every event photo is a landscape shot
+     so each photo fills its frame fully — no crop, no empty bands. The
+     wedding slot rotates wide wedding-moment photos (the couple heroes are
+     portrait shots, so they stay in the hero/story/gallery slots). */
+  const WED = [P.varmala, P.wedland1, P.wedland2, P.wedland3];
+  const images = { haldi: P.haldi, mehendi: P.mehendi, wedding: WED[i % WED.length], reception: P.reception };
   ref.events = ref.events.map(e => ({ ...e, dateISO: `${shiftDate(d.date, offsets[e.id])}T${times[e.id]}:00+05:30`, image: images[e.id] || e.image }));
   const gal = [
     [groomPhoto, d.groom], [bridePhoto, d.bride], [hero, 'Together'], [P.blessed, 'Blessed moments'],
