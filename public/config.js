@@ -51,10 +51,22 @@ export function calendarFile(c){const start=eventTimestamp(c);const stamp=t=>new
 
 /* Public previews (a visitor looking at a design before buying) show a finished sample: a sample couple and sample photographs.
    Real invitations never use this — it applies only when the link carries no invitation of its own. */
-const SAMPLE_PAIRS=[['Rupesh','Usha'],['Chandan','Pinki'],['Goutam','Sweety']];
+/* Every design's own sample couple and wedding — mirrors public/demo-configs/. */
+const DEMO_FLAT={
+ 'premium-original':{groom:'Aarav',bride:'Meera',venue:'The Lake Pichola Palace',address:'Lake Palace Road',city:'Udaipur, Rajasthan',date:'2027-02-14',time:'19:00'},
+ 'ivory-arch':{groom:'Vihaan',bride:'Ananya',venue:'The Garden Pavilion',address:'Palace Road, Civil Lines',city:'Jaipur, Rajasthan',date:'2027-01-23',time:'18:30'},
+ 'royal-prestige':{groom:'Arjun',bride:'Kavya',venue:'Umaid Heritage Lawns',address:'Circuit House Road',city:'Jodhpur, Rajasthan',date:'2026-11-29',time:'20:00'},
+ 'garden':{groom:'Rohan',bride:'Sneha',venue:'Green Valley Farms',address:'SP Ring Road',city:'Ahmedabad, Gujarat',date:'2027-03-06',time:'17:30'},
+ 'haldi':{groom:'Kunal',bride:'Priya',venue:'Gomti Riverfront Lawns',address:'Gomti Nagar',city:'Lucknow, Uttar Pradesh',date:'2026-12-05',time:'10:30'},
+ 'mehndi':{groom:'Dev',bride:'Ishita',venue:'Chattarpur Greens',address:'Chattarpur',city:'New Delhi, Delhi',date:'2027-01-09',time:'16:00'},
+ 'sangeet':{groom:'Aditya',bride:'Divya',venue:'Backwater Breeze Resort',address:'Marine Drive',city:'Kochi, Kerala',date:'2027-02-20',time:'19:30'},
+ 'reception':{groom:'Vikram',bride:'Anjali',venue:'Deccan Pearl Convention',address:'Banjara Hills',city:'Hyderabad, Telangana',date:'2026-12-19',time:'19:00'},
+ 'midnight-noor':{groom:'Ayaan',bride:'Zara',venue:'Sea Princess Lawns',address:'Juhu Tara Road',city:'Mumbai, Maharashtra',date:'2027-01-16',time:'20:30'},
+ 'blush-mehraab':{groom:'Kabir',bride:'Simran',venue:'Heritage Haveli',address:'Queens Road',city:'Amritsar, Punjab',date:'2026-11-21',time:'18:00'},
+ 'emerald-darbar':{groom:'Yash',bride:'Riya',venue:'Ganga Kinare Mahal',address:'Assi Ghat Road',city:'Varanasi, Uttar Pradesh',date:'2027-03-13',time:'18:30'}};
 export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','groom.webp','bride.webp','venue.webp']});
-export function sampleCouple(theme){const i=Math.max(0,Object.keys(eventThemes).indexOf(theme)),[groom,bride]=SAMPLE_PAIRS[i%SAMPLE_PAIRS.length];return {groom,bride};}
+export function sampleCouple(theme){const d=DEMO_FLAT[theme]||DEMO_FLAT['premium-original'];return {groom:d.groom,bride:d.bride};}
 export function isSamplePreview(location){const hash=new URLSearchParams(location.hash.slice(1)),p=new URLSearchParams(location.search);return !hash.has('card')&&!p.has('bride')&&!p.has('groom');}
 /* Sample photographs for public previews live in assets/samples/. */
 export const SAMPLE_PHOTOS_READY=true;
-export function withSample(c,base){const {groom,bride}=sampleCouple(c.theme),u=f=>new URL('/assets/samples/'+f,base).href,named={...c,partner1:groom,partner2:bride,groomName:groom,brideName:bride,venue:'The Royal Palace Gardens',address:'Palace Road, Civil Lines',city:'Jaipur, Rajasthan'};if(!SAMPLE_PHOTOS_READY)return named;return {...named,photoUrl:u(SAMPLE_PHOTOS.photoUrl),groomPhoto:u(SAMPLE_PHOTOS.groomPhoto),bridePhoto:u(SAMPLE_PHOTOS.bridePhoto),venuePhotoUrl:u(SAMPLE_PHOTOS.venuePhotoUrl),gallery:SAMPLE_PHOTOS.gallery.map(u)};}
+export function withSample(c,base){const d=DEMO_FLAT[c.theme]||DEMO_FLAT['premium-original'],u=f=>new URL('/assets/samples/'+f,base).href,named={...c,partner1:d.groom,partner2:d.bride,groomName:d.groom,brideName:d.bride,venue:d.venue,address:d.address,city:d.city,date:d.date,time:d.time};if(!SAMPLE_PHOTOS_READY)return named;return {...named,photoUrl:u(SAMPLE_PHOTOS.photoUrl),groomPhoto:u(SAMPLE_PHOTOS.groomPhoto),bridePhoto:u(SAMPLE_PHOTOS.bridePhoto),venuePhotoUrl:u(SAMPLE_PHOTOS.venuePhotoUrl),gallery:SAMPLE_PHOTOS.gallery.map(u)};}

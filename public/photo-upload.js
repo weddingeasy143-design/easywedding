@@ -1,18 +1,21 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
-/* Shared local image preparation. Cloud uploads retain their original resolution. */
+/* Shared local image preparation. Owner's rule: every uploaded photograph is
+   compressed to about 50 KB or less so invitations open instantly on any
+   phone; the invitation always shows the WHOLE photo (fit, never cropped). */
 export const MAX_INPUT_BYTES=60*1024*1024;
-/* Any photograph, any size: scaled to at most 2000 px on the long side and re-saved as WebP at high quality (about 0.84), which keeps it sharp on every phone and screen while loading fast. */
-export async function compressPhoto(file,{maxEdge=2000,targetBytes=700*1024}={}){
+/* Any photograph, any size: scaled to at most 1440 px on the long side and
+   re-saved as WebP, stepping quality down only until it fits the target. */
+export async function compressPhoto(file,{maxEdge=1440,targetBytes=50*1024}={}){
  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');
  if(file.size>MAX_INPUT_BYTES)throw Error('Choose a photograph under 60 MB.');
  if(typeof createImageBitmap!=='function')return file;/* very old browsers: the server still checks type and size */
  const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
  try{
   let edge=maxEdge,best=null;
-  for(let round=0;round<4;round++){
+  for(let round=0;round<6;round++){
    const ratio=Math.min(1,edge/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*ratio));canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
    const ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-   for(const quality of [.86,.82,.76,.7]){
+   for(const quality of [.84,.78,.72,.66,.6,.54,.48,.42]){
     const blob=encode(canvas,quality);
     if(!best||blob.size<best.size)best=blob;
     if(blob.size<=targetBytes)return finish(blob);
@@ -30,7 +33,7 @@ function encode(canvas,quality){
  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
  return new Blob([bytes],{type});
 }
-export async function prepareLocalPhoto(file,maxBytes=90000){
+export async function prepareLocalPhoto(file,maxBytes=50000){
  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');
  if(file.size>MAX_INPUT_BYTES)throw Error('Choose a photograph under 60 MB.');
  const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});

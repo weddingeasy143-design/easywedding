@@ -46,7 +46,7 @@ function demoPlan(){
  return p;
 }
 async function localUpload(file,path){
- if(file.type.startsWith('image/'))return {url:await prepareLocalPhoto(file,path==='/api/invitation-photos'?90000:120000)};
+ if(file.type.startsWith('image/'))return {url:await prepareLocalPhoto(file,50000)};
  const max=1500*1024;
  if(file.type.startsWith('video/')&&file.size>max)throw new Error('Local demo videos must be under 1.5 MB. Use the signed-in hosted workspace for videos up to 20 MB.');
  if(file.size>20*1024*1024)throw new Error('Choose a file under 20 MB for browser storage.');
