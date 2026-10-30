@@ -53,8 +53,8 @@ export function calendarFile(c){const start=eventTimestamp(c);const stamp=t=>new
    Real invitations never use this — it applies only when the link carries no invitation of its own. */
 /* Every design's own sample couple and wedding — mirrors public/demo-configs/. */
 const DEMO_FLAT={
- 'premium-original':{groom:'Aarav',bride:'Meera',venue:'The Lake Pichola Palace',address:'Lake Palace Road',city:'Udaipur, Rajasthan',date:'2027-02-14',time:'19:00'},
- 'ivory-arch':{groom:'Vihaan',bride:'Ananya',venue:'The Garden Pavilion',address:'Palace Road, Civil Lines',city:'Jaipur, Rajasthan',date:'2027-01-23',time:'18:30'},
+ 'premium-original':{groom:'Rupesh',bride:'Usha',venue:'The Lake Pichola Palace',address:'Lake Palace Road',city:'Udaipur, Rajasthan',date:'2027-02-14',time:'19:00'},
+ 'ivory-arch':{groom:'Goutam',bride:'Sweety',venue:'The Garden Pavilion',address:'Palace Road, Civil Lines',city:'Jaipur, Rajasthan',date:'2027-01-23',time:'18:30'},
  'royal-prestige':{groom:'Arjun',bride:'Kavya',venue:'Umaid Heritage Lawns',address:'Circuit House Road',city:'Jodhpur, Rajasthan',date:'2026-11-29',time:'20:00'},
  'garden':{groom:'Rohan',bride:'Sneha',venue:'Green Valley Farms',address:'SP Ring Road',city:'Ahmedabad, Gujarat',date:'2027-03-06',time:'17:30'},
  'haldi':{groom:'Kunal',bride:'Priya',venue:'Gomti Riverfront Lawns',address:'Gomti Nagar',city:'Lucknow, Uttar Pradesh',date:'2026-12-05',time:'10:30'},

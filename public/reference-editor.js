@@ -6,6 +6,14 @@ import {prepareLocalPhoto,compressPhoto,browserOnlySession} from './photo-upload
 const uploads=new Map();
 export function referenceForConfig(config){
  const value=JSON.parse(JSON.stringify(config.reference||referenceDefaults));
+ /* The couple's own gallery slots always carry THIS invitation's couple —
+    never a leftover sample name from the seed. */
+ const gName=(config.groomName||config.partner1||'').trim().split(' ')[0];
+ const bName=(config.brideName||config.partner2||'').trim().split(' ')[0];
+ if(Array.isArray(value.gallery)){
+  if(gName&&['Rupesh','Chandan'].includes(value.gallery[0]?.caption))value.gallery[0].caption=gName;
+  if(bName&&['Usha','Pinki'].includes(value.gallery[1]?.caption))value.gallery[1].caption=bName;
+ }
  if(!config.reference){const offset=new Date(config.date+'T12:00:00Z')-new Date('2026-11-26T12:00:00Z');for(const e of value.events){const d=new Date(new Date(e.dateISO).getTime()+offset);const date=d.toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});const time=d.toLocaleTimeString('en-GB',{hour12:false,hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});e.dateISO=date+'T'+time+':00+05:30'}const wedding=value.events.find(e=>e.id==='wedding');if(wedding)wedding.dateISO=config.date+'T'+config.time+':00'+config.timezone;value.content.invitationMessage=config.message;value.content.quote=config.blessing;}
  return refreshReferenceDates(value);
 }

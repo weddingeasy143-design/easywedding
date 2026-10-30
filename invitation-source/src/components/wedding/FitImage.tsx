@@ -5,6 +5,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 
 export default function FitImage({
   src,
@@ -21,8 +22,17 @@ export default function FitImage({
   className?: string;
   imgClassName?: string;
 }) {
+  /* The frame takes the photograph's own shape (within sane limits), so the
+     whole photo fills it — never a small strip floating in a blur, and never
+     cropped. Fixed-height slots (gallery stage) keep their frame. */
+  const [ratio, setRatio] = useState<number | null>(null);
+  const fixedHeight = className.includes("h-full");
+  const style =
+    !fixedHeight && ratio
+      ? { aspectRatio: String(Math.min(1.8, Math.max(0.6, ratio))) }
+      : undefined;
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div className={`relative overflow-hidden ${className}`} style={style}>
       {/* blurred backdrop fills the empty space */}
       <Image
         src={src}
@@ -40,6 +50,11 @@ export default function FitImage({
         width={width}
         height={height}
         loading="lazy"
+        onLoad={(e) => {
+          const t = e.currentTarget as unknown as HTMLImageElement;
+          if (t?.naturalWidth && t?.naturalHeight)
+            setRatio(t.naturalWidth / t.naturalHeight);
+        }}
         className={`relative h-full w-full object-contain ${imgClassName}`}
       />
     </div>

@@ -25,7 +25,7 @@ const COUPLES = [P.lake, P.sCouple, P.formal, P.walk, P.us, P.varmala, P.lake, P
 
 /* date, time = the wedding day. h/m/r = haldi (-2d), mehendi (-1d), reception (+2d) times. */
 const D = [
- { id:'premium-original', groom:'Aarav', bride:'Meera', gLast:'Kapoor', bLast:'Verma',
+ { id:'premium-original', groom:'Rupesh', bride:'Usha', gLast:'Kapoor', bLast:'Verma',
    gp:'Shri Mohan Kapoor & Shrimati Rekha Kapoor', bp:'Shri Anil Verma & Shrimati Sunita Verma',
    gAddr:'MG Road, Udaipur,\nRajasthan – 313001', bAddr:'Hiran Magri, Udaipur,\nRajasthan – 313002',
    venue:'The Lake Pichola Palace', street:'Lake Palace Road', city:'Udaipur, Rajasthan', pin:'313001',
@@ -34,7 +34,7 @@ const D = [
    story:[['How We Met','A rainy evening, one umbrella and a lakeside café in the old city — that is where our story quietly began.'],
           ['Growing Together','From boat rides at sunset to a thousand shared playlists, every small moment stitched us closer.'],
           ['Forever Begins','Now we are ready for our next chapter — and we want you beside us as it begins by the lake.']] },
- { id:'ivory-arch', groom:'Vihaan', bride:'Ananya', gLast:'Sharma', bLast:'Iyer',
+ { id:'ivory-arch', groom:'Goutam', bride:'Sweety', gLast:'Sharma', bLast:'Iyer',
    gp:'Shri Sandeep Sharma & Shrimati Kavita Sharma', bp:'Shri Ramesh Iyer & Shrimati Lakshmi Iyer',
    gAddr:'Civil Lines, Jaipur,\nRajasthan – 302001', bAddr:'Malviya Nagar, Jaipur,\nRajasthan – 302017',
    venue:'The Garden Pavilion', street:'Palace Road, Civil Lines', city:'Jaipur, Rajasthan', pin:'302001',
