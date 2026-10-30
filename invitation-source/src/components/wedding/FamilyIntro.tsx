@@ -6,6 +6,7 @@ import {copyText} from "../../../adapters/copy";
 // bride's photo + parents. All content editable at /admin/couple.
 import { SITE_TEXTS } from "@/content/wedding";
 import Image from "next/image";
+import FitImage from "./FitImage";
 import { COUPLE, FAMILY } from "@/content/wedding";
 import Reveal from "./Reveal";
 import { FloralCorners } from "./Ornaments";
@@ -79,14 +80,24 @@ function FamilyCard({
           <div className="overflow-hidden rounded-t-[999px] rounded-b-3xl border-[3px] border-gold/70 shadow-[0_24px_60px_-24px_rgba(109,16,37,0.45)]">
             <div className="relative aspect-[3/4] w-full bg-cream">
               {photo ? (
-                <Image
-                  src={photo}
-                  alt={name}
-                  fill
-                  sizes="(max-width: 1024px) 240px, 300px"
-                  className={fit === "contain" ? "object-contain" : "object-cover"}
-                  style={focusStyle(focus)}
-                />
+                fit === "cover" ? (
+                  <Image
+                    src={photo}
+                    alt={name}
+                    fill
+                    sizes="(max-width: 1024px) 240px, 300px"
+                    className="object-cover"
+                    style={focusStyle(focus)}
+                  />
+                ) : (
+                  <FitImage
+                    src={photo}
+                    alt={name}
+                    width={480}
+                    height={640}
+                    className="absolute inset-0 h-full w-full"
+                  />
+                )
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-cream text-6xl">
                   🙏

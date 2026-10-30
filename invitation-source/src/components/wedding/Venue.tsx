@@ -76,7 +76,7 @@ export default function Venue() {
   const [contactPhone, setContactPhone] = useState("");
   const [venuePhoto, setVenuePhoto] = useState(VENUE.photo);
   const [venueMapUrl, setVenueMapUrl] = useState(VENUE.mapUrl);
-  const [venueFit, setVenueFit] = useState<"cover" | "contain">("cover");
+  const [venueFit, setVenueFit] = useState<"cover" | "contain">("contain");
 
   useEffect(() => {
     try {

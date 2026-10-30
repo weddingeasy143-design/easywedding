@@ -4,6 +4,7 @@
 
 import { useEffect } from "react";
 import Image from "next/image";
+import FitImage from "./FitImage";
 import { motion, AnimatePresence } from "framer-motion";
 import type { WeddingEvent } from "@/content/wedding";
 import { THEME_STYLES } from "@/content/wedding";
@@ -75,13 +76,23 @@ export default function EventDetails({
             </button>
 
             <div className="relative">
-              <Image
-                src={event.image}
-                alt={event.name}
-                width={800}
-                height={500}
-                className="aspect-[16/10] w-full object-cover"
-              />
+              {event.imageFit === "cover" ? (
+                <Image
+                  src={event.image}
+                  alt={event.name}
+                  width={800}
+                  height={500}
+                  className="aspect-[16/10] w-full object-cover"
+                />
+              ) : (
+                <FitImage
+                  src={event.image}
+                  alt={event.name}
+                  width={800}
+                  height={500}
+                  className="aspect-[16/10] w-full"
+                />
+              )}
               <div
                 className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent"
                 aria-hidden

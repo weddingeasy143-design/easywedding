@@ -97,15 +97,7 @@ export default function StoryTimeline() {
                       >
                         <div className="overflow-hidden rounded-t-[999px] rounded-b-2xl border-2 border-gold/70 p-1 bg-cream shadow-[0_16px_40px_-18px_rgba(109,16,37,0.45)]">
                           <div className="overflow-hidden rounded-t-[999px] rounded-b-xl">
-                            {entry.photoFit === "contain" ? (
-                              <FitImage
-                                src={entry.photo}
-                                alt={entry.title}
-                                width={440}
-                                height={560}
-                                className="aspect-[3/4] w-full"
-                              />
-                            ) : (
+                            {entry.photoFit === "cover" ? (
                               <Image
                                 src={entry.photo}
                                 alt={entry.title}
@@ -113,6 +105,14 @@ export default function StoryTimeline() {
                                 height={560}
                                 loading="lazy"
                                 className="aspect-[3/4] w-full object-cover"
+                              />
+                            ) : (
+                              <FitImage
+                                src={entry.photo}
+                                alt={entry.title}
+                                width={440}
+                                height={560}
+                                className="aspect-[3/4] w-full"
                               />
                             )}
                         </div>

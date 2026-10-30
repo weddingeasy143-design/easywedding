@@ -112,15 +112,7 @@ export default function Gallery() {
                 className="absolute inset-0 block h-full w-full"
                 aria-label={`View photo: ${photo.caption}`}
               >
-                {photo.fit === "contain" ? (
-                  <FitImage
-                    src={photo.src}
-                    alt={photo.caption ?? "Wedding photo"}
-                    width={900}
-                    height={675}
-                    className="h-full w-full"
-                  />
-                ) : (
+                {photo.fit === "cover" ? (
                   <Image
                     src={photo.src}
                     alt={photo.caption ?? "Wedding photo"}
@@ -129,6 +121,14 @@ export default function Gallery() {
                     loading="lazy"
                     className="h-full w-full object-cover"
                     style={focusStyle(photo.focus)}
+                  />
+                ) : (
+                  <FitImage
+                    src={photo.src}
+                    alt={photo.caption ?? "Wedding photo"}
+                    width={900}
+                    height={675}
+                    className="h-full w-full"
                   />
                 )}
               </motion.button>
@@ -185,7 +185,7 @@ export default function Gallery() {
                   width={160}
                   height={160}
                   loading="lazy"
-                  className={`h-full w-full ${p.fit === "contain" ? "object-contain bg-cream" : "object-cover"}`}
+                  className={`h-full w-full ${p.fit === "cover" ? "object-cover" : "object-contain bg-cream"}`}
                   style={focusStyle(p.focus)}
                 />
               </button>
@@ -206,15 +206,7 @@ export default function Gallery() {
                     : "border-gold/40 opacity-70 hover:-translate-y-0.5 hover:opacity-100"
                 }`}
               >
-                {p.fit === "contain" ? (
-                  <FitImage
-                    src={p.src}
-                    alt={p.caption ?? "Wedding photo"}
-                    width={320}
-                    height={240}
-                    className="aspect-[4/3] w-full"
-                  />
-                ) : (
+                {p.fit === "cover" ? (
                   <Image
                     src={p.src}
                     alt={p.caption ?? "Wedding photo"}
@@ -223,6 +215,14 @@ export default function Gallery() {
                     loading="lazy"
                     className="aspect-[4/3] w-full object-cover"
                     style={focusStyle(p.focus)}
+                  />
+                ) : (
+                  <FitImage
+                    src={p.src}
+                    alt={p.caption ?? "Wedding photo"}
+                    width={320}
+                    height={240}
+                    className="aspect-[4/3] w-full"
                   />
                 )}
               </button>

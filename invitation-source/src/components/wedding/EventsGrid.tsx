@@ -40,15 +40,7 @@ function EventCard({
     >
       <div className={`bg-gradient-to-br ${theme.gradient} p-2.5 pb-0`}>
         <div className="overflow-hidden rounded-t-[1.15rem] rounded-b-lg">
-          {event.imageFit === "contain" ? (
-            <FitImage
-              src={event.image}
-              alt={event.name}
-              width={640}
-              height={400}
-              className="aspect-[16/10] w-full"
-            />
-          ) : (
+          {event.imageFit === "cover" ? (
             <Image
               src={event.image}
               alt={event.name}
@@ -56,6 +48,14 @@ function EventCard({
               height={420}
               loading="lazy"
               className="aspect-[16/10] w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
+            />
+          ) : (
+            <FitImage
+              src={event.image}
+              alt={event.name}
+              width={640}
+              height={400}
+              className="aspect-[16/10] w-full"
             />
           )}
         </div>

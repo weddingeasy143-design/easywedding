@@ -150,14 +150,14 @@ export const WEDDING_DATE_ISO = ovStr(
 const FAMILY_SEED = {
   groomPhoto: "/reference/assets/current-234c8f91fdc1.jpg",
   groomPhotoFocus: "62,22",
-  groomPhotoFit: "cover",
+  groomPhotoFit: "contain",
   groomRelationLabel: "Son of",
   groomParents: "Shri Rajesh Sharma & Shrimati Sunita Sharma",
   groomAddress:
     "Civil Lines, Jaipur,\nRajasthan \u2013 302001",
   bridePhoto: "/reference/assets/current-823d1cc4ff47.jpg",
   bridePhotoFocus: "38,60",
-  bridePhotoFit: "cover",
+  bridePhotoFit: "contain",
   brideRelationLabel: "Daughter of",
   brideParents: "Shri Vikram Mehta & Shrimati Anjali Mehta",
   brideAddress:

@@ -19,7 +19,7 @@ const content={...snapshot.site.content,...source.FAMILY,
  venueName:source.VENUE.name,venueAddressLines:source.VENUE.addressLines,venuePhoto:source.VENUE.photo,
  venuePin:'',venueMapUrl:'',siteTexts:source.SITE_TEXTS};
 const defaults={content,story:source.STORY_SEED,events:source.EVENTS,
- gallery:source.GALLERY_SEED.map((photo,index)=>({...photo,id:'gallery-'+index,isCover:index===0,sortOrder:index,focus:'50,50',fit:'cover'})),
+ gallery:source.GALLERY_SEED.map((photo,index)=>({...photo,id:'gallery-'+index,isCover:index===0,sortOrder:index,focus:'50,50',fit:'contain'})),
  sagun:{...snapshot.site.sagun,qr1Image:'',qr2Image:'',qr1UpiId:'',qr2UpiId:'',
  hindiText:'Your good wishes and blessings are our greatest gift. If you wish, you can also send a digital wedding gift.',
  quoteLeft:'Your blessings make our new beginning even more special.',quoteRight:'Your good wishes bring joy to our life together.',
