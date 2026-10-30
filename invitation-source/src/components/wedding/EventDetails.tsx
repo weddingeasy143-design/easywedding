@@ -90,6 +90,7 @@ export default function EventDetails({
                   alt={event.name}
                   width={800}
                   height={500}
+                  lockFrame
                   className="aspect-[16/10] w-full"
                 />
               )}

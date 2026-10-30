@@ -55,6 +55,7 @@ function EventCard({
               alt={event.name}
               width={640}
               height={400}
+              lockFrame
               className="aspect-[16/10] w-full"
             />
           )}

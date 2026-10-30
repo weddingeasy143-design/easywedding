@@ -14,6 +14,7 @@ export default function FitImage({
   height,
   className = "",
   imgClassName = "",
+  lockFrame = false,
 }: {
   src: string;
   alt: string;
@@ -21,6 +22,10 @@ export default function FitImage({
   height: number;
   className?: string;
   imgClassName?: string;
+  /* lockFrame: keep the caller's frame exactly as designed (e.g. every event
+     card the same size) — the photo still shows in full over its blurred
+     backdrop, it just does not reshape the frame. */
+  lockFrame?: boolean;
 }) {
   /* The frame takes the photograph's own shape (within sane limits), so the
      whole photo fills it — never a small strip floating in a blur, and never
@@ -28,7 +33,7 @@ export default function FitImage({
   const [ratio, setRatio] = useState<number | null>(null);
   const fixedHeight = className.includes("h-full");
   const style =
-    !fixedHeight && ratio
+    !fixedHeight && !lockFrame && ratio
       ? { aspectRatio: String(Math.min(1.8, Math.max(0.6, ratio))) }
       : undefined;
   return (

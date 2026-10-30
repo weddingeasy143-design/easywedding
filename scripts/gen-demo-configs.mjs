@@ -139,6 +139,11 @@ for (const [i, d] of D.entries()) {
   const ref = JSON.parse(JSON.stringify(referenceDefaults));
   const c = ref.content;
   c.headline = d.headline; c.quote = d.quote;
+  /* Note: the couple's names and the wedding date live in the FLAT config
+     (set below in cfg) — the render takes them from there. The reference
+     content's own name/date entries are fixed seed text that
+     normalizeReference never reads from a saved config, so they cannot leak
+     into a rendered invitation. */
   c.heroPhoto = hero; c.invitationPhoto = invite;
   c.groomPhoto = groomPhoto; c.bridePhoto = bridePhoto; c.venuePhoto = venuePhoto;
   c.groomParents = d.gp; c.brideParents = d.bp;

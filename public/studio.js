@@ -22,10 +22,15 @@ try{if(location.hash.includes('card='))config=readConfig(location);else{const sa
 const selectedTheme=new URLSearchParams(location.search).get('template');if(Object.hasOwn(eventThemes,selectedTheme))config=normalizeConfig({...config,theme:selectedTheme});
 /* Opening a design starts from that design's own finished sample — the same
    couple, dates, venue and photos the customer saw in the preview. A saved
-   draft, an opened invitation or a payment return always wins over the sample. */
-{const q=new URLSearchParams(location.search);let hasDraft=false;try{hasDraft=!!localStorage.getItem(STORAGE)}catch{}
-if(selectedTheme&&Object.hasOwn(eventThemes,selectedTheme)&&!location.hash.includes('card=')&&!hasDraft&&!q.has('demo')&&!q.has('order_id')&&!q.has('payment')){
-try{const r=await fetch('demo-configs/'+encodeURIComponent(selectedTheme)+'.json');if(r.ok){const demo=normalizeConfig(await r.json());if(demo.theme===selectedTheme)config=demo;}}catch{}}}
+   draft wins ONLY when it belongs to this same design and carries the
+   visitor's own typing (their names, or edits beyond the untouched sample).
+   Any other leftover — another design's draft, an untouched sample, an old
+   seed with no names — gives way to the picked design's sample, so "Make
+   this my invite" never opens with a stranger's names. An opened invitation
+   (#card=) or a payment return always wins over the sample. */
+{const q=new URLSearchParams(location.search);
+if(selectedTheme&&Object.hasOwn(eventThemes,selectedTheme)&&!location.hash.includes('card=')&&!q.has('demo')&&!q.has('order_id')&&!q.has('payment')){
+try{const r=await fetch('demo-configs/'+encodeURIComponent(selectedTheme)+'.json');if(r.ok){const demo=normalizeConfig(await r.json());if(demo.theme===selectedTheme){let keepDraft=false;try{const raw=localStorage.getItem(STORAGE);if(raw){const draft=normalizeConfig(JSON.parse(raw));const ownWork=(draft.groomName||'').trim()!==''||(draft.brideName||'').trim()!=='';keepDraft=draft.theme===selectedTheme&&ownWork&&JSON.stringify(draft)!==JSON.stringify(demo)&&JSON.stringify(draft)!==JSON.stringify(normalizeConfig(DEFAULTS));}}catch{}if(!keepDraft)config=demo;}}}catch{}}}
 $('#theme-options').innerHTML=Object.entries(eventThemes).map(([key,t],index)=>{const d=referenceDesignFor(key);return `<label class="theme-card ${d.premium?'theme-card-premium':''}" style="--card-ink:${d.palette[2]};--card-paper:${d.palette[0]};--card-gold:${d.palette[5]}"><input type="radio" name="theme" value="${key}"><span class="theme-art"><img src="${d.scene}" alt="${t.name} wedding artwork"><span class="theme-number">${String(index+1).padStart(2,'0')}</span></span><span class="theme-caption"><strong>${t.name}${d.premium?'<span class="premium-badge">PREMIUM</span>':''}</strong><small>${d.description}</small><span class="theme-capacity">${invitationCapacity.photos} photos · full invitation</span></span><i aria-hidden="true">✓</i></label>`}).join('');
 /* "Start with this design" on the homepage opens the studio on that design only; the other designs are not shown. */
 function lockDesign(){
@@ -55,7 +60,15 @@ function refresh(save=true){config=readForm();updateContact();$('#theme-label').
 form.addEventListener('input',event=>{clearFieldError(event.target);clearTimeout(updateTimer);updateTimer=setTimeout(()=>refresh(),220);});form.addEventListener('change',event=>{clearTimeout(updateTimer);refresh();if(event.target.name==='theme')preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin);});form.addEventListener('submit',e=>e.preventDefault());
 $('#add-event').addEventListener('click',()=>{const events=readRawEvents();if(events.length>=10)return;events.push({time:form.elements.time.value||config.time,title:'A special moment',description:''});renderEvents(events);refresh();$('#event-editor').lastElementChild.querySelector('[data-field=title]').focus();});
 $('#event-editor').addEventListener('click',event=>{const button=event.target.closest('button[data-action]');if(!button)return;const events=readRawEvents(),index=Number(button.dataset.index),action=button.dataset.action;if(action==='remove')events.splice(index,1);else{const other=index+(action==='up'?-1:1);if(other>=0&&other<events.length)[events[index],events[other]]=[events[other],events[index]];}renderEvents(events);refresh();});
-window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===preview.contentWindow&&event.data?.type==='wedcanvas:ready')sendPreview();});preview.addEventListener('load',sendPreview);$('#replay-preview').addEventListener('click',()=>preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin));
+window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===preview.contentWindow&&event.data?.type==='wedcanvas:ready')sendPreview();});preview.addEventListener('load',sendPreview);
+/* The side preview renders the invitation at a true phone width (390px) and
+   scales it down into the phone shell, so the customer sees exactly what
+   guests see on a real phone — the whole design, fully fit — instead of the
+   design squeezed into the shell's narrower width. */
+const PREVIEW_W=390;
+function fitPreview(){const shell=preview.closest('.phone-shell');if(!shell)return;const sw=shell.clientWidth,sh=shell.clientHeight;if(!sw||!sh)return;const s=sw/PREVIEW_W;shell.style.position='relative';preview.style.position='absolute';preview.style.top='0';preview.style.left='0';preview.style.transformOrigin='top left';preview.style.width=PREVIEW_W+'px';preview.style.height=Math.round(sh/s)+'px';preview.style.transform='scale('+s+')';}
+{const shell=preview.closest('.phone-shell');if(shell&&window.ResizeObserver)new ResizeObserver(()=>fitPreview()).observe(shell);}
+addEventListener('resize',fitPreview);fitPreview();$('#replay-preview').addEventListener('click',()=>preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin));
 /* Inline errors: the message sits next to the field (described by it), the field's step is shown and the field gets focus. */
 function clearFieldError(input){if(!input||!input._wzErr)return;input._wzErr.remove();input._wzErr=null;input.removeAttribute('aria-invalid');input.removeAttribute('aria-describedby');}
 function friendlyMessage(input){if(input.validity?.valueMissing){const name=(input.closest('label')?.querySelector('.wz-label')?.firstChild?.textContent||'').trim();return name?'Please add '+name.charAt(0).toLowerCase()+name.slice(1)+' to continue.':'This is needed to continue.';}return input.validationMessage||'Please check this field.';}
