@@ -26,6 +26,14 @@ if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!
  try{const info=await withTimeout(fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()),AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
 }
 const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
+/* A preview that carries no invitation of its own (direct design previews,
+   feature previews) shows that design's own sample couple — its names, dates,
+   story, events and gallery — loaded from the demo library. Real invitations
+   (an id, a guest token, or a saved reference of their own) are never touched. */
+{const q0=new URLSearchParams(location.search);
+if(!q0.has('id')&&!q0.has('to')&&!config.reference){
+ try{const demos=await fetch('./demos.json').then(r=>r.ok?r.json():null);const demo=demos?.[config.theme];
+ if(demo)config={...config,...demo.flat,reference:demo.reference};}catch{}}}
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
 const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'));
 let audio=config.audioUrl;
