@@ -71,13 +71,13 @@ async function saveCloud(){if(!cloudReady||cloudSaving||!cloudPending)return;clo
 if(typeof fetch==='function'&&!browserOnlySession()){const initial=JSON.stringify(config);fetch('/api/studio').then(async r=>{if(!r.ok)return;const data=await r.json();cloudReady=true;if(data.config&&!location.hash.includes('card=')&&JSON.stringify(config)===initial){/* A design picked on the homepage (?template=) wins over the saved draft's design, so the paywall charges for what was chosen. */config=normalizeConfig({...data.config,...(Object.hasOwn(eventThemes,selectedTheme)?{theme:selectedTheme}:{})});fillForm();refresh(false);$('#save-status').textContent='Invitation loaded from your account';}else if(cloudPending||location.hash.includes('card=')){cloudPending=true;saveCloud();}}).catch(()=>{});}
 
 form.addEventListener('change',async event=>{
- const input=event.target,key=input.dataset.invitationUpload,file=input.files?.[0];if(!key||!file)return;
- const status=$('#'+key+'-status');input.disabled=true;status.textContent='Uploading photograph…';
- try{if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');let result;if(browserOnlySession()){result={url:await prepareLocalPhoto(file)};}else{const data=new FormData();data.set('file',await compressPhoto(file));const response=await fetch('/api/invitation-photos',{method:'POST',body:data});result=await response.json();if(!response.ok)throw Error(result.error||'Sign in to upload, or open the demo studio.');}form.elements[key].value=result.url;refresh();status.textContent='Photo uploaded. Your invitation preview is updated.';}catch(error){status.textContent=error.message;}finally{input.disabled=false;input.value='';}
+ const input=event.target,key=input.dataset.invitationUpload,picked=input.files?.[0];if(!key||!picked)return;
+ const status=$('#'+key+'-status'),home=status.textContent;input.disabled=true;
+ try{if(!['image/jpeg','image/png','image/webp'].includes(picked.type))throw Error('Choose a JPG, PNG or WebP photograph.');status.textContent='Adjust the photo, then tap Use photo.';const file=await cropPhotoFile(picked,PHOTO_ASPECTS[key]||4/5);if(!file){status.textContent=home;input.disabled=false;input.value='';return;}let result;if(browserOnlySession()){result={url:await prepareLocalPhoto(file)};}else{const data=new FormData();data.set('file',await compressPhoto(file));status.textContent='Uploading photograph… 0%';result=await uploadWithProgress('/api/invitation-photos',data,pct=>{status.textContent='Uploading photograph… '+pct+'%';},'Sign in to upload, or open the demo studio.');}form.elements[key].value=result.url;refresh();status.textContent='Photo uploaded. Your invitation preview is updated.';}catch(error){status.textContent=error.message;}finally{input.disabled=false;input.value='';}
 });
 form.addEventListener('click',event=>{const button=event.target.closest('[data-clear-image]');if(!button)return;const key=button.dataset.clearImage;form.elements[key].value='';$('#'+key+'-status').textContent='Photo removed from this invitation.';refresh();});
 
-form.addEventListener('change',async event=>{const input=event.target;if(!input.matches('[data-song-upload]')||!input.files?.[0])return;input.disabled=true;const uploadVersion=++songUploadVersion,file=input.files[0],status=$('#song-status');status.textContent='Uploading song…';try{await validateSong(file);if(uploadVersion!==songUploadVersion)return;let url;if(browserOnlySession())url=await prepareLocalSong(file);else{const data=new FormData();data.set('file',file);const r=await fetch('/api/invitation-audio',{method:'POST',body:data});const result=await r.json();if(!r.ok)throw Error(result.error||'Song upload failed.');url=result.url;}if(uploadVersion!==songUploadVersion)return;form.elements.audioUrl.value=url;form.elements.audioName.value=file.name;form.elements.music.checked=true;refresh();status.textContent=file.name+(url.startsWith('local-audio:')?' · Saved on this device. Sign in and upload to share across devices.':' · Guests will hear this song.');}catch(error){if(uploadVersion===songUploadVersion)status.textContent=error.message;}finally{if(uploadVersion===songUploadVersion){input.disabled=false;input.value='';}}});
+form.addEventListener('change',async event=>{const input=event.target;if(!input.matches('[data-song-upload]')||!input.files?.[0])return;input.disabled=true;const uploadVersion=++songUploadVersion,file=input.files[0],status=$('#song-status');status.textContent='Uploading song…';try{await validateSong(file);if(uploadVersion!==songUploadVersion)return;let url;if(browserOnlySession())url=await prepareLocalSong(file);else{const data=new FormData();data.set('file',file);status.textContent='Uploading song… 0%';const result=await uploadWithProgress('/api/invitation-audio',data,pct=>{if(uploadVersion===songUploadVersion)status.textContent='Uploading song… '+pct+'%';},'Song upload failed.');url=result.url;}if(uploadVersion!==songUploadVersion)return;form.elements.audioUrl.value=url;form.elements.audioName.value=file.name;form.elements.music.checked=true;refresh();status.textContent=file.name+(url.startsWith('local-audio:')?' · Saved on this device. Sign in and upload to share across devices.':' · Guests will hear this song.');}catch(error){if(uploadVersion===songUploadVersion)status.textContent=error.message;}finally{if(uploadVersion===songUploadVersion){input.disabled=false;input.value='';}}});
 $('#remove-song').addEventListener('click',()=>{songUploadVersion++;const input=$('[data-song-upload]');input.disabled=false;input.value='';form.elements.audioUrl.value='';form.elements.audioName.value='';refresh();$('#song-status').textContent='Song removed. Upload a song to add invitation music.';});
 
 // Design unlock payments. Prices and available gateways come from /api/pricing.
@@ -307,7 +307,55 @@ initFlow();
 if(window.EWApp){
   const toast=document.createElement('div');toast.id='app-toast';toast.setAttribute('role','status');
   document.body.appendChild(toast);let toastTimer;
-  const showToast=text=>{const t=(text||'').trim();if(!t)return;toast.textContent=t;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),4000);};
+  const showToast=text=>{const t=(text||'').trim();if(!t||/%/.test(t))return;toast.textContent=t;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),4000);};
   const watch=el=>{new MutationObserver(()=>showToast(el.textContent)).observe(el,{childList:true,characterData:true,subtree:true});};
   document.querySelectorAll('[id$="-status"]').forEach(watch);
+}
+
+/* Uploads with real progress: fetch() cannot report upload percent, XMLHttpRequest can. A 180 s
+   timeout turns a silent stall on a weak connection into a clear, retryable message. */
+function uploadWithProgress(url,data,onPercent,fallback){
+ return new Promise((resolve,reject)=>{
+  const xhr=new XMLHttpRequest();xhr.open('POST',url);xhr.timeout=180000;
+  xhr.upload.onprogress=e=>{if(e.lengthComputable)onPercent(Math.round(e.loaded/e.total*100));};
+  xhr.onload=()=>{let result={};try{result=JSON.parse(xhr.responseText||'{}');}catch{}if(xhr.status>=200&&xhr.status<300)resolve(result);else reject(Error(result.error||fallback||'Upload failed. Try again.'));};
+  xhr.onerror=()=>reject(Error('Upload failed — check your internet connection and try again.'));
+  xhr.ontimeout=()=>reject(Error('Upload is taking too long — check your connection and try again.'));
+  xhr.send(data);
+ });
+}
+/* The frame matches how the photo appears in the invitation (couple 4:5 arch, venue 3:2), so what
+   the couple frames here is exactly what guests will see. Resolves null when they cancel. */
+const PHOTO_ASPECTS={photoUrl:4/5,groomPhoto:4/5,bridePhoto:4/5,venuePhotoUrl:3/2};
+function cropPhotoFile(file,aspect){
+ return new Promise(resolve=>{
+  const url=URL.createObjectURL(file),probe=new Image();
+  probe.onload=()=>{
+   const overlay=document.createElement('div');overlay.className='crop-overlay';
+   overlay.innerHTML='<div class="crop-box"><p class="crop-title">Crop photo</p><p class="crop-hint">Sirf frame ke andar wala hissa invitation me dikhega. Photo ko ungli se sarakao, slider se bada karo.</p><div class="crop-stage"><img alt=""></div><input class="crop-zoom" type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom photo"><div class="crop-actions"><button type="button" class="crop-cancel">Cancel</button><button type="button" class="crop-use">Use photo</button></div></div>';
+   document.body.appendChild(overlay);
+   const stage=overlay.querySelector('.crop-stage'),pic=overlay.querySelector('img'),zoom=overlay.querySelector('.crop-zoom');
+   stage.style.aspectRatio=String(aspect);if(aspect<1)stage.style.maxWidth='290px';pic.src=url;
+   let scale=1,base=1,ox=0,oy=0,drag=null,centred=false;
+   const clamp=()=>{const w=probe.naturalWidth*base*scale,h=probe.naturalHeight*base*scale;ox=Math.min(0,Math.max(stage.clientWidth-w,ox));oy=Math.min(0,Math.max(stage.clientHeight-h,oy));};
+   const apply=()=>{clamp();pic.style.width=probe.naturalWidth*base*scale+'px';pic.style.height=probe.naturalHeight*base*scale+'px';pic.style.transform='translate('+ox+'px,'+oy+'px)';};
+   const fit=()=>{base=Math.max(stage.clientWidth/probe.naturalWidth,stage.clientHeight/probe.naturalHeight);if(!centred){centred=true;ox=(stage.clientWidth-probe.naturalWidth*base)/2;oy=(stage.clientHeight-probe.naturalHeight*base)/2;}apply();};
+   pic.onload=fit;if(pic.complete&&pic.naturalWidth)fit();
+   zoom.addEventListener('input',()=>{scale=Number(zoom.value);apply();});
+   stage.addEventListener('pointerdown',e=>{drag={x:e.clientX-ox,y:e.clientY-oy};stage.setPointerCapture(e.pointerId);});
+   stage.addEventListener('pointermove',e=>{if(!drag)return;ox=e.clientX-drag.x;oy=e.clientY-drag.y;apply();});
+   stage.addEventListener('pointerup',()=>{drag=null;});stage.addEventListener('pointercancel',()=>{drag=null;});
+   const done=v=>{URL.revokeObjectURL(url);overlay.remove();resolve(v);};
+   overlay.querySelector('.crop-cancel').addEventListener('click',()=>done(null));
+   overlay.querySelector('.crop-use').addEventListener('click',()=>{
+    const k=base*scale,sx=-ox/k,sy=-oy/k,sw=stage.clientWidth/k,sh=stage.clientHeight/k;
+    const outScale=Math.min(1,2000/Math.max(sw,sh)),canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(sw*outScale));canvas.height=Math.max(1,Math.round(sh*outScale));
+    canvas.getContext('2d').drawImage(probe,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+    canvas.toBlob(b=>done(b?new File([b],'photo.jpg',{type:'image/jpeg'}):null),'image/jpeg',0.92);
+   });
+  };
+  probe.onerror=()=>{URL.revokeObjectURL(url);resolve(file);};
+  probe.src=url;
+ });
 }

@@ -329,3 +329,15 @@ body.in-app .wz-layout{grid-template-columns:minmax(0,1fr);max-width:720px;paddi
 body.in-app [id$="-status"]{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:999px;background:#F6E7C8;color:#4B0B20;font-weight:600}
 body.in-app #app-toast{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;background:#4B0B20;color:#F8F2E8;padding:14px 18px;border-radius:14px;font-size:15px;font-weight:600;text-align:center;box-shadow:0 10px 30px rgba(75,11,32,.35);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .25s ease,transform .25s ease}
 body.in-app #app-toast.show{opacity:1;transform:none}
+
+/* Photo crop dialog: the frame is the exact area guests will see in the invitation. */
+.crop-overlay{position:fixed;inset:0;z-index:80;background:rgba(27,10,16,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.crop-box{background:#FFFCF7;border-radius:20px;padding:18px;max-width:430px;width:100%;max-height:94vh;overflow:auto}
+.crop-title{font-weight:700;font-size:18px;margin:0 0 4px;color:#3A1220}
+.crop-hint{margin:0 0 12px;color:#6B5058;font-size:13px}
+.crop-stage{position:relative;width:100%;overflow:hidden;border-radius:14px;background:#1B0A10;touch-action:none;margin:0 auto;cursor:grab}
+.crop-stage img{position:absolute;left:0;top:0;max-width:none;user-select:none;-webkit-user-drag:none}
+.crop-zoom{width:100%;margin:14px 0 4px;accent-color:#75152E}
+.crop-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.crop-actions button{padding:10px 18px;border-radius:999px;border:1px solid #E6D8C3;background:#fff;font-weight:600;cursor:pointer;color:#3A1220}
+.crop-actions .crop-use{background:#75152E;color:#fff;border-color:#75152E}
