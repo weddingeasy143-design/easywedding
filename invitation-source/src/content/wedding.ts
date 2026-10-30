@@ -111,14 +111,14 @@ function ovStrArr(v: unknown, fallback: string[]): string[] {
 }
 
 const COUPLE_SEED = {
-  groom: "Chandan",
-  bride: "Pinki",
+  groom: "Rupesh",
+  bride: "Usha",
   headline: "Two Hearts, One Beautiful Journey",
   invitationMessage:
     "With the blessings of our families,\nwe cordially invite you to be a part\nof our special day.",
   quote: "Different Roots, Same Dreams — A Lifetime Together",
-  heroPhoto: "/photos/159504_11_ahh7.jpg",
-  invitationPhoto: "/photos/159506_9_wx3k.jpg",
+  heroPhoto: "/reference/assets/current-4d31a609d04f.jpg",
+  invitationPhoto: "/reference/assets/current-49b574202f26.jpg",
 };
 
 export const COUPLE = {
@@ -148,20 +148,20 @@ export const WEDDING_DATE_ISO = ovStr(
 // groomPhotoFocus / bridePhotoFocus: "x,y" percentages used as CSS
 // object-position so any uploaded photo auto-frames on the face.
 const FAMILY_SEED = {
-  groomPhoto: "/photos/chandan-bridge.jpg",
+  groomPhoto: "/reference/assets/current-234c8f91fdc1.jpg",
   groomPhotoFocus: "62,22",
   groomPhotoFit: "cover",
   groomRelationLabel: "Son of",
-  groomParents: "Shri Sanatan Mahato & Shrimati Kunti Devi",
+  groomParents: "Shri Rajesh Sharma & Shrimati Sunita Sharma",
   groomAddress:
-    "Vill \u2013 Keliya Dabar, PO + PS \u2013 Pindrajora,\nDistrict \u2013 Bokaro, Jharkhand \u2013 827013",
-  bridePhoto: "/photos/159503_12_2zed.jpg",
+    "Civil Lines, Jaipur,\nRajasthan \u2013 302001",
+  bridePhoto: "/reference/assets/current-823d1cc4ff47.jpg",
   bridePhotoFocus: "38,60",
   bridePhotoFit: "cover",
   brideRelationLabel: "Daughter of",
-  brideParents: "Shri Narendra Prasad Mahato & Shrimati Kalpana Devi",
+  brideParents: "Shri Vikram Mehta & Shrimati Anjali Mehta",
   brideAddress:
-    "Vill \u2013 Dabar Bahal, PO \u2013 Dudhigazar, PS \u2013 Chas (M),\nDistrict \u2013 Bokaro, Jharkhand \u2013 827013",
+    "Malviya Nagar, Jaipur,\nRajasthan \u2013 302017",
 };
 
 function ovFit(v: unknown, fallback: string): "cover" | "contain" {
@@ -202,7 +202,7 @@ const SITE_TEXTS_SEED = {
   youreInvited: "You're Invited",
   thankYouTitle: "Thank You!",
   thankYouMessage: "Thank you for being part of our special day.",
-  footerText: "Made with love for Chandan & Pinki",
+  footerText: "Made with love for Rupesh & Usha",
   mandapTitle: "You're Invited",
   mandapLine1: "Two Families",
   mandapLine2: "One Celebration",
@@ -225,12 +225,12 @@ export const SITE_TEXTS = {
 export const WEDDING_DATE_LABEL = new Date(WEDDING_DATE_ISO).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Kolkata"});
 
 const VENUE_SEED = {
-  name: "Keliya Dabar",
-  addressLines: ["Po+Ps - Pindrajora", "Bokaro, Jharkhand"],
-  pin: "827013",
+  name: "The Garden Pavilion",
+  addressLines: ["Palace Road, Civil Lines", "Jaipur, Rajasthan"],
+  pin: "302001",
   mapUrl:
-    "https://www.google.com/maps/search/?api=1&query=Keliya+Dabar+Pindrajora+Bokaro+Jharkhand+827013",
-  photo: "/photos/venue-placeholder.jpg",
+    "https://www.google.com/maps/search/?api=1&query=The+Garden+Pavilion+Palace+Road+Civil+Lines+Jaipur",
+  photo: "/reference/assets/current-a1240688e514.jpg",
 };
 
 const venueName = ovStr(SITE_OVERRIDES.venueName, VENUE_SEED.name);
@@ -265,7 +265,7 @@ export const EVENTS: WeddingEvent[] = [
       "A little turmeric, a lot of love. Join us for a beautiful Haldi ceremony filled with love, laughter and vibrant colours as we begin our wedding celebrations.",
     dressCode: "Yellow / Traditional",
     theme: "haldi",
-    image: "/photos/haldi-poster.png",
+    image: "/reference/assets/current-6d739b6d29e5.png",
     mapUrl: VENUE.mapUrl,
     enabled: true,
     sortOrder: 1,
@@ -283,7 +283,7 @@ export const EVENTS: WeddingEvent[] = [
       "An evening of intricate henna, music and joy. Come adorned in greens as we celebrate love painted in the most beautiful patterns.",
     dressCode: "Green / Festive",
     theme: "mehendi",
-    image: "/photos/158465_13_c8yv.jpg",
+    image: "/reference/assets/current-cd4d616c71ec.jpg",
     mapUrl: VENUE.mapUrl,
     enabled: true,
     sortOrder: 2,
@@ -301,7 +301,7 @@ export const EVENTS: WeddingEvent[] = [
       "The moment we've been waiting for. Witness us exchange vows and begin our forever, surrounded by everyone we love.",
     dressCode: "Traditional / Festive",
     theme: "wedding",
-    image: "/photos/159506_9_wx3k.jpg",
+    image: "/assets/samples/couple.webp",
     mapUrl: VENUE.mapUrl,
     enabled: true,
     sortOrder: 3,
@@ -320,7 +320,7 @@ export const EVENTS: WeddingEvent[] = [
       "Good people make good moments better. Join us for an evening of celebration, dinner and dance as we begin our new journey together.",
     dressCode: "Formal / Indo-Western",
     theme: "reception",
-    image: "/photos/86562_6_v9m4.jpg",
+    image: "/reference/assets/current-62d344ffd89e.jpg",
     mapUrl: VENUE.mapUrl,
     enabled: true,
     sortOrder: 4,
@@ -333,7 +333,7 @@ export const STORY_SEED = [
     dateLabel: "",
     description:
       "A simple hello turned into a beautiful journey. Some meetings are written in the stars — ours was one of them.",
-    photo: "/photos/159504_11_ahh7.jpg",
+    photo: "/reference/assets/current-453f66ec8adf.jpg",
     sortOrder: 1,
   },
   {
@@ -341,7 +341,7 @@ export const STORY_SEED = [
     dateLabel: "",
     description:
       "Through every moment, we found a stronger us. Laughter, dreams and a thousand little memories stitched us closer.",
-    photo: "/photos/159505_10_eqyh.jpg",
+    photo: "/reference/assets/current-f2081c44f71c.jpg"
     sortOrder: 2,
   },
   {
@@ -349,23 +349,23 @@ export const STORY_SEED = [
     dateLabel: "",
     description:
       "Now we're ready for our next chapter — and we want you beside us as it begins.",
-    photo: "/photos/135291_5_u85a.jpg",
+    photo: "/reference/assets/current-929a30786e02.jpg"
     sortOrder: 3,
   },
 ];
 
 export const GALLERY_SEED: { src: string; caption: string }[] = [
-  { src: "/photos/chandan-bridge.jpg", caption: "Chandan" },
-  { src: "/photos/179993_8_z3uy.png", caption: "Pinki" },
-  { src: "/photos/159506_9_wx3k.jpg", caption: "Together at the temple" },
-  { src: "/photos/159505_10_eqyh.jpg", caption: "Blessed moments" },
-  { src: "/photos/159504_11_ahh7.jpg", caption: "Us" },
-  { src: "/photos/135291_5_u85a.jpg", caption: "Chandan" },
-  { src: "/photos/86562_6_v9m4.jpg", caption: "By the sea" },
-  { src: "/photos/79139_7_09ul.jpg", caption: "On the road" },
-  { src: "/photos/159503_12_2zed.jpg", caption: "Details" },
-  { src: "/photos/158465_13_c8yv.jpg", caption: "Mehendi" },
-  { src: "/photos/136591_4_ey44.jpg", caption: "Memories" },
+  { src: "/reference/assets/current-a2b48e5206c6.jpeg", caption: "Rupesh" },
+  { src: "/reference/assets/current-d2442b9cc1f2.png", caption: "Usha" },
+  { src: "/reference/assets/current-19a7ba2fa9e4.jpg", caption: "Together" },
+  { src: "/reference/assets/current-0de6b0878e02.jpg", caption: "Blessed moments" },
+  { src: "/reference/assets/current-6def8ed83b4f.jpg", caption: "Us" },
+  { src: "/reference/assets/63fcd668c5.jpg", caption: "The Groom" },
+  { src: "/assets/samples/venue.webp", caption: "The Venue" },
+  { src: "/reference/assets/current-f6bc9164f3cb.jpg", caption: "On the road" },
+  { src: "/reference/assets/current-790bf5cdb0ad.jpg", caption: "The Bride" },
+  { src: "/assets/samples/bride.webp", caption: "Getting Ready" },
+  { src: "/reference/assets/current-401929c9b24e.jpg", caption: "Memories" },
 ];
 
 export const THEME_STYLES: Record<
