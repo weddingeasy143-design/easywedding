@@ -6,7 +6,7 @@ import {weddingThemes as eventThemes,weddingPreset as eventPreset,ganeshOptions}
 export const DEFAULTS = Object.freeze({
   reference:null,version:3,theme:'premium-original',partner1:'Rupesh',partner2:'Usha',partner1Details:'',partner2Details:'',groomName:'Rupesh',brideName:'Usha',groomDetails:'',brideDetails:'',hostSide:'groom',occasion:'The wedding celebration of',date:'2026-12-12',time:'18:00',timezone:'+05:30',city:'Jaipur, India',
   blessing:'A love that grows.\nA lifetime that blooms.',message:'Together with our families, we invite you to share in the joy of our wedding. Join us for an evening of love, laughter and a beautiful new beginning.',
-  families:'With the blessings of our families',venue:'The Garden Pavilion',address:'Add your wedding venue address',venueNote:'Please arrive 15 minutes before the ceremony.',dressCode:'Garden formal. Soft colours, flowing silhouettes and your happiest smile.',gifts:'Your love and blessings are the greatest gift of all.',note:'',
+  families:'With the blessings of our families',venue:'The Garden Pavilion',address:'Palace Road, Civil Lines',venueNote:'Please arrive 15 minutes before the ceremony.',dressCode:'Garden formal. Soft colours, flowing silhouettes and your happiest smile.',gifts:'Your love and blessings are the greatest gift of all.',note:'',
   rsvpContact:'',rsvpMethod:'whatsapp',rsvpDeadline:'2026-11-25',photoUrl:'',groomPhoto:'',bridePhoto:'',venuePhotoUrl:'',audioUrl:'',audioName:'',videoUrl:'',languages:[],ganeshIcon:'gold',music:true,scratch:true,preEvents:'',transport:'',accommodation:'',gallery:[],
   events:[...eventPreset('ivory-arch').events,{time:'21:30',title:'Family blessings & farewell',description:'With love, we begin our new journey.'}]
 });

@@ -89,6 +89,7 @@ export default function ShareSection() {
   const [cfg, setCfg] = useState<ShareConfig>({ ...DEFAULT_SHARE });
   const [url, setUrl] = useState("");
   const [qr, setQr] = useState("");
+  const [qrUnavailable, setQrUnavailable] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -102,8 +103,14 @@ export default function ShareSection() {
       margin: 2,
       color: { dark: "#4a241c", light: "#fffdf7" },
     })
-      .then(setQr)
-      .catch(() => setQr(""));
+      .then((v) => {
+        // Preview links carry the whole invitation config in the URL —
+        // far more than any QR code can hold — so generation returns "".
+        // In that case the QR frame must disappear, not sit blank forever.
+        if (v) setQr(v);
+        else setQrUnavailable(true);
+      })
+      .catch(() => setQrUnavailable(true));
   }, []);
 
   const message = fillTemplate(cfg.whatsappMessage, url);
@@ -201,7 +208,9 @@ export default function ShareSection() {
                   />
                 </div>
 
-                {/* QR in ornate golden frame */}
+                {/* QR in ornate golden frame — hidden entirely when no QR
+                    can be generated (e.g. preview links too long to encode) */}
+                {!qrUnavailable && (<>
                 <div className="relative mt-7">
                   <div className="rounded-xl border-2 border-gold/80 bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(146,104,44,0.55)]">
                     <div className="rounded-lg border border-gold/40 p-1.5">
@@ -230,6 +239,7 @@ export default function ShareSection() {
                 <p className="mt-4 rounded-full bg-[#f7dee3] px-6 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#8e1f36]">
                   {cfg.scanLabel}
                 </p>
+                </>)}
               </div>
 
               {/* right: couple in golden arch */}

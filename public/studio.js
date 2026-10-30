@@ -10,6 +10,9 @@ import {referenceDesignFor} from './reference-designs.js';
 import {DEFAULTS,normalizeConfig,readConfig,encodeConfig,invitationUrl,rsvpDestination,safeImageUrl,validDate,validTime} from './config.js';
 import {videoEmbedUrl} from './video-embed.js';
 import {createWizard,priceRow,fillPriceChips,REVIEW_STEP,DONE_STEP} from './wizard.js';
+/* Save-preview gate state (declared at the very top: refresh() runs during
+   module boot, long before the gate helpers further down). */
+let savedPreviewHash='';try{savedPreviewHash=sessionStorage.getItem('ew_preview_saved')||'';}catch{}
 /* Android app (window.EWApp bridge): the app supplies its own header, progress card and tab bar,
    so the studio page drops its duplicated chrome there and the editor gets the full height. */
 if(window.EWApp)document.body.classList.add('in-app');
@@ -42,7 +45,7 @@ function readForm(){const data=Object.fromEntries(new FormData(form));data.versi
 function renderEvents(events=config.events){const target=$('#event-editor');target.replaceChildren();events.forEach((event,index)=>{const row=document.createElement('div');row.className='event-edit';const head=document.createElement('div');head.className='event-edit-head';const title=document.createElement('span');title.textContent='Moment '+String(index+1).padStart(2,'0');const controls=document.createElement('div');controls.className='event-controls';for(const [symbol,label,action,disabled] of [['↑','Move moment '+(index+1)+' up','up',index===0],['↓','Move moment '+(index+1)+' down','down',index===events.length-1],['×','Remove moment '+(index+1),'remove',false]]){const button=document.createElement('button');button.type='button';button.textContent=symbol;button.setAttribute('aria-label',label);button.disabled=disabled;button.dataset.action=action;button.dataset.index=index;controls.append(button);}head.append(title,controls);row.append(head);const fields=document.createElement('div');fields.className='field-row';for(const [key,label,type,max] of [['time','Time','time',null],['title','Moment','text',70]]){const labelEl=document.createElement('label'),input=document.createElement('input');labelEl.append(label);input.type=type;input.value=event[key];input.dataset.field=key;input.required=true;input.setAttribute('aria-label',label+' for moment '+(index+1));if(max)input.maxLength=max;labelEl.append(input);fields.append(labelEl);}row.append(fields);const labelEl=document.createElement('label'),desc=document.createElement('textarea');labelEl.append('A little description');desc.rows=2;desc.maxLength=150;desc.dataset.field='description';desc.value=event.description;desc.setAttribute('aria-label','Description for moment '+(index+1));labelEl.append(desc);row.append(labelEl);target.append(row);});$('#add-event').disabled=events.length>=10;}
 function sendPreview(){if(!preview.getAttribute('src')){/* first render: load the invitation straight with the current details (no extra page hop) */preview.src='reference/render.html'+(previewMark()?'?wm=1':'')+'#card='+encodeConfig(config);return;}preview.contentWindow?.postMessage({type:'wedcanvas:config',config},location.origin);}
 function updateContact(){const email=form.elements.rsvpMethod.value==='email';$('#contact-label').textContent=email?'Your RSVP email address':'Your WhatsApp number, with country code';form.elements.rsvpContact.type=email?'email':'tel';form.elements.rsvpContact.placeholder=email?'you@example.com':'+91 98765 43210';$('#contact-help').textContent=`Guests review and send their reply in ${email?'their email app':'WhatsApp'}. Replies to your published link are also saved in your Guest RSVPs inbox.`;}
-function refresh(save=true){config=readForm();updateContact();$('#theme-label').textContent=eventThemes[config.theme].name.toUpperCase();refreshPhotos();$('#open-full').href=invitationUrl(config,location.href);$('#compare-designs').href='reference/collection.html#card='+encodeConfig(config);sendPreview();updatePrices();if(save){try{localStorage.setItem(STORAGE,JSON.stringify(config));$('#save-status').textContent='Draft saved on this device';queueCloudSave();}catch{$('#save-status').textContent='Draft not saved · create a link to keep it';}}}
+function refresh(save=true){config=readForm();updateContact();$('#theme-label').textContent=eventThemes[config.theme].name.toUpperCase();refreshPhotos();$('#open-full').href=invitationUrl(config,location.href);$('#compare-designs').href='reference/collection.html#card='+encodeConfig(config);sendPreview();updatePrices();if(save){try{localStorage.setItem(STORAGE,JSON.stringify(config));$('#save-status').textContent='Draft saved on this device';queueCloudSave();}catch{$('#save-status').textContent='Draft not saved · create a link to keep it';}}syncSaveGate();}
 form.addEventListener('input',event=>{clearFieldError(event.target);clearTimeout(updateTimer);updateTimer=setTimeout(()=>refresh(),220);});form.addEventListener('change',event=>{clearTimeout(updateTimer);refresh();if(event.target.name==='theme')preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin);});form.addEventListener('submit',e=>e.preventDefault());
 $('#add-event').addEventListener('click',()=>{const events=readRawEvents();if(events.length>=10)return;events.push({time:form.elements.time.value||config.time,title:'A special moment',description:''});renderEvents(events);refresh();$('#event-editor').lastElementChild.querySelector('[data-field=title]').focus();});
 $('#event-editor').addEventListener('click',event=>{const button=event.target.closest('button[data-action]');if(!button)return;const events=readRawEvents(),index=Number(button.dataset.index),action=button.dataset.action;if(action==='remove')events.splice(index,1);else{const other=index+(action==='up'?-1:1);if(other>=0&&other<events.length)[events[index],events[other]]=[events[other],events[index]];}renderEvents(events);refresh();});
@@ -57,7 +60,7 @@ function validate(scope=form,{report=true,skipHidden=false}={}){const inScope=el
 /* A wizard step may be left going forward when its visible fields are valid. */
 function validateStep(n,{report=true}={}){const panel=document.querySelector('.wz-panel[data-step="'+n+'"]');if(!panel||!form.contains(panel))return true;if(report){clearTimeout(updateTimer);refresh();}return validate(panel,{report,skipHidden:true});}
 function openSigninGate(){$('#signin-dialog').showModal();}
-async function openShare(){clearTimeout(updateTimer);refresh();if(!validate())return;let sessionUser=window.EWAuth?.session();if(!sessionUser||sessionUser.fake){/* no account yet: it is created only after the payment succeeds, from the fields on the Review step */if(wizard&&wizard.current!==REVIEW_STEP){wizard.go(REVIEW_STEP);return;}if(!collectSignup())return;openPayDialog();return;}payState.signup=null;let entitled=!!sessionUser?.admin;if(!entitled){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();entitled=!!d.admin||(d.designs||[]).includes(config.theme)||(d.designs||[]).includes('ALL');}}catch{}}if(!entitled){openPayDialog();return;}publishShare();}
+async function openShare(){clearTimeout(updateTimer);refresh();if(!isOwner()&&!previewIsSaved()){if(wizard&&wizard.current!==REVIEW_STEP){wizard.go(REVIEW_STEP);return;}const st=$('#save-preview-status');if(st)st.textContent='First save your preview — payment is the last step, and it will use exactly the preview you saved.';const sb=$('#save-preview');if(sb){sb.classList.add('wz-pulse');setTimeout(()=>sb.classList.remove('wz-pulse'),1600);try{sb.focus();}catch{}}return;}if(!validate())return;let sessionUser=window.EWAuth?.session();if(!sessionUser||sessionUser.fake){/* no account yet: it is created only after the payment succeeds, from the fields on the Review step */if(wizard&&wizard.current!==REVIEW_STEP){wizard.go(REVIEW_STEP);return;}if(!collectSignup())return;openPayDialog();return;}payState.signup=null;let entitled=!!sessionUser?.admin;if(!entitled){try{const r=await fetch('/api/entitlements');if(r.ok){const d=await r.json();entitled=!!d.admin||(d.designs||[]).includes(config.theme)||(d.designs||[]).includes('ALL');}}catch{}}if(!entitled){openPayDialog();return;}publishShare();}
 async function publishShare(){let url=invitationUrl(config,location.href);if(!browserOnlySession()){try{const response=await fetch('/api/invitations'+(latestInvitationId?'?replace='+latestInvitationId:''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const result=await response.json();if(!response.ok)throw Error(result.error);latestInvitationId=result.id;url=new URL(result.url,location.href).href}catch(error){$('#save-status').textContent=error.message||'Using a complete invitation link.'}}$('#share-url').value=url;$('#share-open').href=url;$('#copy-status').textContent='';const warnings=[];if(config.audioUrl.startsWith('local-audio:'))warnings.push('The uploaded song is stored on this device. Sign in and upload it before sharing with guests on other devices.');if(!rsvpDestination(config))warnings.push('Add an RSVP contact if you want guests to send replies.');if(config.address===DEFAULTS.address)warnings.push('The sample venue address is still present. Add your actual address before sharing.');$('#share-alerts').textContent=warnings.join(' ');$('#share-workspace').hidden=false;$('#share-dialog').showModal();}
 const signOutBtn=$('#signout-top');if(signOutBtn){const su=window.EWAuth?.session();if(su&&!su.fake){signOutBtn.hidden=false;signOutBtn.addEventListener('click',()=>window.EWAuth.signOut());}}
 $('#share-top').addEventListener('click',primaryAction);$('#share-bottom').addEventListener('click',payAction);$('#share-close').addEventListener('click',()=>$('#share-dialog').close());$('#signin-close').addEventListener('click',()=>$('#signin-dialog').close());$('#copy-link').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#share-url').value);$('#copy-status').textContent='Invitation link copied.';}catch{$('#share-url').focus();$('#share-url').select();$('#copy-status').textContent='Select and copy the highlighted link manually.';}});
@@ -85,13 +88,13 @@ const payState={design:null,pricing:null,addon:null,coupon:null,signup:null};
 const GATEWAY_LABELS={razorpay:'Razorpay · UPI, cards & netbanking',cashfree:'Cashfree · UPI, cards & netbanking',phonepe:'PhonePe · UPI & cards',payu:'PayU · UPI, cards & netbanking'};
 const inr=p=>'₹'+(p/100).toLocaleString('en-IN');
 function resetCoupon(){payState.coupon=null;if($('#pay-coupon'))$('#pay-coupon').value='';if($('#pay-coupon-msg'))$('#pay-coupon-msg').textContent='';}
-function openPayDialog(){resetCoupon();const acctPhone=($('#acct-phone')?.value||'').replace(/\D/g,'').slice(-10);if(acctPhone&&!$('#pay-phone').value)$('#pay-phone').value=acctPhone;payState.design=config.theme;payState.addon=null;$('#pay-error').textContent='';$('#pay-design-line').textContent='Unlock '+eventThemes[config.theme].name+' to create your shareable invitation link and QR.';$('#pay-dialog').showModal();loadPricing();}
+function openPayDialog(){resetCoupon();const acctPhone=($('#acct-phone')?.value||'').replace(/\D/g,'').slice(-10);if(acctPhone&&!$('#pay-phone').value)$('#pay-phone').value=acctPhone;payState.design=config.theme;payState.addon=null;$('#pay-error').textContent='';$('#pay-design-line').textContent='Unlock '+eventThemes[config.theme].name+' to create your shareable invitation link and QR.';$('#pay-foot-note').textContent='One-time payment for this design. Your shareable link unlocks the moment payment succeeds.';$('#pay-dialog').showModal();loadPricing();}
 async function loadPricing(){try{const r=await fetch('/api/pricing');if(!r.ok)throw Error();payState.pricing=await r.json();renderPay();}catch{$('#pay-error').textContent='Could not load prices. Please close and try again.';}}
 function renderPay(){const d=payState.pricing;if(!d)return;const row=payState.addon?(d.addons||[]).find(x=>x.id===payState.addon):d.designs.find(x=>x.id===payState.design);if(row){$('#pay-regular').textContent=row.launchActive?inr(row.regular):'';$('#pay-current').textContent=inr(row.current);const save=$('#pay-save');if(row.launchActive&&row.regular>row.current){save.hidden=false;save.textContent='Save '+inr(row.regular-row.current);}else save.hidden=true;$('#pay-offer-note').textContent=row.launchActive?'🎉 Grand Opening launching price · limited period':'';const payNow=payState.coupon?payState.coupon.final:row.current;if(payState.coupon){$('#pay-regular').textContent=inr(row.current);$('#pay-current').textContent=inr(payNow);}$('#pay-now').textContent='Pay '+inr(payNow)+(payState.addon?' & add':' & unlock');}
  const pass=d.designs.find(x=>x.id==='ALL'),passBtn=$('#pay-pass');if(pass&&payState.design!=='ALL'&&!payState.addon){passBtn.hidden=false;passBtn.textContent='Or unlock ALL 11 designs with the All-Designs Pass — '+inr(pass.current)+(pass.launchActive?' (was '+inr(pass.regular)+')':'');}else passBtn.hidden=true;
  const ready=d.gateways||[];$('#pay-soon').hidden=ready.length>0;$('#pay-body').hidden=ready.length===0;
  const list=$('#pay-gateways');list.replaceChildren();ready.forEach((g,i)=>{const label=document.createElement('label');label.className='ewp-gateway';const radio=document.createElement('input');radio.type='radio';radio.name='ewp-gateway';radio.value=g;if(i===0)radio.checked=true;const span=document.createElement('span');span.textContent=GATEWAY_LABELS[g]||g;label.append(radio,span);list.append(label);});}
-$('#pay-pass').addEventListener('click',()=>{resetCoupon();payState.addon=null;payState.design='ALL';$('#pay-design-line').textContent='The All-Designs Pass unlocks every design for your wedding.';renderPay();});
+$('#pay-pass').addEventListener('click',()=>{resetCoupon();payState.addon=null;payState.design='ALL';$('#pay-design-line').textContent='The All-Designs Pass unlocks every design for your wedding.';$('#pay-foot-note').textContent='One-time payment for the All-Designs Pass. Every design unlocks the moment payment succeeds.';renderPay();});
 $('#pay-close').addEventListener('click',()=>$('#pay-dialog').close());
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.append(s);});}
 function onPaid(vd){$('#pay-dialog').close();if(vd&&vd.signedIn){/* the account now exists and is signed in: open the invitation workspace */location.replace('/dashboard');return;}if(payState.addon){payState.addon=null;$('#save-status').textContent='Payment received — your add-on is active.';initAddons();return;}$('#save-status').textContent='Payment received — your design is unlocked.';publishShare();}
@@ -118,7 +121,7 @@ const ADDON_NAMES={'addon-personal':'Personal Invitations','addon-language-hi':'
 const ADDON_DESCS={'addon-personal':'A special link for every guest, with their own name on the invitation — plus who opened it and who replied.','addon-language-hi':'Guests can also read your invitation in Hindi.','addon-pdf':'A beautiful printable PDF card of your invitation, with your link and QR.','addon-gallery':'Gallery photos: 4 are FREE with every design. With this add-on, you get 12 gallery photos.','addon-shortlink':'Your own short address, like easywedding.in/rahul-weds-seema.'};
 let ewEntitlements=[],ewMyInvitations=[];
 const ewOwns=id=>ewEntitlements.includes(id)||(id==='addon-personal'&&ewEntitlements.includes('ALL'));
-function openAddonPay(id){resetCoupon();payState.addon=id;payState.design=null;$('#pay-error').textContent='';$('#pay-design-line').textContent='Add '+(ADDON_NAMES[id]||'this add-on')+' to your wedding — one-time payment, yours with this account.';$('#pay-dialog').showModal();loadPricing();}
+function openAddonPay(id){resetCoupon();payState.addon=id;payState.design=null;$('#pay-error').textContent='';$('#pay-design-line').textContent='Add '+(ADDON_NAMES[id]||'this add-on')+' to your wedding — one-time payment, yours with this account.';$('#pay-foot-note').textContent='One-time payment for this add-on. It is added to your account the moment payment succeeds.';$('#pay-dialog').showModal();loadPricing();}
 function fillInviteSelect(sel){if(!sel)return;sel.replaceChildren();if(!ewMyInvitations.length){const o=document.createElement('option');o.textContent='Publish your invitation first';o.value='';sel.append(o);return;}for(const inv of ewMyInvitations){const o=document.createElement('option');o.value=inv.id;o.textContent=(inv.partner1||'')+' & '+(inv.partner2||'');sel.append(o);}}
 function updatePdfLink(){const sel=$('#pdf-invite'),a=$('#pdf-open');if(!sel||!a)return;a.href=sel.value?('/pdf?id='+sel.value):'/pdf';}
 function updateSlugStatus(msg){const st=$('#slug-status');if(st)st.textContent=msg||'';}
@@ -162,6 +165,16 @@ function isOwner(){return document.body.classList.contains('mode-owner');}
 function primaryAction(){if(isOwner()){updateOwnerLink();return;}openPreviewStep();}
 /* The pay button on the Review step: owners save their link, everyone else goes to account + payment. */
 function payAction(){if(isOwner()){updateOwnerLink();return;}clearTimeout(updateTimer);refresh();openShare();}
+/* Save-preview gate — the customer's order of steps: look, customise with
+   live changes, SAVE the preview, and only then payment (the last step).
+   Payment/publish proceeds only against the exact saved preview, so the
+   invitation guests receive is the one the customer saw. Any later edit
+   un-saves it until they save again. Owners skip the gate entirely. */
+function configHash(){const s=JSON.stringify(config);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return 'h'+(h>>>0).toString(36);}
+function previewIsSaved(){return savedPreviewHash!==''&&savedPreviewHash===configHash();}
+function markPreviewSaved(){savedPreviewHash=configHash();try{sessionStorage.setItem('ew_preview_saved',savedPreviewHash);}catch{}syncSaveGate();}
+function syncSaveGate(){const b=$('#share-bottom');if(!b)return;if(isOwner()){b.disabled=false;return;}b.disabled=!previewIsSaved();const st=$('#save-preview-status');if(st&&savedPreviewHash)st.textContent=previewIsSaved()?'Preview saved ✓ — this exact invitation is what your guests will get. Now the last step: payment.':'You changed something after saving — save the preview again so payment uses the latest design.';}
+$('#save-preview')?.addEventListener('click',()=>{clearTimeout(updateTimer);refresh();markPreviewSaved();openPreviewStep();});
 /* Full-screen preview (watermarked until the design is paid for). Free for everyone, no checks needed. */
 /* Inside the Android app (window.EWApp bridge) the app shows the preview in its own full-screen WebView instead. */
 const PREVIEW_TIMEOUT_MS=10000;let previewTimer=null;
@@ -175,7 +188,7 @@ function openPreviewStep(){clearTimeout(updateTimer);refresh();const src='refere
  if(typeof dialog.showModal==='function'){try{dialog.showModal();}catch{dialog.setAttribute('open','');}}else dialog.setAttribute('open','');}
 $('#preview-full').addEventListener('load',previewLoaded);
 $('#pv-back').addEventListener('click',()=>{$('#preview-dialog').close();});
-$('#pv-continue').addEventListener('click',()=>{$('#preview-dialog').close();openShare();});
+$('#pv-continue').addEventListener('click',()=>{$('#preview-dialog').close();if(!isOwner()&&!previewIsSaved()){refresh();markPreviewSaved();}openShare();});
 $('#preview-dialog').addEventListener('close',()=>{clearTimeout(previewTimer);const frame=$('#preview-full');frame.dataset.loading='';frame.src='about:blank';});
 async function migrateLocalPhotos(){
  const nodes=[...form.querySelectorAll('input,textarea')].filter(n=>typeof n.value==='string'&&n.value.includes('data:image/'));
@@ -225,7 +238,7 @@ function ownerSetup(owned){
  form.addEventListener('change',()=>{$('#ov-title').textContent=eventThemes[config.theme].name;});
  $('#ov-copy').addEventListener('click',async()=>{const st=$('#ov-status');try{await navigator.clipboard.writeText($('#ov-link').value);st.textContent='Link copied.';}catch{$('#ov-link').select();st.textContent='Select and copy the highlighted link.';}});
  $('#ov-update').addEventListener('click',updateOwnerLink);
- $('#share-top').textContent='Save & update link';$('#share-bottom').textContent='Save & update link';
+ $('#share-top').textContent='Save & update link';$('#share-bottom').textContent='Save & update link';syncSaveGate();
  const home=document.querySelector('.header-actions a.secondary');if(home)home.hidden=true;
  fetch('/api/my-invitations').then(r=>r.ok?r.json():{invitations:[]}).then(d=>{const first=(d.invitations||[])[0];if(first){latestInvitationId=first.id;setOverviewLink(new URL('/invite?id='+first.id,location.href).href);}else{$('#ov-status').textContent='Setting up your invitation link…';migrateLocalPhotos().catch(()=>{}).then(()=>updateOwnerLink());}}).catch(()=>{});
 }
@@ -281,7 +294,7 @@ $('#wz-full')?.addEventListener('click',openPreviewStep);
 // ---- The wizard itself ----
 function rememberStep(n){try{localStorage.setItem(WIZARD_STORAGE,JSON.stringify({theme:config.theme,step:n}));}catch{}}
 function savedStep(){try{const s=JSON.parse(localStorage.getItem(WIZARD_STORAGE)||'null');return s&&s.theme===config.theme&&s.step<DONE_STEP?Number(s.step)||0:0;}catch{return 0;}}
-wizard=createWizard({validateStep,onStep:n=>{if(n===REVIEW_STEP)renderSummary();rememberStep(n);if(window.EWSyncTabs)window.EWSyncTabs(n);}});
+wizard=createWizard({validateStep,onStep:n=>{if(n===REVIEW_STEP)renderSummary();rememberStep(n);}});
 function goStep(n){if(n===REVIEW_STEP&&wizard.current===REVIEW_STEP){payAction();return;}wizard.go(n);}
 $('#pb-pay').addEventListener('click',()=>goStep(REVIEW_STEP));
 $('#pb-preview')?.addEventListener('click',openPreviewStep);
@@ -359,91 +372,3 @@ function cropPhotoFile(file,aspect){
   probe.src=url;
  });
 }
-
-// ---- Invitation tabs (the app's design, on the website): Overview | Details | Photos | Music | Share ----
-// Shown to owners (and inside the app) above the step card. The tabs jump the wizard to the matching
-// step; Overview is a small panel of our own with the live completion, a Play Preview button (which
-// plays the invitation exactly as it stands right now) and the share link. Guests keep the plain
-// step flow. window.EWSetStep lets the Android app drive the same jumps from its own tab bar.
-(function ewTabs(){
- const card=document.getElementById('wz-card');
- const stepsNav=document.querySelector('.wz-steps');
- if(!card||!stepsNav||document.getElementById('ew-tabs'))return;
- const TABS=[
-  {id:'overview',label:'Overview'},
-  {id:'details',label:'Details',step:1},
-  {id:'photos',label:'Photos',step:3},
-  {id:'music',label:'Music',step:4},
-  {id:'share',label:'Share'},
- ];
- const bar=document.createElement('nav');
- bar.id='ew-tabs';bar.className='ew-tabs';bar.setAttribute('aria-label','Invitation sections');
- bar.innerHTML=TABS.map(t=>'<button type="button" class="ew-tab" data-tab="'+t.id+'">'+t.label+'</button>').join('');
- stepsNav.parentNode.insertBefore(bar,stepsNav);
- const panel=document.createElement('section');
- panel.id='ew-overview';panel.className='ew-overview';panel.hidden=true;
- panel.innerHTML='<p class="ew-ov-pct"></p>'
-  +'<div class="wz-complete-bar ew-ov-bar" role="progressbar" aria-label="Invitation completion" aria-valuemin="0" aria-valuemax="100"><span></span></div>'
-  +'<button type="button" class="ew-ov-play">&#9654; Play Preview</button>'
-  +'<p class="ew-ov-note">Plays your invitation exactly as it stands right now.</p>'
-  +'<div class="ew-ov-items"></div>'
-  +'<div class="ew-ov-share" hidden><label for="ew-ov-link">Your invitation link</label><div class="ew-ov-linkrow"><input id="ew-ov-link" class="ew-ov-link" readonly value=""><button type="button" class="ew-ov-copy">Copy</button></div><p class="ew-ov-copied" role="status"></p></div>';
- const firstPanel=card.querySelector('.wz-panel');
- if(firstPanel)card.insertBefore(panel,firstPanel);else card.append(panel);
- let active=false,onOverview=false;
- const tabForStep=n=>n===3?'photos':n===4?'music':(n===8||n===9)?'share':'details';
- function mark(id){bar.querySelectorAll('.ew-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));}
- function showWizard(){if(!onOverview)return;onOverview=false;document.body.classList.remove('ew-overview-on');panel.hidden=true;if(wizard)wizard.show(wizard.current);}
- function showOverview(){
-  onOverview=true;mark('overview');
-  document.body.classList.add('ew-overview-on');panel.hidden=false;
-  card.querySelectorAll('.wz-panel').forEach(pn=>{pn.hidden=true;});
-  const back=document.getElementById('wz-back'),next=document.getElementById('wz-next');
-  if(back)back.hidden=true;if(next)next.hidden=true;
-  loadOverview();
- }
- async function loadOverview(){
-  try{
-   const r=await fetch('/api/invitation-progress',{cache:'no-store'});
-   const d=r.ok?await r.json():null;
-   if(d&&Number.isFinite(Number(d.percent))){
-    const pct=Math.max(0,Math.min(100,Math.round(Number(d.percent))));
-    panel.querySelector('.ew-ov-pct').textContent=d.complete?'Your invitation is 100% complete.':'Your invitation is '+pct+'% complete';
-    const barEl=panel.querySelector('.ew-ov-bar');barEl.setAttribute('aria-valuenow',String(pct));barEl.firstElementChild.style.width=pct+'%';
-    const items=panel.querySelector('.ew-ov-items');items.replaceChildren();
-    (d.items||[]).forEach(it=>{
-     const b=document.createElement('button');b.type='button';b.className='ew-ov-item'+(it.done?' done':'');
-     b.textContent=(it.done?'\u2713 ':'\u25CB ')+it.label;
-     b.addEventListener('click',()=>{showWizard();if(wizard)wizard.show(Number(it.step)||1);});
-     items.append(b);
-    });
-   }
-  }catch{}
-  if(isOwner()){
-   try{panel.querySelector('.ew-ov-share').hidden=false;panel.querySelector('.ew-ov-link').value=invitationUrl(config,location.href);}catch{}
-  }
- }
- bar.addEventListener('click',e=>{
-  const b=e.target.closest('.ew-tab');if(!b)return;
-  const t=TABS.find(x=>x.id===b.dataset.tab);if(!t)return;
-  if(t.id==='overview'){showOverview();return;}
-  showWizard();
-  if(t.id==='share'){mark('share');openShare();return;}
-  mark(t.id);if(wizard)wizard.show(t.step);
- });
- panel.querySelector('.ew-ov-play').addEventListener('click',()=>{showWizard();openPreviewStep();});
- panel.querySelector('.ew-ov-copy').addEventListener('click',async()=>{
-  const input=panel.querySelector('.ew-ov-link'),note=panel.querySelector('.ew-ov-copied');
-  try{await navigator.clipboard.writeText(input.value);note.textContent='Invitation link copied.';}
-  catch{input.focus();input.select();note.textContent='Select and copy the highlighted link manually.';}
- });
- window.EWSetStep=n=>{showWizard();if(wizard)wizard.show(Number(n)||1);};
- window.EWSyncTabs=n=>{if(active&&!onOverview)mark(tabForStep(n));};
- function activate(){
-  if(active)return;active=true;
-  document.body.classList.add('ew-tabs-on');
-  mark(tabForStep(wizard?wizard.current:9));
- }
- document.addEventListener('ew:owner',activate);
- if(isOwner()||window.EWApp)activate();
-})();

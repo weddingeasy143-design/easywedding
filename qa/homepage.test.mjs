@@ -28,7 +28,7 @@ test('cinematic motion stack is fully self-hosted (no external API/CDN)',async()
  const found=new Set();
  for(const f of ownFiles)for(const m of (await readFile('public/'+f,'utf8')).matchAll(/https?:\/\/[a-zA-Z0-9.-]+/g))found.add(m[0]);
  const own=[...found].sort();
- const allowed=['http://www.w3.org','https://chatgpt.com','https://checkout.razorpay.com','https://easywedding.in','https://gemini.google.com','https://sdk.cashfree.com','https://wa.me','https://www.canva.com','https://www.facebook.com','https://www.google.com','https://www.instagram.com','https://www.manyavar.com','https://www.youtube-nocookie.com'].sort();
+ const allowed=['http://www.w3.org','https://chatgpt.com','https://checkout.razorpay.com','https://easywedding.in','https://gemini.google.com','https://groups.google.com','https://play.google.com','https://schema.org','https://sdk.cashfree.com','https://wa.me','https://www.canva.com','https://www.facebook.com','https://www.google.com','https://www.instagram.com','https://www.manyavar.com','https://www.youtube-nocookie.com'].sort();
  assert.deepEqual(own,allowed,'no new external host may appear in our own sources without review');
  assert.ok(!(await readFile('public/invite.html','utf8')).includes('<iframe'),'invitation ships no embedded external content');
 });
@@ -57,7 +57,7 @@ test('overview renders the cinematic luxury homepage',async()=>{
  const w=dom.window;
  w.matchMedia=()=>({matches:true,addEventListener(){}});w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.structuredClone=structuredClone;w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
  const state=createPlan({partner1:'Meera',partner2:'Aarav',date:'2026-12-12',city:'Jaipur',guests:200,budget:1500000,contingency:10});
- w.fetch=async(path,options={})=>{let data;if(path==='/api/session')data={user:{id:'alice',name:'Alice'}};else if(path==='/api/workspace'&&options.method==='PUT')data={revision:2};else if(path==='/api/workspace')data={state,revision:1};else throw Error('Unexpected request '+path);return{ok:true,json:async()=>data};};
+ w.fetch=async(path,options={})=>{let data;if(path==='/api/session')data={user:{id:'alice',name:'Alice'}};else if(path==='/api/entitlements')data={admin:true,designs:['ALL']};else if(path==='/api/studio')data={config:null};else if(path==='/api/workspace'&&options.method==='PUT')data={revision:2};else if(path==='/api/workspace')data={state,revision:1};else throw Error('Unexpected request '+path);return{ok:true,json:async()=>data};};
  try{
   w.eval(bundle.outputFiles[0].text);await tick();await tick();
   const $=s=>w.document.querySelector(s),$$=s=>[...w.document.querySelectorAll(s)];

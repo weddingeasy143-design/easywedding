@@ -107,6 +107,10 @@ export default function SagunBlessings() {
     }
   };
 
+  const hasQr1 = Boolean(cfg.qr1Image || cfg.qr1UpiId);
+  const hasQr2 = Boolean(cfg.qr2Image || cfg.qr2UpiId);
+  const hasUpi = hasQr1 || hasQr2;
+
   return (
     <section id="blessings" className="relative scroll-mt-20 overflow-hidden py-16 sm:py-20">
       {/* illustrated backdrop */}
@@ -225,7 +229,7 @@ export default function SagunBlessings() {
         </div>
 
         {/* ── main grid ── */}
-        <div className="mt-10 grid gap-8 lg:mt-14 lg:grid-cols-2 lg:gap-10">
+        <div className={hasUpi ? "mt-10 grid gap-8 lg:mt-14 lg:grid-cols-2 lg:gap-10" : "mt-10 lg:mt-14 mx-auto max-w-2xl"}>
           {/* left: info strip + form */}
           <div>
             <Reveal>
@@ -313,7 +317,10 @@ export default function SagunBlessings() {
             </Reveal>
           </div>
 
-          {/* right: UPI panel */}
+          {/* right: UPI panel — only when the couple has added a QR or UPI id;
+              with neither, the panel used to render two blank white cards
+              whose pay links had an empty payee address */}
+          {hasUpi && (
           <Reveal>
             <div className="overflow-hidden rounded-2xl border-2 border-gold/60 bg-cream/95 shadow-[0_16px_40px_-24px_rgba(109,16,37,0.45)]">
               {/* maroon banner */}
@@ -330,23 +337,31 @@ export default function SagunBlessings() {
               </div>
 
               <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4">
+                <div className={hasQr1 && hasQr2 ? "grid grid-cols-2 items-stretch gap-3 sm:gap-4" : "grid grid-cols-1 items-stretch gap-3 sm:gap-4 mx-auto w-full max-w-[300px]"}>
                   {/* QR 1 */}
+                  {hasQr1 && (
                   <div className="flex flex-col items-center">
                     <p className="z-10 -mb-3.5 rounded-full bg-gradient-to-b from-[#a51f36] to-[#7c1226] px-4 py-1 font-display text-sm font-semibold text-ivory shadow">
                       {cfg.qr1Label}
                     </p>
                     <div className="flex w-full flex-1 flex-col items-center justify-start overflow-hidden rounded-xl border border-gold/50 bg-white/70 px-3 pb-4 pt-6 text-center">
                       <div className="aspect-square w-full max-w-[230px]">
-                        <Image
-                          src={cfg.qr1Image}
-                          alt={`${cfg.qr1Label} QR code`}
-                          width={460}
-                          height={460}
-                          className="h-full w-full rounded-lg object-contain"
-                          unoptimized
-                        />
+                        {cfg.qr1Image ? (
+                          <Image
+                            src={cfg.qr1Image}
+                            alt={`${cfg.qr1Label} QR code`}
+                            width={460}
+                            height={460}
+                            className="h-full w-full rounded-lg object-contain"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center rounded-lg bg-maroon/5 px-3 text-center font-display text-sm font-semibold text-maroon">
+                            Pay via UPI app — tap the UPI ID below
+                          </div>
+                        )}
                       </div>
+                      {cfg.qr1UpiId && (
                       <a
                         href={`upi://pay?pa=${encodeURIComponent(cfg.qr1UpiId)}&pn=${encodeURIComponent((window as any).__easyWedding.config.partner1+" & "+(window as any).__easyWedding.config.partner2)}&cu=INR`}
                         className="mt-3 flex min-h-[32px] items-center justify-center break-all px-1 font-display text-xs font-semibold text-bark underline decoration-gold/60 underline-offset-2 hover:text-maroon"
@@ -354,6 +369,7 @@ export default function SagunBlessings() {
                       >
                         {cfg.qr1UpiId} ↗
                       </a>
+                      )}
                       {cfg.qr1IconsImage && (
                         <div className="relative mt-2 h-6 w-full max-w-[150px]">
                           <Image
@@ -367,23 +383,31 @@ export default function SagunBlessings() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div>)}
                   {/* QR 2 */}
+                  {hasQr2 && (
                   <div className="flex flex-col items-center">
                     <p className="z-10 -mb-3.5 rounded-full bg-gradient-to-b from-[#a51f36] to-[#7c1226] px-4 py-1 font-display text-sm font-semibold text-ivory shadow">
                       {cfg.qr2Label}
                     </p>
                     <div className="flex w-full flex-1 flex-col items-center justify-start overflow-hidden rounded-xl border border-gold/50 bg-white/70 px-3 pb-4 pt-6 text-center">
                       <div className="aspect-square w-full max-w-[230px]">
-                        <Image
-                          src={cfg.qr2Image}
-                          alt={`${cfg.qr2Label} QR code`}
-                          width={460}
-                          height={460}
-                          className="h-full w-full rounded-lg object-contain"
-                          unoptimized
-                        />
+                        {cfg.qr2Image ? (
+                          <Image
+                            src={cfg.qr2Image}
+                            alt={`${cfg.qr2Label} QR code`}
+                            width={460}
+                            height={460}
+                            className="h-full w-full rounded-lg object-contain"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center rounded-lg bg-maroon/5 px-3 text-center font-display text-sm font-semibold text-maroon">
+                            Pay via UPI app — tap the UPI ID below
+                          </div>
+                        )}
                       </div>
+                      {cfg.qr2UpiId && (
                       <a
                         href={`upi://pay?pa=${encodeURIComponent(cfg.qr2UpiId)}&pn=${encodeURIComponent((window as any).__easyWedding.config.partner1+" & "+(window as any).__easyWedding.config.partner2)}&cu=INR`}
                         className="mt-3 flex min-h-[32px] items-center justify-center break-all px-1 font-display text-xs font-semibold text-bark underline decoration-gold/60 underline-offset-2 hover:text-maroon"
@@ -391,6 +415,7 @@ export default function SagunBlessings() {
                       >
                         {cfg.qr2UpiId} ↗
                       </a>
+                      )}
                       {cfg.qr2IconsImage && (
                         <div className="relative mt-2 h-6 w-full max-w-[150px]">
                           <Image
@@ -404,7 +429,7 @@ export default function SagunBlessings() {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div>)}
                 </div>
 
                 {/* bottom strip */}
@@ -421,6 +446,7 @@ export default function SagunBlessings() {
               </div>
             </div>
           </Reveal>
+          )}
         </div>
       </div>
     </section>

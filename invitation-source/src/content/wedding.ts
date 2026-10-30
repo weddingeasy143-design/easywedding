@@ -341,7 +341,7 @@ export const STORY_SEED = [
     dateLabel: "",
     description:
       "Through every moment, we found a stronger us. Laughter, dreams and a thousand little memories stitched us closer.",
-    photo: "/reference/assets/current-f2081c44f71c.jpg"
+    photo: "/reference/assets/current-f2081c44f71c.jpg",
     sortOrder: 2,
   },
   {
@@ -349,7 +349,7 @@ export const STORY_SEED = [
     dateLabel: "",
     description:
       "Now we're ready for our next chapter — and we want you beside us as it begins.",
-    photo: "/reference/assets/current-929a30786e02.jpg"
+    photo: "/reference/assets/current-929a30786e02.jpg",
     sortOrder: 3,
   },
 ];
