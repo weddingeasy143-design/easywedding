@@ -52,7 +52,7 @@ export function calendarFile(c){const start=eventTimestamp(c);const stamp=t=>new
 /* Public previews (a visitor looking at a design before buying) show a finished sample: a sample couple and sample photographs.
    Real invitations never use this — it applies only when the link carries no invitation of its own. */
 const SAMPLE_PAIRS=[['Rupesh','Usha'],['Chandan','Pinki'],['Goutam','Sweety']];
-export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','gallery-haldi.webp','gallery-walk.webp','venue.webp']});
+export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','groom.webp','bride.webp','venue.webp']});
 export function sampleCouple(theme){const i=Math.max(0,Object.keys(eventThemes).indexOf(theme)),[groom,bride]=SAMPLE_PAIRS[i%SAMPLE_PAIRS.length];return {groom,bride};}
 export function isSamplePreview(location){const hash=new URLSearchParams(location.hash.slice(1)),p=new URLSearchParams(location.search);return !hash.has('card')&&!p.has('bride')&&!p.has('groom');}
 /* Sample photographs for public previews live in assets/samples/. */

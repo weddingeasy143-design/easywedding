@@ -2,6 +2,7 @@
 import {referenceForConfig} from './reference-editor.js';
 import {referenceDefaults} from './reference-fields.js';
 import {invitationUrl,rsvpDestination} from './config.js';
+import assetMap from './reference/asset-map.json' with {type:'json'};
 
 /** Shared by every template; a design change never replaces personal content. */
 export function invitationModel(config,seed,base,snapshotId=''){
@@ -19,8 +20,11 @@ export function invitationModel(config,seed,base,snapshotId=''){
  site.sagun={...site.sagun,...r.sagun,qr1Image:r.sagun?.qr1Image||'',qr2Image:r.sagun?.qr2Image||'',qr1UpiId:r.sagun?.qr1UpiId||'',qr2UpiId:r.sagun?.qr2UpiId||''};
  site.contactPhone=r.contactPhone||(config.rsvpMethod==='whatsapp'?rsvpDestination(config):'')||'';
  wedding.story=r.story;wedding.events=r.events;wedding.gallery=r.gallery.filter(photo=>photo.src);
- const art=config.theme==='premium-original'?'/ornaments/opening-realistic.webp':'/assets/wedding/'+(config.theme||'premium-original')+'.webp';
- const fixImg=v=>typeof v==='string'&&v.startsWith('/photos/')?art:v;
+ /* Photo slots always render their own photograph. A stored /photos/… path is a
+    legacy capture path: the capture asset map resolves it to that photograph's own
+    reference copy. The design's scene artwork is applied by the design layer to
+    openings and decorative scenes — it is never substituted into a photo slot. */
+ const fixImg=v=>{if(typeof v!=='string'||!v.startsWith('/photos/'))return v;return assetMap[v]||v;};
  for(const k of ['heroPhoto','invitationPhoto','groomPhoto','bridePhoto','venuePhoto'])site.content[k]=fixImg(site.content[k]);
  for(const st of wedding.story||[])st.photo=fixImg(st.photo);
  for(const g of wedding.gallery)g.src=fixImg(g.src);
