@@ -281,7 +281,7 @@ $('#wz-full')?.addEventListener('click',openPreviewStep);
 // ---- The wizard itself ----
 function rememberStep(n){try{localStorage.setItem(WIZARD_STORAGE,JSON.stringify({theme:config.theme,step:n}));}catch{}}
 function savedStep(){try{const s=JSON.parse(localStorage.getItem(WIZARD_STORAGE)||'null');return s&&s.theme===config.theme&&s.step<DONE_STEP?Number(s.step)||0:0;}catch{return 0;}}
-wizard=createWizard({validateStep,onStep:n=>{if(n===REVIEW_STEP)renderSummary();rememberStep(n);}});
+wizard=createWizard({validateStep,onStep:n=>{if(n===REVIEW_STEP)renderSummary();rememberStep(n);if(window.EWSyncTabs)window.EWSyncTabs(n);}});
 function goStep(n){if(n===REVIEW_STEP&&wizard.current===REVIEW_STEP){payAction();return;}wizard.go(n);}
 $('#pb-pay').addEventListener('click',()=>goStep(REVIEW_STEP));
 $('#pb-preview')?.addEventListener('click',openPreviewStep);
@@ -359,3 +359,91 @@ function cropPhotoFile(file,aspect){
   probe.src=url;
  });
 }
+
+// ---- Invitation tabs (the app's design, on the website): Overview | Details | Photos | Music | Share ----
+// Shown to owners (and inside the app) above the step card. The tabs jump the wizard to the matching
+// step; Overview is a small panel of our own with the live completion, a Play Preview button (which
+// plays the invitation exactly as it stands right now) and the share link. Guests keep the plain
+// step flow. window.EWSetStep lets the Android app drive the same jumps from its own tab bar.
+(function ewTabs(){
+ const card=document.getElementById('wz-card');
+ const stepsNav=document.querySelector('.wz-steps');
+ if(!card||!stepsNav||document.getElementById('ew-tabs'))return;
+ const TABS=[
+  {id:'overview',label:'Overview'},
+  {id:'details',label:'Details',step:1},
+  {id:'photos',label:'Photos',step:3},
+  {id:'music',label:'Music',step:4},
+  {id:'share',label:'Share'},
+ ];
+ const bar=document.createElement('nav');
+ bar.id='ew-tabs';bar.className='ew-tabs';bar.setAttribute('aria-label','Invitation sections');
+ bar.innerHTML=TABS.map(t=>'<button type="button" class="ew-tab" data-tab="'+t.id+'">'+t.label+'</button>').join('');
+ stepsNav.parentNode.insertBefore(bar,stepsNav);
+ const panel=document.createElement('section');
+ panel.id='ew-overview';panel.className='ew-overview';panel.hidden=true;
+ panel.innerHTML='<p class="ew-ov-pct"></p>'
+  +'<div class="wz-complete-bar ew-ov-bar" role="progressbar" aria-label="Invitation completion" aria-valuemin="0" aria-valuemax="100"><span></span></div>'
+  +'<button type="button" class="ew-ov-play">&#9654; Play Preview</button>'
+  +'<p class="ew-ov-note">Plays your invitation exactly as it stands right now.</p>'
+  +'<div class="ew-ov-items"></div>'
+  +'<div class="ew-ov-share" hidden><label for="ew-ov-link">Your invitation link</label><div class="ew-ov-linkrow"><input id="ew-ov-link" class="ew-ov-link" readonly value=""><button type="button" class="ew-ov-copy">Copy</button></div><p class="ew-ov-copied" role="status"></p></div>';
+ const firstPanel=card.querySelector('.wz-panel');
+ if(firstPanel)card.insertBefore(panel,firstPanel);else card.append(panel);
+ let active=false,onOverview=false;
+ const tabForStep=n=>n===3?'photos':n===4?'music':(n===8||n===9)?'share':'details';
+ function mark(id){bar.querySelectorAll('.ew-tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));}
+ function showWizard(){if(!onOverview)return;onOverview=false;document.body.classList.remove('ew-overview-on');panel.hidden=true;if(wizard)wizard.show(wizard.current);}
+ function showOverview(){
+  onOverview=true;mark('overview');
+  document.body.classList.add('ew-overview-on');panel.hidden=false;
+  card.querySelectorAll('.wz-panel').forEach(pn=>{pn.hidden=true;});
+  const back=document.getElementById('wz-back'),next=document.getElementById('wz-next');
+  if(back)back.hidden=true;if(next)next.hidden=true;
+  loadOverview();
+ }
+ async function loadOverview(){
+  try{
+   const r=await fetch('/api/invitation-progress',{cache:'no-store'});
+   const d=r.ok?await r.json():null;
+   if(d&&Number.isFinite(Number(d.percent))){
+    const pct=Math.max(0,Math.min(100,Math.round(Number(d.percent))));
+    panel.querySelector('.ew-ov-pct').textContent=d.complete?'Your invitation is 100% complete.':'Your invitation is '+pct+'% complete';
+    const barEl=panel.querySelector('.ew-ov-bar');barEl.setAttribute('aria-valuenow',String(pct));barEl.firstElementChild.style.width=pct+'%';
+    const items=panel.querySelector('.ew-ov-items');items.replaceChildren();
+    (d.items||[]).forEach(it=>{
+     const b=document.createElement('button');b.type='button';b.className='ew-ov-item'+(it.done?' done':'');
+     b.textContent=(it.done?'\u2713 ':'\u25CB ')+it.label;
+     b.addEventListener('click',()=>{showWizard();if(wizard)wizard.show(Number(it.step)||1);});
+     items.append(b);
+    });
+   }
+  }catch{}
+  if(isOwner()){
+   try{panel.querySelector('.ew-ov-share').hidden=false;panel.querySelector('.ew-ov-link').value=invitationUrl(config,location.href);}catch{}
+  }
+ }
+ bar.addEventListener('click',e=>{
+  const b=e.target.closest('.ew-tab');if(!b)return;
+  const t=TABS.find(x=>x.id===b.dataset.tab);if(!t)return;
+  if(t.id==='overview'){showOverview();return;}
+  showWizard();
+  if(t.id==='share'){mark('share');openShare();return;}
+  mark(t.id);if(wizard)wizard.show(t.step);
+ });
+ panel.querySelector('.ew-ov-play').addEventListener('click',()=>{showWizard();openPreviewStep();});
+ panel.querySelector('.ew-ov-copy').addEventListener('click',async()=>{
+  const input=panel.querySelector('.ew-ov-link'),note=panel.querySelector('.ew-ov-copied');
+  try{await navigator.clipboard.writeText(input.value);note.textContent='Invitation link copied.';}
+  catch{input.focus();input.select();note.textContent='Select and copy the highlighted link manually.';}
+ });
+ window.EWSetStep=n=>{showWizard();if(wizard)wizard.show(Number(n)||1);};
+ window.EWSyncTabs=n=>{if(active&&!onOverview)mark(tabForStep(n));};
+ function activate(){
+  if(active)return;active=true;
+  document.body.classList.add('ew-tabs-on');
+  mark(tabForStep(wizard?wizard.current:9));
+ }
+ document.addEventListener('ew:owner',activate);
+ if(isOwner()||window.EWApp)activate();
+})();
