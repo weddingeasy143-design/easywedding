@@ -1,12 +1,13 @@
 "use client";
 
-// emerald-darbar — "Unroll the Farman" (Sacred Courtyard · Varanasi)
-// Beat 0 (Reveal): a rolled royal farman hangs in an emerald courtyard;
-// the guest pulls down and the parchment unrolls from the roll, revealing
-// the proclamation — the wedding date and city — sealed in gold.
-// Beat 2 (Curtain): emerald brocade panels hang from a gold rod, then
-// drop-fall and crumple at the floor, revealing the couple's names
-// embossed on a sandstone wall, lit by a rising diya glow.
+// emerald-darbar — "Dawn on the Ghats" (Sacred Courtyard · Varanasi)
+// Beat 0 (Reveal): a coded dawn over layered ghat silhouettes and a
+// shimmering river. A small unlit diya bobs on the water; the visitor taps
+// it, the flame catches, and the whole scene pushes in as the couple's
+// names resolve in editorial serif over the opalescent water.
+// Beat 2 (Curtain): morning mist and light lift off the same ghats-and-
+// river scene, revealing the names over the shimmer.
+// 100% coded CSS/SVG — no external images.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -14,17 +15,8 @@ import { COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 /* ── palette ─────────────────────────────────────────────── */
-const PAPER = "#f7eee0";
-const EMERALD_INK = "#355448";
-const DEEP_GREEN = "#3f5d4a";
-const COURT_DEEP = "#2c4638";
-const GOLD = "#ab7847";
-const LIGHT_GOLD = "#d7b383";
-const EMBOSS = "#6b543a";
-
-const DAMASK =
-  "radial-gradient(circle at 8px 8px, rgba(215,179,131,0.13) 1.6px, transparent 2.2px)";
-const BROCADE_BG = `${DAMASK}, linear-gradient(160deg, #2f4a3c 0%, ${DEEP_GREEN} 55%, #33503f 100%)`;
+const IVORY = "#fdf3e0";
+const SAFFRON = "#eda964";
 
 /* ── shared helpers ──────────────────────────────────────── */
 function getConfig(): Record<string, string | undefined> {
@@ -46,88 +38,211 @@ function formatDate(iso?: string): string {
   return `${Number(m[3])} ${month} ${m[1]}`;
 }
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/* ── dawn scene pieces ───────────────────────────────────── */
 
-/* ── the rolled farman: cylinder + end caps + cord & tassel ── */
-function FarmanRoll({ swing }: { swing: number }) {
+const SKY =
+  "linear-gradient(180deg, #111a36 0%, #2b2a52 30%, #6e3d5c 50%, #c86a5a 60%, #eda964 66%, #f4bd7a 68%, #31405f 68.4%, #1d2a48 82%, #141e36 100%)";
+
+/** One depth layer of ghat silhouettes — stepped terraces, spires, domes. */
+function GhatLayer({
+  depth,
+  lit,
+  mist,
+}: {
+  depth: 0 | 1 | 2;
+  lit?: boolean;
+  mist?: boolean;
+}) {
+  const active = lit || mist;
+  const scales = [1.04, 1.08, 1.13];
+  const lifts = [-2, -5, -9];
+  const fills = ["#3a4470", "#252e52", "#121b31"];
+  const opacities = [0.75, 0.92, 1];
+  const paths =
+    depth === 0
+      ? "M0 160 V104 H34 V84 L42 62 L50 84 V100 H78 Q92 78 106 100 H118 V70 L126 48 L134 70 V102 H168 V88 H196 V102 H214 Q228 80 242 102 H256 V76 L264 54 L272 76 V108 H300 V92 H330 V108 H390 V160 Z"
+      : depth === 1
+        ? "M0 170 V118 H26 V100 H44 V118 H62 V86 L72 58 L82 86 V112 H110 Q126 88 142 112 H156 V70 H164 L176 40 L188 70 H196 V114 H224 V96 H244 V114 H262 Q278 90 294 114 H310 V84 L320 60 L330 84 V120 H356 V104 H390 V170 Z M0 170 V148 H52 V158 H112 V148 H172 V160 H242 V150 H312 V160 H390 V170 Z"
+        : "M0 170 V118 H36 V130 H72 V120 H108 V134 H140 L152 170 Z M390 170 V116 H354 V128 H318 V118 H282 V132 H250 L238 170 Z";
   return (
-    <div className="relative" style={{ width: "100%", height: 34 }} aria-hidden>
-      {/* cylinder body */}
-      <div
-        className="absolute inset-0"
-        style={{
-          borderRadius: 17,
-          background:
-            "linear-gradient(180deg, #8a5a30 0%, #c99a5b 26%, #e8c98f 48%, #b3814a 72%, #7c4f27 100%)",
-          boxShadow:
-            "0 6px 16px rgba(20,32,24,0.45), inset 0 -3px 6px rgba(60,35,10,0.4), inset 0 3px 5px rgba(255,240,200,0.5)",
-        }}
-      />
-      {/* end caps */}
-      <div
-        className="absolute left-[3px] top-1/2 h-[26px] w-[10px] -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(ellipse at 40% 40%, #efd9a8, #9a6c38 75%)" }}
-      />
-      <div
-        className="absolute right-[3px] top-1/2 h-[26px] w-[10px] -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(ellipse at 40% 40%, #efd9a8, #9a6c38 75%)" }}
-      />
-      {/* gold cord + tassel hanging from the right end */}
-      <div
-        className="absolute right-[16px] top-[30px]"
-        style={{ transform: `rotate(${swing}deg)`, transformOrigin: "top center" }}
+    <motion.div
+      className="pointer-events-none absolute inset-x-0"
+      style={{ bottom: "31%", height: depth === 2 ? "30%" : "34%", zIndex: 3 + depth }}
+      initial={false}
+      animate={
+        active
+          ? { scale: scales[depth], y: lifts[depth] }
+          : { scale: 1, y: 0 }
+      }
+      transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] }}
+      aria-hidden
+    >
+      <svg
+        viewBox={depth === 0 ? "0 0 390 160" : "0 0 390 170"}
+        preserveAspectRatio="none"
+        className="block h-full w-full"
       >
-        <div
-          className="mx-auto w-[2px]"
+        <path d={paths} fill={fills[depth]} opacity={opacities[depth]} />
+      </svg>
+    </motion.div>
+  );
+}
+
+/** Animated opalescent shimmer bands drifting on the river surface. */
+function RiverShimmer({ bright }: { bright?: boolean }) {
+  const bands = [
+    { top: "71%", width: "62%", left: "8%", dur: 5.2, h: 4 },
+    { top: "76%", width: "78%", left: "14%", dur: 6.4, h: 5 },
+    { top: "82%", width: "55%", left: "30%", dur: 4.6, h: 4 },
+    { top: "88%", width: "84%", left: "4%", dur: 7.1, h: 6 },
+    { top: "94%", width: "66%", left: "20%", dur: 5.8, h: 4 },
+  ];
+  return (
+    <div className="pointer-events-none absolute inset-0" style={{ zIndex: 6 }} aria-hidden>
+      {bands.map((b, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full"
           style={{
-            height: 26,
-            background: `linear-gradient(180deg, ${GOLD}, ${LIGHT_GOLD})`,
+            top: b.top,
+            left: b.left,
+            width: b.width,
+            height: b.h,
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(244,189,122,0.5) 28%, rgba(168,224,210,0.38) 52%, rgba(240,170,190,0.42) 74%, transparent 100%)",
+            filter: "blur(1.5px)",
+            opacity: bright ? 0.95 : 0.55,
+          }}
+          animate={{ x: [0, i % 2 === 0 ? 14 : -14, 0], opacity: bright ? [0.95, 0.65, 0.95] : [0.55, 0.38, 0.55] }}
+          transition={{ duration: b.dur, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Low sun glow sitting on the horizon. */
+function SunGlow({ lit }: { lit?: boolean }) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute left-1/2"
+      style={{
+        top: "46%",
+        width: 190,
+        height: 190,
+        marginLeft: -95,
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle, rgba(255,214,150,0.95) 0%, rgba(237,169,100,0.55) 34%, rgba(200,106,90,0.22) 58%, transparent 72%)",
+        filter: "blur(4px)",
+        zIndex: 2,
+      }}
+      initial={false}
+      animate={lit ? { opacity: 1, scale: 1.18 } : { opacity: 0.65, scale: 1 }}
+      transition={{ duration: 2.2, ease: "easeOut" }}
+      aria-hidden
+    />
+  );
+}
+
+/** The floating diya — coded bowl, rim and wick; flame appears when lit. */
+function Diya({ lit }: { lit: boolean }) {
+  return (
+    <div className="relative flex h-full w-full items-center justify-center" aria-hidden>
+      {/* warm glow that spreads once the flame catches */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: 150,
+          height: 150,
+          marginLeft: -75,
+          marginTop: -75,
+          background:
+            "radial-gradient(circle, rgba(255,196,92,0.6) 0%, rgba(255,170,60,0.22) 48%, transparent 70%)",
+          filter: "blur(5px)",
+        }}
+        initial={false}
+        animate={lit ? { opacity: 1, scale: 1.25 } : { opacity: 0, scale: 0.5 }}
+        transition={{ duration: 1.4, ease: "easeOut" }}
+      />
+      <div className="relative" style={{ width: 58, height: 30 }}>
+        {/* flame — flickering teardrop, fades/scales in on lighting */}
+        {lit && (
+          <motion.div
+            className="absolute left-1/2"
+            style={{
+              bottom: 24,
+              width: 13,
+              height: 22,
+              marginLeft: -6.5,
+              borderRadius: "50% 50% 50% 50% / 66% 66% 34% 34%",
+              background:
+                "radial-gradient(ellipse at 50% 80%, #fff3c4 0%, #ffb84d 48%, #e07b24 100%)",
+              boxShadow: "0 0 18px rgba(255,170,60,0.9)",
+              transformOrigin: "50% 100%",
+            }}
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={{ opacity: 1, scale: [1, 1.16, 0.94, 1.09, 1] }}
+            transition={{
+              opacity: { duration: 0.35 },
+              scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+            }}
+          />
+        )}
+        {/* wick */}
+        <span
+          className="absolute left-1/2"
+          style={{ bottom: 20, width: 2.5, height: 7, marginLeft: -1.25, background: lit ? "#5a3410" : "#2c2118", borderRadius: 2 }}
+        />
+        {/* rim */}
+        <div
+          className="absolute left-0 right-0 rounded-full"
+          style={{ bottom: 12, height: 10, background: "linear-gradient(180deg, #b06a32, #7c4520)" }}
+        />
+        {/* bowl */}
+        <div
+          className="absolute left-0 right-0"
+          style={{
+            bottom: 0,
+            height: 16,
+            borderRadius: "6px 6px 50% 50% / 4px 4px 100% 100%",
+            background: "linear-gradient(180deg, #8a4b26 0%, #5f3c1c 100%)",
+            boxShadow: "0 6px 14px rgba(5,8,18,0.55)",
           }}
         />
-        {/* tassel head + skirt + fringe */}
+        {/* water reflection under the bowl */}
         <div
-          className="mx-auto"
+          className="absolute left-1/2"
           style={{
-            width: 14,
-            height: 20,
-            clipPath: "polygon(28% 0, 72% 0, 100% 100%, 0 100%)",
-            background: `linear-gradient(180deg, ${LIGHT_GOLD} 0%, ${GOLD} 70%, #8a5f33 100%)`,
+            bottom: -12,
+            width: 64,
+            height: 6,
+            marginLeft: -32,
+            borderRadius: "50%",
+            background: lit
+              ? "radial-gradient(ellipse, rgba(255,180,80,0.55) 0%, transparent 70%)"
+              : "radial-gradient(ellipse, rgba(160,190,220,0.3) 0%, transparent 70%)",
+            filter: "blur(2px)",
           }}
         />
-        <div className="mx-auto flex w-[13px] justify-between" style={{ marginTop: 1 }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <span
-              key={i}
-              className="block w-px"
-              style={{ height: 7, background: GOLD, opacity: 0.9 }}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════
-   BEAT 0 — Reveal: Unroll the Farman
+   BEAT 0 — Reveal: Dawn on the Ghats
    ══════════════════════════════════════════════════════════ */
 export function Reveal({ onReveal }: { onReveal: () => void }) {
-  const [progress, setProgress] = useState(0);
-  const [finishing, setFinishing] = useState(false);
-  const drag = useRef<{ y: number; t: number; active: boolean }>({
-    y: 0,
-    t: 0,
-    active: false,
-  });
+  const [lit, setLit] = useState(false);
   const firedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const finish = useCallback(() => {
+  const light = useCallback(() => {
     if (firedRef.current) return;
     firedRef.current = true;
-    setFinishing(true);
-    setProgress(1);
-    timerRef.current = setTimeout(() => onReveal(), 500);
+    setLit(true);
+    timerRef.current = setTimeout(() => onReveal(), 2700);
   }, [onReveal]);
 
   useEffect(
@@ -137,315 +252,120 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     []
   );
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (finishing) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { y: e.clientY, t: Date.now(), active: true };
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current.active || finishing) return;
-    const p = clamp01((e.clientY - drag.current.y) / 240);
-    setProgress(p);
-    if (p >= 0.65) finish();
-  };
-
-  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current.active) return;
-    drag.current.active = false;
-    if (finishing) return;
-    const dy = e.clientY - drag.current.y;
-    const dt = Date.now() - drag.current.t;
-    if ((dt < 300 && Math.abs(dy) < 10) || clamp01(dy / 240) >= 0.65) finish();
-  };
-
   const cfg = getConfig();
   const dateLine = formatDate(cfg.date ?? "2027-03-13");
   const city = (cfg.city ?? "Varanasi").trim();
-  const p = finishing ? 1 : progress;
-  const proclamationOpacity = clamp01((p - 0.22) / 0.45);
-  // tassel swings gently as the roll travels down
-  const swing = Math.sin(p * Math.PI * 2) * 7;
 
   return (
     <div
       className="relative h-full w-full overflow-hidden"
-      style={{
-        background: `linear-gradient(175deg, ${COURT_DEEP} 0%, ${DEEP_GREEN} 62%, #466550 100%)`,
-        touchAction: "none",
-        cursor: "grab",
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      role="button"
-      aria-label="Pull down to unroll the farman"
+      style={{ background: "#111a36" }}
+      role="presentation"
     >
-      {/* damask courtyard texture + lamp glow */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ backgroundImage: DAMASK, backgroundSize: "26px 26px", opacity: 0.5 }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 75% 40% at 50% 6%, rgba(215,179,131,0.2) 0%, transparent 70%), radial-gradient(ellipse at center, transparent 52%, rgba(10,20,14,0.5) 100%)",
-        }}
-        aria-hidden
-      />
-
-      {/* gold arch outline */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-[5%] h-[84%] w-[88%] max-w-[450px] -translate-x-1/2"
-        style={{
-          borderRadius: "46% 46% 12px 12px",
-          border: `1.5px solid ${LIGHT_GOLD}`,
-          boxShadow:
-            "inset 0 0 0 5px rgba(44,70,56,0.9), inset 0 0 0 6.5px rgba(215,179,131,0.4)",
-        }}
-        aria-hidden
-      />
-
-      {/* ── unrolling parchment + roll ── */}
-      <div className="absolute left-1/2 top-[13%] w-[68%] max-w-[340px] -translate-x-1/2">
-        <div
-          className="relative w-full overflow-hidden"
-          style={{
-            height: `${p * 58}vh`,
-            maxHeight: "58%",
-            background: `linear-gradient(180deg, #fbf4e3 0%, ${PAPER} 55%, #efe0c2 100%)`,
-            border: `1px solid ${GOLD}`,
-            borderTop: "none",
-            boxShadow: "0 18px 34px rgba(15,26,19,0.4)",
-          }}
-        >
-          {/* proclamation — fades in as the parchment opens */}
-          <div
-            className="absolute inset-0 flex flex-col items-center px-5 pt-7 text-center"
-            style={{ opacity: proclamationOpacity }}
-          >
-            {/* gold seal */}
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{
-                background: `radial-gradient(circle at 38% 32%, ${LIGHT_GOLD} 0%, ${GOLD} 62%, #7c5527 100%)`,
-                boxShadow: "0 2px 8px rgba(90,60,20,0.45), inset 0 0 0 2px rgba(247,238,224,0.55)",
-              }}
-              aria-hidden
-            >
-              <span style={{ color: "#fbf2dc", fontSize: 15, lineHeight: 1 }}>✦</span>
-            </div>
-            <p
-              className="mt-5 font-display text-lg uppercase leading-snug tracking-[0.3em] sm:text-xl"
-              style={{ color: EMERALD_INK }}
-            >
-              {dateLine}
-            </p>
-            {city && (
-              <p
-                className="mt-2 font-display text-xs uppercase tracking-[0.44em]"
-                style={{ color: GOLD }}
-              >
-                · {city} ·
-              </p>
-            )}
-            <div
-              className="mt-5 h-px w-24"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
-              }}
-              aria-hidden
-            />
-            <p
-              className="mt-5 font-display text-[11px] uppercase tracking-[0.34em]"
-              style={{ color: EMERALD_INK, opacity: 0.75 }}
-            >
-              {copyText(93, "By Royal Command")}
-            </p>
-          </div>
-
-          {/* completion glow pulse washing the parchment */}
-          {finishing && (
-            <motion.div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(ellipse at 50% 30%, rgba(232,201,143,0.75) 0%, transparent 70%)",
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 1, 0.35] }}
-              transition={{ duration: 0.5, times: [0, 0.4, 1], ease: "easeOut" }}
-              aria-hidden
-            />
-          )}
-        </div>
-
-        {/* the roll rides the parchment's leading (bottom) edge */}
-        <div style={{ marginTop: -17 }}>
-          <FarmanRoll swing={swing} />
-        </div>
-      </div>
-
-      {/* hint */}
-      <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-[11px] uppercase tracking-[0.38em]"
-        style={{ color: LIGHT_GOLD }}
-        animate={{ opacity: finishing ? 0 : [0.55, 1, 0.55] }}
-        transition={
-          finishing
-            ? { duration: 0.25 }
-            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
-        }
+      {/* ── the dawn scene, pushing in slowly once the diya is lit ── */}
+      <motion.div
+        className="absolute inset-0"
+        initial={false}
+        animate={lit ? { scale: 1.08 } : { scale: 1 }}
+        transition={{ duration: 2.6, ease: [0.22, 1, 0.36, 1] }}
         aria-hidden
       >
-        {copyText(94, "Pull the tassel to unroll")}
+        {/* sky + river gradient */}
+        <div className="absolute inset-0" style={{ background: SKY }} />
+        <SunGlow lit={lit} />
+        {/* three parallax depth layers of ghats */}
+        <GhatLayer depth={0} lit={lit} />
+        <GhatLayer depth={1} lit={lit} />
+        <GhatLayer depth={2} lit={lit} />
+        <RiverShimmer bright={lit} />
+      </motion.div>
+
+      {/* ── the couple's names, resolving over the water shimmer ── */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[7%] px-6 text-center" style={{ zIndex: 10 }}>
+        <motion.div
+          initial={false}
+          animate={lit ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.93, y: 20 }}
+          transition={{ duration: 1.2, delay: lit ? 0.75 : 0, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p
+            className="font-display"
+            style={{
+              color: IVORY,
+              fontSize: "clamp(2.7rem, 11.5vw, 4.1rem)",
+              lineHeight: 1.05,
+              fontWeight: 500,
+              textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
+            }}
+          >
+            {COUPLE.groom}
+          </p>
+          <div className="my-2.5 flex items-center justify-center gap-3">
+            <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${SAFFRON})` }} />
+            <span className="font-display italic" style={{ color: SAFFRON, fontSize: "1.1rem" }}>
+              &amp;
+            </span>
+            <span className="h-px w-10" style={{ background: `linear-gradient(to left, transparent, ${SAFFRON})` }} />
+          </div>
+          <p
+            className="font-display"
+            style={{
+              color: IVORY,
+              fontSize: "clamp(2.7rem, 11.5vw, 4.1rem)",
+              lineHeight: 1.05,
+              fontWeight: 500,
+              textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
+            }}
+          >
+            {COUPLE.bride}
+          </p>
+          {(dateLine || city) && (
+            <p className="mt-4" style={{ color: "rgba(253,243,224,0.88)", fontSize: 13.5, letterSpacing: "0.05em" }}>
+              {[dateLine, city].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </motion.div>
+      </div>
+
+      {/* ── the floating diya — tap it to light the dawn ── */}
+      <motion.button
+        type="button"
+        className="absolute"
+        style={{
+          left: "50%",
+          bottom: "30%",
+          width: 104,
+          height: 104,
+          marginLeft: -52,
+          zIndex: 20,
+          background: "transparent",
+          border: "none",
+          cursor: lit ? "default" : "pointer",
+        }}
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+        onClick={light}
+        aria-label="Tap the diya to light it"
+      >
+        <Diya lit={lit} />
+      </motion.button>
+
+      {/* hint — quiet modern treatment */}
+      <motion.p
+        className="pointer-events-none absolute inset-x-0 top-[7%] text-center"
+        style={{ color: "rgba(253,243,224,0.9)", fontSize: 13.5, letterSpacing: "0.05em", zIndex: 15 }}
+        animate={{ opacity: lit ? 0 : [0.55, 1, 0.55] }}
+        transition={lit ? { duration: 0.3 } : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      >
+        {copyText(94, "Tap the diya to light the dawn")}
       </motion.p>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════
-   BEAT 2 — Curtain: brocade drop-fall over a sandstone wall
+   BEAT 2 — Curtain: morning mist lifting off the ghats
    ══════════════════════════════════════════════════════════ */
-
-function BrocadePanel({ side, open }: { side: "left" | "right"; open: boolean }) {
-  const isLeft = side === "left";
-  return (
-    <motion.div
-      className={`pointer-events-none absolute inset-y-0 ${isLeft ? "left-0" : "right-0"} w-[50.5%]`}
-      initial={false}
-      animate={{ y: open ? "108%" : "0%" }}
-      transition={{ duration: 1.1, ease: [0.55, 0, 1, 0.6] }}
-      aria-hidden
-    >
-      <div
-        className="relative h-full w-full"
-        style={{ backgroundImage: BROCADE_BG, backgroundSize: "26px 26px, cover" }}
-      >
-        {/* zari border — 6px gold stripe + thin line at the inner edge */}
-        <div
-          className={`absolute inset-y-0 ${isLeft ? "right-0" : "left-0"} w-[6px]`}
-          style={{
-            background: `linear-gradient(180deg, ${LIGHT_GOLD} 0%, ${GOLD} 55%, #8a5f33 100%)`,
-            boxShadow: isLeft
-              ? "-2px 0 0 rgba(247,238,224,0.5), -6px 0 12px rgba(0,0,0,0.35)"
-              : "2px 0 0 rgba(247,238,224,0.5), 6px 0 12px rgba(0,0,0,0.35)",
-          }}
-        />
-        {/* zari stripe along the bottom hem */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-[6px]"
-          style={{
-            background: `linear-gradient(90deg, ${GOLD}, ${LIGHT_GOLD}, ${GOLD})`,
-          }}
-        />
-        <div className="absolute inset-x-0 bottom-[9px] h-px bg-[#d7b383]/50" />
-        {/* hanging folds shading */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0px, transparent 26px, rgba(255,240,200,0.05) 44px, transparent 62px, rgba(0,0,0,0.22) 84px)",
-          }}
-        />
-      </div>
-    </motion.div>
-  );
-}
-
-/** Wavy crumpled strip the fallen panels bunch into at the floor. */
-function CrumpleStrip({ open }: { open: boolean }) {
-  return (
-    <motion.div
-      className="pointer-events-none absolute inset-x-0 bottom-0"
-      initial={false}
-      animate={open ? { opacity: 1, scaleY: 1 } : { opacity: 0, scaleY: 0.3 }}
-      transition={{ duration: 0.55, delay: open ? 1.0 : 0, ease: "easeOut" }}
-      style={{ transformOrigin: "bottom" }}
-      aria-hidden
-    >
-      <svg
-        viewBox="0 0 400 26"
-        preserveAspectRatio="none"
-        className="block h-[26px] w-full"
-      >
-        <path
-          d="M0 26 L0 16 Q25 6 50 14 Q75 22 100 12 Q125 4 150 13 Q175 21 200 11 Q225 3 250 12 Q275 20 300 12 Q325 5 350 14 Q375 21 400 13 L400 26 Z"
-          fill="#33503f"
-        />
-        <path
-          d="M0 16 Q25 6 50 14 Q75 22 100 12 Q125 4 150 13 Q175 21 200 11 Q225 3 250 12 Q275 20 300 12 Q325 5 350 14 Q375 21 400 13"
-          fill="none"
-          stroke="#d7b383"
-          strokeWidth="1.6"
-          opacity="0.75"
-        />
-      </svg>
-    </motion.div>
-  );
-}
-
-/** Six soft dust dots puffing up as the panels land. */
-function DustPuff({ open }: { open: boolean }) {
-  if (!open) return null;
-  const dots = [
-    { left: "18%", size: 7, x: -16, delay: 0 },
-    { left: "32%", size: 5, x: 10, delay: 0.06 },
-    { left: "47%", size: 8, x: -6, delay: 0.03 },
-    { left: "60%", size: 5, x: 14, delay: 0.09 },
-    { left: "72%", size: 7, x: -12, delay: 0.05 },
-    { left: "84%", size: 5, x: 8, delay: 0.12 },
-  ];
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-5" aria-hidden>
-      {dots.map((d, i) => (
-        <motion.span
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: d.left,
-            width: d.size,
-            height: d.size,
-            background: "rgba(232,220,196,0.85)",
-            filter: "blur(1px)",
-          }}
-          initial={{ opacity: 0, y: 0, x: 0 }}
-          animate={{ opacity: [0, 0.85, 0], y: -44, x: d.x }}
-          transition={{ duration: 1.1, delay: 1.02 + d.delay, ease: "easeOut" }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/** A small diya flame — teardrop dot with a gentle flicker. */
-function DiyaFlame({ className }: { className: string }) {
-  return (
-    <div className={`pointer-events-none absolute bottom-4 ${className}`} aria-hidden>
-      {/* diya bowl */}
-      <div
-        className="mx-auto h-[7px] w-9 rounded-b-full"
-        style={{ background: "linear-gradient(180deg, #8a5a30, #5f3c1c)" }}
-      />
-      <motion.div
-        className="absolute -top-[13px] left-1/2 h-[15px] w-[9px] -translate-x-1/2"
-        style={{
-          borderRadius: "50% 50% 50% 50% / 68% 68% 32% 32%",
-          background:
-            "radial-gradient(ellipse at 50% 78%, #fff3c4 0%, #ffb84d 45%, #e07b24 100%)",
-          boxShadow: "0 0 14px rgba(255,170,60,0.85)",
-          transformOrigin: "50% 100%",
-        }}
-        animate={{ scale: [1, 1.14, 0.94, 1.08, 1], opacity: [0.92, 1, 0.88, 1, 0.92] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </div>
-  );
-}
-
 export function Curtain({
   onDone,
   autoPlay,
@@ -464,7 +384,7 @@ export function Curtain({
     onDoneRef.current();
   }, []);
 
-  // auto-play: panels drop ~1100ms in; done ~4200ms total
+  // auto-play: the mist starts lifting ~1100ms in; done ~4200ms total
   useEffect(() => {
     if (!autoPlay) return;
     const t1 = setTimeout(() => setOpen(true), 1100);
@@ -475,151 +395,154 @@ export function Curtain({
     };
   }, [autoPlay, finishOnce]);
 
-  // manual: tap drops the panels; done ~2400ms after the tap
+  // manual: tap lifts the mist; done ~2400ms after the tap
   useEffect(() => {
     if (autoPlay || !open) return;
     const t = setTimeout(finishOnce, 2400);
     return () => clearTimeout(t);
   }, [autoPlay, open, finishOnce]);
 
+  const cfg = getConfig();
+  const dateLine = formatDate(cfg.date ?? "2027-03-13");
+
+  // mist banks — soft blurred veils at staggered heights and delays
+  const mistBanks = [
+    { top: "34%", height: 120, delay: 0, travel: -90, tint: "rgba(253,243,224,0.5)" },
+    { top: "48%", height: 140, delay: 0.18, travel: -120, tint: "rgba(240,200,180,0.42)" },
+    { top: "62%", height: 150, delay: 0.36, travel: -150, tint: "rgba(253,243,224,0.46)" },
+    { top: "76%", height: 130, delay: 0.54, travel: -110, tint: "rgba(220,225,240,0.4)" },
+  ];
+
   return (
     <div
       className="relative h-full w-full overflow-hidden"
-      style={{
-        background: "linear-gradient(180deg, #e8dcc4 0%, #d9c9a8 100%)",
-        cursor: autoPlay ? undefined : "pointer",
-      }}
+      style={{ background: "#111a36", cursor: autoPlay ? undefined : "pointer" }}
       onClick={autoPlay ? undefined : () => setOpen(true)}
       role="button"
-      aria-label="The brocade panels reveal the couple's names"
+      aria-label="The morning mist reveals the couple's names"
     >
-      {/* ── sandstone wall behind the panels ── */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, #ecdfc6 0%, #e3d2ac 52%, #d5bf95 100%)",
-        }}
-        aria-hidden
-      />
-      {/* ghats steps — subtle horizontal step lines near the floor */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0" aria-hidden>
-        {[64, 46, 30, 16].map((b, i) => (
-          <div
-            key={b}
-            className="absolute inset-x-0"
-            style={{
-              bottom: b,
-              height: 3,
-              background: "rgba(107,84,58,0.16)",
-              boxShadow: `0 ${(i + 1) * 5}px 0 rgba(255,246,220,0.12)`,
-            }}
-          />
-        ))}
+      {/* ── the dawn scene underneath the mist ── */}
+      <div className="absolute inset-0" aria-hidden>
+        <div className="absolute inset-0" style={{ background: SKY }} />
+        <SunGlow lit={open} />
+        <GhatLayer depth={0} mist={open} />
+        <GhatLayer depth={1} mist={open} />
+        <GhatLayer depth={2} mist={open} />
+        <RiverShimmer bright={open} />
       </div>
 
-      {/* rising diya glow — warm light climbing the wall */}
+      {/* dawn light washing in as the mist lifts */}
       <motion.div
-        className="pointer-events-none absolute left-1/2 h-[62vmin] w-[86vmin] -translate-x-1/2 rounded-full"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse, rgba(255,196,92,0.55) 0%, rgba(255,170,60,0.22) 45%, transparent 70%)",
-          filter: "blur(6px)",
+            "radial-gradient(ellipse 90% 55% at 50% 62%, rgba(255,205,140,0.4) 0%, transparent 70%)",
+          zIndex: 7,
         }}
         initial={false}
-        animate={
-          open
-            ? { top: "16%", opacity: 0.95 }
-            : { top: "58%", opacity: 0 }
-        }
-        transition={{ duration: 1.9, delay: open ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
+        animate={open ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1.8, delay: 0.4, ease: "easeOut" }}
         aria-hidden
       />
 
-      {/* embossed names on the wall */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+      {/* ── the couple's names over the water shimmer ── */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[7%] px-6 text-center" style={{ zIndex: 10 }}>
         <motion.div
           initial={false}
-          animate={open ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-          transition={{ duration: 1.1, delay: open ? 0.75 : 0, ease: [0.22, 1, 0.36, 1] }}
+          animate={open ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.93, y: 20 }}
+          transition={{ duration: 1.2, delay: open ? 0.7 : 0, ease: [0.22, 1, 0.36, 1] }}
         >
           <p
-            className="font-script text-6xl leading-[1.12] sm:text-7xl"
+            className="font-display"
             style={{
-              color: EMBOSS,
-              textShadow:
-                "0 1px 0 rgba(255,246,220,0.7), 0 -1px 1px rgba(80,60,30,0.35)",
+              color: IVORY,
+              fontSize: "clamp(2.7rem, 11.5vw, 4.1rem)",
+              lineHeight: 1.05,
+              fontWeight: 500,
+              textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
             {COUPLE.groom}
           </p>
+          <div className="my-2.5 flex items-center justify-center gap-3">
+            <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${SAFFRON})` }} />
+            <span className="font-display italic" style={{ color: SAFFRON, fontSize: "1.1rem" }}>
+              &amp;
+            </span>
+            <span className="h-px w-10" style={{ background: `linear-gradient(to left, transparent, ${SAFFRON})` }} />
+          </div>
           <p
-            className="my-1 font-display text-base italic tracking-wide"
+            className="font-display"
             style={{
-              color: EMBOSS,
-              opacity: 0.85,
-              textShadow:
-                "0 1px 0 rgba(255,246,220,0.7), 0 -1px 1px rgba(80,60,30,0.35)",
-            }}
-          >
-            weds
-          </p>
-          <p
-            className="font-script text-6xl leading-[1.12] sm:text-7xl"
-            style={{
-              color: EMBOSS,
-              textShadow:
-                "0 1px 0 rgba(255,246,220,0.7), 0 -1px 1px rgba(80,60,30,0.35)",
+              color: IVORY,
+              fontSize: "clamp(2.7rem, 11.5vw, 4.1rem)",
+              lineHeight: 1.05,
+              fontWeight: 500,
+              textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
             {COUPLE.bride}
           </p>
+          {(dateLine || cfg.venue) && (
+            <p className="mt-4" style={{ color: "rgba(253,243,224,0.88)", fontSize: 13.5, letterSpacing: "0.05em" }}>
+              {[dateLine, cfg.venue].filter(Boolean).join(" · ")}
+            </p>
+          )}
         </motion.div>
       </div>
 
-      {/* diya flames at the bottom corners, burning throughout */}
-      <DiyaFlame className="left-5" />
-      <DiyaFlame className="right-5" />
-
-      {/* ── the brocade panels + gold rod ── */}
-      <BrocadePanel side="left" open={open} />
-      <BrocadePanel side="right" open={open} />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[9px]"
-        style={{
-          background: `linear-gradient(180deg, ${LIGHT_GOLD} 0%, ${GOLD} 60%, #7c5527 100%)`,
-          boxShadow: "0 3px 10px rgba(20,30,22,0.4)",
-        }}
-        aria-hidden
-      >
-        <span
-          className="absolute -left-1 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full"
-          style={{
-            background: `radial-gradient(circle at 38% 32%, ${LIGHT_GOLD}, ${GOLD} 70%)`,
-          }}
-        />
-        <span
-          className="absolute -right-1 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full"
-          style={{
-            background: `radial-gradient(circle at 38% 32%, ${LIGHT_GOLD}, ${GOLD} 70%)`,
-          }}
+      {/* ── the mist banks, lifting and dissolving ── */}
+      <div className="pointer-events-none absolute inset-0" style={{ zIndex: 12 }} aria-hidden>
+        {mistBanks.map((m, i) => (
+          <motion.div
+            key={i}
+            className="absolute inset-x-0"
+            style={{
+              top: m.top,
+              height: m.height,
+              background: `linear-gradient(180deg, transparent 0%, ${m.tint} 38%, ${m.tint} 62%, transparent 100%)`,
+              filter: "blur(14px)",
+            }}
+            initial={false}
+            animate={open ? { y: m.travel, opacity: 0 } : { y: 0, opacity: 1 }}
+            transition={{ duration: 1.7, delay: open ? m.delay : 0, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ))}
+        {/* overall pre-dawn veil that thins as the light comes */}
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(180deg, rgba(17,26,54,0.35) 0%, rgba(90,80,110,0.3) 55%, rgba(200,150,120,0.18) 100%)" }}
+          initial={false}
+          animate={open ? { opacity: 0 } : { opacity: 1 }}
+          transition={{ duration: 1.6, delay: 0.2, ease: "easeInOut" }}
         />
       </div>
 
-      {/* landing dressing — crumple + dust */}
-      <CrumpleStrip open={open} />
-      <DustPuff open={open} />
+      {/* a lit diya resting on the water once the mist has lifted */}
+      <motion.div
+        className="pointer-events-none absolute"
+        style={{ left: "14%", bottom: "26%", width: 72, height: 72, zIndex: 11 }}
+        initial={false}
+        animate={open ? { opacity: 1, y: [0, -4, 0] } : { opacity: 0 }}
+        transition={{
+          opacity: { duration: 0.9, delay: 1.1 },
+          y: { duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 1.1 },
+        }}
+        aria-hidden
+      >
+        <Diya lit={open} />
+      </motion.div>
 
-      {/* tap hint — manual mode only, until the panels drop */}
+      {/* tap hint — manual mode only, until the mist lifts */}
       {!autoPlay && !open && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] z-10 text-center font-display text-[11px] uppercase tracking-[0.38em]"
-          style={{ color: LIGHT_GOLD, textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center"
+          style={{ color: "rgba(253,243,224,0.92)", fontSize: 13.5, letterSpacing: "0.05em", zIndex: 14 }}
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >
-          {copyText(95, "Tap to reveal")}
+          {copyText(95, "Tap to lift the mist")}
         </motion.p>
       )}
     </div>

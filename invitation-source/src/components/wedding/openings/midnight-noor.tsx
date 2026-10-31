@@ -140,13 +140,11 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
   const onPointerUp = () => {
     if (finishing || doneRef.current) return;
-    const dt = Date.now() - pressRef.current.t;
-    if (dt < 300 && glowRef.current < 0.35) {
-      // plain tap — automatic build to full in ~1s
+    // Any release before the hold completes still lights the lantern:
+    // the glow auto-builds to full and the normal finish path proceeds,
+    // so a quick tap or short press never strands a near-black frame.
+    if (glowRef.current < 1) {
       runInterval("auto");
-    } else if (glowRef.current > 0 && glowRef.current < 1) {
-      // released early — glow decays at half speed
-      runInterval("decay");
     } else {
       stopInterval();
     }
@@ -254,8 +252,8 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       {/* date staging under the lantern */}
       {dateLabel ? (
         <p
-          className="pointer-events-none absolute inset-x-0 top-[68%] text-center font-display text-[11px] uppercase"
-          style={{ color: "#d4dded", letterSpacing: "0.32em", opacity: 0.45 + glow * 0.5 }}
+          className="pointer-events-none absolute inset-x-0 top-[68%] text-center font-display text-xs"
+          style={{ color: "#d4dded", letterSpacing: "0.05em", opacity: 0.55 + glow * 0.45 }}
           aria-hidden
         >
           {dateLabel}
@@ -278,9 +276,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
       {/* hint */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[7%] px-6 text-center font-display text-xs uppercase"
-        style={{ color: "#e2eafa", letterSpacing: "0.34em" }}
-        animate={{ opacity: finishing ? 0 : [0.55, 1, 0.55] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[7%] px-6 text-center font-display text-sm"
+        style={{ color: "#e2eafa", letterSpacing: "0.05em" }}
+        animate={{ opacity: finishing ? 0 : [0.6, 0.92, 0.6] }}
         transition={
           finishing
             ? { duration: 0.3 }
@@ -384,18 +382,36 @@ export function Curtain({
       {/* names — UNDER the sheer drapes */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <div className="relative overflow-hidden px-4 py-2">
-          <p className="font-script" style={{ ...nameStyle, fontSize: "clamp(2.6rem, 11vw, 4.2rem)" }}>
-            {COUPLE.groom}
-          </p>
-          <p
-            className="font-display italic"
-            style={{ ...nameStyle, fontSize: "1.05rem", margin: "0.2rem 0" }}
+          <motion.div
+            initial={{ opacity: 0, y: 22, scale: 0.94 }}
+            animate={parting ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.5 }}
           >
-            weds
-          </p>
-          <p className="font-script" style={{ ...nameStyle, fontSize: "clamp(2.6rem, 11vw, 4.2rem)" }}>
-            {COUPLE.bride}
-          </p>
+            <p className="font-display font-semibold" style={{ ...nameStyle, fontSize: "clamp(3rem, 12.5vw, 5rem)" }}>
+              {COUPLE.groom}
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.88 }}
+            animate={parting ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.68 }}
+          >
+            <p
+              className="font-display italic"
+              style={{ ...nameStyle, fontSize: "1.05rem", margin: "0.2rem 0" }}
+            >
+              weds
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 22, scale: 0.94 }}
+            animate={parting ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.84 }}
+          >
+            <p className="font-display font-semibold" style={{ ...nameStyle, fontSize: "clamp(3rem, 12.5vw, 5rem)" }}>
+              {COUPLE.bride}
+            </p>
+          </motion.div>
 
           {/* moonbeam sweep — leaves the names bright behind it */}
           {parting && (
@@ -417,8 +433,8 @@ export function Curtain({
         </div>
         {(dateLabel || config.venue) && (
           <motion.p
-            className="mt-5 font-display text-[11px] uppercase"
-            style={{ color: "#d4dded", letterSpacing: "0.3em" }}
+            className="mt-5 font-display text-xs"
+            style={{ color: "#d4dded", letterSpacing: "0.05em" }}
             initial={false}
             animate={{ opacity: bright ? 0.75 : 0 }}
             transition={{ duration: 0.9 }}
@@ -502,9 +518,9 @@ export function Curtain({
       {/* tap hint — manual mode only, while closed */}
       {!autoPlay && !parting && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-xs uppercase"
-          style={{ color: "#e2eafa", letterSpacing: "0.38em" }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-sm"
+          style={{ color: "#e2eafa", letterSpacing: "0.05em" }}
+          animate={{ opacity: [0.65, 0.95, 0.65] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >

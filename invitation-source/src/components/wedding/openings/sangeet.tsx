@@ -1,9 +1,11 @@
 // src/components/wedding/openings/sangeet.tsx
 // Design: Sangeet — "Keep the Beat" (Wisteria Vows; Kochi; sangeet night)
-// Beat 0 (Reveal): tap the beat three times — each tap lights a spotlight,
-// the third fires a sparkle burst over the dhol medallion.
-// Beat 2 (Curtain): an Austrian stage drape gathers upward in scallops,
-// revealing the couple's names in chasing marquee lights.
+// Beat 0 (Reveal): tap the beat three times — each tap makes the coded
+// equalizer light field pulse harder and the ambient glow grow; on the
+// third beat the field resolves in gold and the couple's names land as
+// kinetic editorial typography, letter by letter, to the rhythm.
+// Beat 2 (Curtain): a sequinned Austrian stage drape gathers upward in
+// scallops, revealing the couple's names in the same kinetic type.
 // 100% coded CSS/SVG — no external images.
 "use client";
 
@@ -24,49 +26,107 @@ const SPARKS = Array.from({ length: 10 }, (_, i) => {
   };
 });
 
-/* Marquee bulbs — 18 around a rounded frame, deterministic perimeter walk:
-   6 across the top, 3 down the right, 6 across the bottom, 3 up the left. */
-const BULBS = (() => {
-  const pts: { left: string; top: string }[] = [];
-  for (let i = 0; i < 6; i++) pts.push({ left: `${6 + i * 17.6}%`, top: "0%" });
-  for (let i = 0; i < 3; i++) pts.push({ left: "100%", top: `${25 + i * 25}%` });
-  for (let i = 0; i < 6; i++) pts.push({ left: `${94 - i * 17.6}%`, top: "100%" });
-  for (let i = 0; i < 3; i++) pts.push({ left: "0%", top: `${75 - i * 25}%` });
-  return pts;
-})();
+/* Equalizer columns — 30 coded bars with deterministic heights/phases. */
+const EQ_BARS = Array.from({ length: 30 }, (_, i) => ({
+  height: 30 + ((i * 37 + 13) % 118),
+  phase: (i % 5) * 0.11 + ((i * 7) % 3) * 0.05,
+  hue: i % 6 === 5 ? "#e9c979" : i % 3 === 0 ? "#cab4d8" : "#9a7cac",
+}));
 
-/* A soft spotlight cone — a clipped gradient trapezoid from a top corner. */
-function Spotlight({
-  side,
-  on,
+/* Sequin specks on the drape — tiny deterministic glints. */
+const SEQUINS = Array.from({ length: 36 }, (_, i) => ({
+  left: (i * 29 + 7) % 100,
+  top: (i * 43 + 11) % 88,
+  size: 2 + ((i * 11) % 3),
+  delay: ((i * 17) % 20) / 10,
+}));
+
+/* Kinetic editorial name — letters scale/stagger in one by one. */
+function KineticName({
+  name,
+  active,
+  delay = 0,
+  color = "#f4edfb",
+  fontSize = "clamp(3.1rem, 15.5vw, 4.9rem)",
 }: {
-  side: "left" | "right" | "centre";
-  on: boolean;
+  name: string;
+  active: boolean;
+  delay?: number;
+  color?: string;
+  fontSize?: string;
 }) {
-  const geo =
-    side === "left"
-      ? { left: "-6%", clipPath: "polygon(38% 0, 62% 0, 100% 100%, 0% 100%)" }
-      : side === "right"
-        ? { right: "-6%", clipPath: "polygon(38% 0, 62% 0, 100% 100%, 0% 100%)" }
-        : {
-            left: "50%",
-            transform: "translateX(-50%)",
-            clipPath: "polygon(42% 0, 58% 0, 92% 100%, 8% 100%)",
-          };
   return (
-    <motion.div
-      className="pointer-events-none absolute top-0 h-[86%] w-[46%]"
-      style={{
-        ...geo,
-        background:
-          "linear-gradient(180deg, rgba(244,237,251,0.85) 0%, rgba(202,180,216,0.35) 55%, rgba(202,180,216,0) 100%)",
-        mixBlendMode: "screen",
-      }}
-      initial={false}
-      animate={{ opacity: on ? 0.5 : 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+    <span
+      className="inline-flex flex-wrap items-baseline justify-center font-display font-semibold leading-[1.04]"
+      style={{ color, fontSize }}
+      role="text"
+      aria-label={name}
+    >
+      {name.split("").map((ch, i) => (
+        <motion.span
+          key={i}
+          aria-hidden
+          style={{ display: "inline-block" }}
+          initial={{ opacity: 0, scale: 1.75, y: 30, rotate: -7 }}
+          animate={active ? { opacity: 1, scale: 1, y: 0, rotate: 0 } : {}}
+          transition={{
+            type: "spring",
+            stiffness: 330,
+            damping: 19,
+            delay: delay + i * 0.05,
+          }}
+        >
+          {ch === " " ? "\u00A0" : ch}
+        </motion.span>
+      ))}
+    </span>
+  );
+}
+
+/* The beat-reactive light field — equalizer bars that pulse with the taps.
+   `level` (0–3) is the number of beats landed; `resolved` is the gold
+   settle on the third beat. */
+function LightField({ level, resolved }: { level: number; resolved: boolean }) {
+  const energy = 0.34 + level * 0.22;
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-5 bottom-[19%] flex h-[38%] items-end justify-center gap-[3px]"
       aria-hidden
-    />
+    >
+      {EQ_BARS.map((bar, i) => {
+        const peak = Math.min(1, energy + ((i * 13) % 10) / 26);
+        return (
+          <motion.span
+            key={`${i}-${resolved ? "gold" : level}`}
+            className="w-[7px] shrink-0 rounded-t-full"
+            style={{
+              height: bar.height,
+              transformOrigin: "bottom center",
+              background: resolved
+                ? "linear-gradient(180deg, #f7e3ac 0%, #e9c979 55%, rgba(233,201,121,0.15) 100%)"
+                : `linear-gradient(180deg, #f4edfb 0%, ${bar.hue} 52%, rgba(105,67,138,0.12) 100%)`,
+              boxShadow: resolved
+                ? "0 0 12px rgba(233,201,121,0.55)"
+                : level > 0
+                  ? "0 0 9px rgba(202,180,216,0.45)"
+                  : "none",
+            }}
+            initial={false}
+            animate={
+              resolved
+                ? { scaleY: [0.92, 1, 0.96, 1] }
+                : { scaleY: [0.3, peak, 0.42, peak * 0.82, 0.3] }
+            }
+            transition={{
+              duration: resolved ? 2.6 : 1.05 + bar.phase,
+              repeat: Infinity,
+              delay: bar.phase,
+              ease: "easeInOut",
+            }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -96,11 +156,12 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     if (finishingRef.current) return;
     finishingRef.current = true;
     setBurst(true);
+    // hold long enough for the kinetic names to land letter by letter
     timerRef.current = setTimeout(() => {
       if (calledRef.current) return;
       calledRef.current = true;
       onReveal();
-    }, 500);
+    }, 1500);
   }, [onReveal]);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -124,63 +185,73 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       role="button"
       aria-label="Tap the beat three times to reveal the invitation"
     >
-      {/* faint side curtain edges */}
+      {/* ambient glow — intensifies with every beat landed */}
+      <motion.div
+        className="pointer-events-none absolute left-1/2 top-[38%] h-[74vmin] w-[74vmin] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background: burst
+            ? "radial-gradient(circle, rgba(233,201,121,0.5) 0%, rgba(202,180,216,0.22) 52%, transparent 72%)"
+            : "radial-gradient(circle, rgba(202,180,216,0.42) 0%, rgba(105,67,138,0.18) 55%, transparent 72%)",
+          mixBlendMode: "screen",
+        }}
+        initial={false}
+        animate={{
+          opacity: 0.3 + taps * 0.22,
+          scale: 0.85 + taps * 0.14,
+          x: "-50%",
+          y: "-50%",
+        }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
+        aria-hidden
+      />
+
+      {/* tap ripple — one expanding ring per beat, keyed to the tap count */}
+      {taps > 0 && !burst && (
+        <motion.span
+          key={taps}
+          className="pointer-events-none absolute left-1/2 top-[30%] h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#cab4d8]"
+          initial={{ scale: 0.45, opacity: 0.75, x: "-50%", y: "-50%" }}
+          animate={{ scale: 2.3, opacity: 0, x: "-50%", y: "-50%" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          aria-hidden
+        />
+      )}
+
+      {/* the beat-reactive light field */}
+      <LightField level={taps} resolved={burst} />
+
+      {/* equalizer baseline + floor glow */}
       <div
-        className="pointer-events-none absolute inset-y-0 left-0 w-[13%]"
+        className="pointer-events-none absolute inset-x-0 bottom-[19%] h-px"
         style={{
           background:
-            "repeating-linear-gradient(90deg, rgba(0,0,0,0.35) 0 10px, rgba(154,124,172,0.14) 10px 20px), linear-gradient(90deg, #1c0e2a, #2c1745)",
+            "linear-gradient(90deg, transparent, rgba(202,180,216,0.55) 25%, rgba(244,237,251,0.85) 50%, rgba(202,180,216,0.55) 75%, transparent)",
         }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 w-[13%]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[19%]"
         style={{
           background:
-            "repeating-linear-gradient(90deg, rgba(154,124,172,0.14) 0 10px, rgba(0,0,0,0.35) 10px 20px), linear-gradient(270deg, #1c0e2a, #2c1745)",
+            "linear-gradient(180deg, rgba(202,180,216,0.08), rgba(0,0,0,0.35))",
         }}
         aria-hidden
       />
 
-      {/* spotlights — left, right, centre, lit one per tap */}
-      <Spotlight side="left" on={taps >= 1} />
-      <Spotlight side="right" on={taps >= 2} />
-      <Spotlight side="centre" on={taps >= 3} />
-
-      {/* floor line + stage glow */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-[16%] h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(202,180,216,0.55) 25%, rgba(244,237,251,0.8) 50%, rgba(202,180,216,0.55) 75%, transparent)",
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[16%]"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(202,180,216,0.10), rgba(0,0,0,0.35))",
-        }}
-        aria-hidden
-      />
-
-      {/* dhol medallion + three pulsing beat rings */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pb-14">
+      {/* dhol medallion — thumps on every beat */}
+      <div className="absolute inset-x-0 top-[9%] flex justify-center">
         <div className="relative flex items-center justify-center">
           {[0, 1, 2].map((i) => (
             <motion.span
               key={i}
               className="pointer-events-none absolute rounded-full border"
               style={{
-                width: 168,
-                height: 168,
-                borderColor: burst ? "#e9d9ff" : "#9a7cac",
-                boxShadow: burst
-                  ? "0 0 26px rgba(202,180,216,0.75)"
-                  : "none",
+                width: 138,
+                height: 138,
+                borderColor: burst ? "#e9c979" : "#9a7cac",
+                boxShadow: burst ? "0 0 26px rgba(233,201,121,0.6)" : "none",
               }}
-              animate={{ scale: [1, 1.45], opacity: [0.55, 0] }}
+              animate={{ scale: [1, 1.45], opacity: [0.5, 0] }}
               transition={{
                 duration: 1.8,
                 repeat: Infinity,
@@ -190,12 +261,13 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               aria-hidden
             />
           ))}
-          {/* the dhol — coded rings and centre */}
           <motion.svg
+            key={taps}
             viewBox="0 0 160 160"
-            className="relative h-40 w-40"
-            animate={burst ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative h-32 w-32"
+            initial={false}
+            animate={{ scale: taps > 0 ? [1.14, 1] : 1 }}
+            transition={{ duration: 0.38, ease: "easeOut" }}
             aria-hidden
           >
             <circle cx="80" cy="80" r="74" fill="#31204a" stroke="#9a7cac" strokeWidth="3" />
@@ -232,31 +304,54 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
             </div>
           )}
         </div>
-
-        {/* 1 · 2 · 3 beat markers */}
-        <div className="mt-9 flex items-center gap-5" aria-hidden>
-          {[1, 2, 3].map((n) => (
-            <span key={n} className="flex flex-col items-center gap-1.5">
-              <span
-                className="flex h-8 w-8 items-center justify-center rounded-full border font-display text-sm"
-                style={{
-                  borderColor: taps >= n ? "#e9d9ff" : "#9a7cac",
-                  background: taps >= n ? "#69438a" : "transparent",
-                  color: "#f4edfb",
-                  boxShadow: taps >= n ? "0 0 14px rgba(202,180,216,0.8)" : "none",
-                  transition: "all 0.35s ease",
-                }}
-              >
-                {n}
-              </span>
-            </span>
-          ))}
-        </div>
       </div>
 
-      {/* hint */}
+      {/* third beat — the field resolves and the names land, letter by letter */}
+      {burst && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <KineticName name={COUPLE.groom} active={burst} delay={0.05} />
+          <motion.p
+            className="my-1 font-display text-xl italic text-[#e9c979]"
+            initial={{ opacity: 0, scale: 1.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.34 }}
+          >
+            weds
+          </motion.p>
+          <KineticName name={COUPLE.bride} active={burst} delay={0.42} />
+        </div>
+      )}
+
+      {/* 1 · 2 · 3 beat markers */}
+      {!burst && (
+        <div
+          className="absolute inset-x-0 bottom-[11%] flex items-center justify-center gap-5"
+          aria-hidden
+        >
+          {[1, 2, 3].map((n) => (
+            <motion.span
+              key={n}
+              className="flex h-9 w-9 items-center justify-center rounded-full border font-display text-base"
+              style={{
+                borderColor: taps >= n ? "#e9c979" : "#9a7cac",
+                background: taps >= n ? "#69438a" : "transparent",
+                color: "#f4edfb",
+                boxShadow: taps >= n ? "0 0 14px rgba(233,201,121,0.7)" : "none",
+              }}
+              initial={false}
+              animate={{ scale: taps >= n ? [1.45, 1] : 1 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              {n}
+            </motion.span>
+          ))}
+        </div>
+      )}
+
+      {/* hint — quiet, sentence case */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-xs uppercase tracking-[0.35em] text-[#f4edfb]/85"
+        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-sm text-[#f4edfb]/85"
+        style={{ letterSpacing: "0.06em" }}
         animate={{ opacity: burst ? 0 : [0.55, 1, 0.55] }}
         transition={
           burst
@@ -338,57 +433,49 @@ export function Curtain({
             className="pointer-events-none absolute inset-0 opacity-40"
           />
         )}
-        {/* marquee frame of chasing bulbs around the name panel */}
-        <div className="relative px-10 py-9">
-          <div
-            className="pointer-events-none absolute inset-0 rounded-[28px]"
-            style={{
-              background: "rgba(36,19,49,0.72)",
-              boxShadow: "inset 0 0 0 1px rgba(154,124,172,0.5), 0 0 44px rgba(105,67,138,0.35)",
-            }}
-            aria-hidden
-          />
-          {BULBS.map((b, i) => (
-            <motion.span
-              key={i}
-              className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{
-                left: b.left,
-                top: b.top,
-                background: "#e9c979",
-                boxShadow: "0 0 8px rgba(233,201,121,0.9)",
-              }}
-              animate={{ opacity: [0.25, 1, 0.25] }}
-              transition={{
-                duration: 1.6,
-                repeat: Infinity,
-                delay: i * 0.08,
-                ease: "easeInOut",
-              }}
-              aria-hidden
-            />
-          ))}
-          {/* names slam in with a steady gold glow */}
-          <motion.div
-            className="relative"
-            initial={{ opacity: 0, scale: 1.18 }}
+        {/* names land letter by letter as the drape clears them */}
+        <div
+          className="relative flex flex-col items-center"
+          style={{
+            textShadow:
+              "0 0 18px rgba(233,201,121,0.45), 0 0 42px rgba(233,201,121,0.22)",
+          }}
+        >
+          <KineticName name={COUPLE.groom} active={risen} delay={0.55} />
+          <motion.p
+            className="my-1 font-display text-xl italic text-[#cab4d8] lg:text-2xl"
+            initial={{ opacity: 0, scale: 1.6 }}
             animate={risen ? { opacity: 1, scale: 1 } : {}}
-            transition={{ type: "spring", stiffness: 240, damping: 19, delay: 0.5 }}
-            style={{
-              textShadow:
-                "0 0 18px rgba(233,201,121,0.55), 0 0 42px rgba(233,201,121,0.3)",
-            }}
+            transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.85 }}
           >
-            <p className="font-script text-7xl leading-[1.12] text-[#f4edfb] lg:text-9xl">
-              {COUPLE.groom}
-            </p>
-            <p className="my-1 font-display text-lg italic text-[#cab4d8] lg:text-2xl">
-              weds
-            </p>
-            <p className="font-script text-7xl leading-[1.12] text-[#f4edfb] lg:text-9xl">
-              {COUPLE.bride}
-            </p>
-          </motion.div>
+            weds
+          </motion.p>
+          <KineticName name={COUPLE.bride} active={risen} delay={0.95} />
+          {/* a quiet echo of the light field under the names */}
+          <div className="mt-7 flex h-8 items-end justify-center gap-[3px]" aria-hidden>
+            {EQ_BARS.slice(0, 18).map((bar, i) => (
+              <motion.span
+                key={i}
+                className="w-[5px] rounded-t-full"
+                style={{
+                  height: 8 + (bar.height % 22),
+                  transformOrigin: "bottom center",
+                  background:
+                    "linear-gradient(180deg, #f7e3ac 0%, rgba(233,201,121,0.25) 100%)",
+                }}
+                initial={false}
+                animate={
+                  risen ? { scaleY: [0.35, 1, 0.5, 0.9, 0.35] } : { scaleY: 0.35 }
+                }
+                transition={{
+                  duration: 1.4 + bar.phase,
+                  repeat: Infinity,
+                  delay: bar.phase,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -400,7 +487,7 @@ export function Curtain({
         transition={{ duration: 1.8, ease: [0.76, 0, 0.24, 1] }}
         aria-hidden
       >
-        {/* full drape body with vertical fold shading */}
+        {/* full drape body with vertical fold shading + sequin glints */}
         <div
           className="absolute inset-x-0 top-0"
           style={{
@@ -410,6 +497,26 @@ export function Curtain({
           }}
         >
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent" />
+          {SEQUINS.map((s, i) => (
+            <motion.span
+              key={i}
+              className="absolute rounded-full bg-[#f7e3ac]"
+              style={{
+                left: `${s.left}%`,
+                top: `${s.top}%`,
+                width: s.size,
+                height: s.size,
+                boxShadow: "0 0 6px rgba(247,227,172,0.9)",
+              }}
+              animate={{ opacity: [0.15, 0.95, 0.15] }}
+              transition={{
+                duration: 2.4,
+                repeat: Infinity,
+                delay: s.delay,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
         </div>
         {/* scalloped bottom edge — a row of overlapping drape circles */}
         <div className="absolute inset-x-0 bottom-[7px] flex justify-center overflow-hidden" aria-hidden>
@@ -440,10 +547,11 @@ export function Curtain({
         />
       </motion.div>
 
-      {/* tap hint — manual mode only, before the rise */}
+      {/* tap hint — manual mode only, before the rise; quiet, sentence case */}
       {!autoPlay && !risen && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] z-10 text-center font-display text-xs uppercase tracking-[0.35em] text-[#f4edfb]/90"
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] z-10 text-center font-display text-sm text-[#f4edfb]/90"
+          style={{ letterSpacing: "0.06em" }}
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden

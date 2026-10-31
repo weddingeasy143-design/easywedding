@@ -1,8 +1,9 @@
 // src/components/wedding/openings/haldi.tsx
-// "Golden Phere" — Lucknow · Haldi ceremony
-//  Reveal  (beat 0): "Rub the Haldi" — a matte turmeric-paste layer hides a
-//          coded marigold flower and the couple's initials; the guest rubs
-//          the paste away and the flower blooms through.
+// "Haldi Splash" — Lucknow · Haldi ceremony
+//  Reveal  (beat 0): a saturated turmeric-gold field under a cascade of
+//          coded marigold petals. ONE swipe (a tap works too) spreads a
+//          glossy haldi smear across the frame, a coded sunburst opens
+//          inside it, and the couple's names rise at editorial scale.
 //  Curtain (beat 2): "Marigold Toran" — hanging flower strands swing apart
 //          from their top anchors like walking through a toran, and the
 //          names appear inside a warm sunburst glow.
@@ -50,9 +51,79 @@ function useConfig(): SiteConfig | undefined {
   return cfg;
 }
 
-const INITIALS = `${(COUPLE.groom?.charAt(0) ?? "").toUpperCase()} · ${(
-  COUPLE.bride?.charAt(0) ?? ""
-).toUpperCase()}`;
+/* Kinetic editorial name — letters scale/stagger in one by one. */
+function KineticName({
+  name,
+  active,
+  delay = 0,
+  color = INK,
+  fontSize = "clamp(3rem, 15vw, 4.7rem)",
+}: {
+  name: string;
+  active: boolean;
+  delay?: number;
+  color?: string;
+  fontSize?: string;
+}) {
+  return (
+    <span
+      className="inline-flex flex-wrap items-baseline justify-center font-display font-semibold leading-[1.05]"
+      style={{ color, fontSize }}
+      role="text"
+      aria-label={name}
+    >
+      {name.split("").map((ch, i) => (
+        <motion.span
+          key={i}
+          aria-hidden
+          style={{ display: "inline-block" }}
+          initial={{ opacity: 0, scale: 1.7, y: 34, rotate: 6 }}
+          animate={active ? { opacity: 1, scale: 1, y: 0, rotate: 0 } : {}}
+          transition={{
+            type: "spring",
+            stiffness: 320,
+            damping: 19,
+            delay: delay + i * 0.05,
+          }}
+        >
+          {ch === " " ? "\u00A0" : ch}
+        </motion.span>
+      ))}
+    </span>
+  );
+}
+
+/* Coded sunburst — radial rays via a repeating conic gradient, turning
+   very slowly; scale/opacity are driven by the caller. */
+function SunburstRays({
+  size = "118vmin",
+  opacity = 0.55,
+}: {
+  size?: string;
+  opacity?: number;
+}) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
+      style={{
+        width: size,
+        height: size,
+        x: "-50%",
+        y: "-50%",
+        opacity,
+        background:
+          "repeating-conic-gradient(from 0deg, rgba(255,243,191,0.6) 0deg 5deg, rgba(255,243,191,0) 5deg 14deg)",
+        WebkitMaskImage:
+          "radial-gradient(circle, black 0%, black 34%, transparent 68%)",
+        maskImage:
+          "radial-gradient(circle, black 0%, black 34%, transparent 68%)",
+      }}
+      animate={{ rotate: 360 }}
+      transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+      aria-hidden
+    />
+  );
+}
 
 /* ── one coded marigold — concentric rings of petal circles ── */
 function Marigold({ size = 190, pulse = false }: { size?: number; pulse?: boolean }) {
@@ -127,32 +198,35 @@ function Marigold({ size = 190, pulse = false }: { size?: number; pulse?: boolea
   );
 }
 
-/* ════════════════════════ Reveal — Rub the Haldi ════════════════════════ */
+/* ════════════════════════ Reveal — Haldi Splash ════════════════════════ */
 
 const SPECKLES = Array.from({ length: 42 }, (_, i) => ({
   left: (i * 41 + 7) % 100,
   top: (i * 59 + 11) % 100,
   size: 2 + ((i * 23) % 4),
-  opacity: 0.16 + ((i * 13) % 20) / 100,
+  opacity: 0.1 + ((i * 13) % 14) / 100,
 }));
+
+/* glossy droplets that pop around the smear once it lands */
+const DROPLETS = Array.from({ length: 9 }, (_, i) => ({
+  left: 10 + ((i * 37 + 9) % 80),
+  top: 26 + ((i * 53 + 5) % 46),
+  size: 5 + ((i * 17) % 9),
+  delay: 0.35 + ((i * 7) % 10) / 22,
+}));
+
+const SWIPE_THRESHOLD = 64; // px of travel, any direction
 
 export function Reveal({ onReveal }: { onReveal: () => void }) {
   const cfg = useConfig();
-  const [progress, setProgress] = useState(0);
-  const [done, setDone] = useState(false);
-  const [glow, setGlow] = useState<{ x: number; y: number } | null>(null);
+  const [splashed, setSplashed] = useState(false);
+  const [smearAngle, setSmearAngle] = useState(-13);
   const doneRef = useRef(false);
   const onRevealRef = useRef(onReveal);
   onRevealRef.current = onReveal;
-  const pressRef = useRef<{
-    x: number;
-    y: number;
-    startX: number;
-    startY: number;
-    t: number;
-    dist: number;
-    moved: number;
-  } | null>(null);
+  const pressRef = useRef<{ startX: number; startY: number; t: number } | null>(
+    null
+  );
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -165,62 +239,45 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const finish = () => {
     if (doneRef.current) return;
     doneRef.current = true;
-    setProgress(1);
-    setDone(true);
-    timerRef.current = setTimeout(() => onRevealRef.current(), 500);
-  };
-
-  const localPoint = (e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    };
+    setSplashed(true);
+    // hold while the sunburst opens and the names rise letter by letter
+    timerRef.current = setTimeout(() => onRevealRef.current(), 1750);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (doneRef.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    pressRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      startX: e.clientX,
-      startY: e.clientY,
-      t: Date.now(),
-      dist: 0,
-      moved: 0,
-    };
-    setGlow(localPoint(e));
+    pressRef.current = { startX: e.clientX, startY: e.clientY, t: Date.now() };
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = pressRef.current;
     if (!p || doneRef.current) return;
-    const step = Math.hypot(e.clientX - p.x, e.clientY - p.y);
-    p.dist += step;
-    p.x = e.clientX;
-    p.y = e.clientY;
-    p.moved = Math.max(
-      p.moved,
-      Math.hypot(e.clientX - p.startX, e.clientY - p.startY)
-    );
-    setGlow(localPoint(e));
-    const next = Math.min(1, p.dist / 700);
-    setProgress(next);
-    if (next >= 0.65) finish();
+    const dx = e.clientX - p.startX;
+    const dy = e.clientY - p.startY;
+    if (Math.hypot(dx, dy) >= SWIPE_THRESHOLD) {
+      // the smear follows the swipe's own direction (clamped for composition)
+      const angle = Math.max(
+        -28,
+        Math.min(28, (Math.atan2(dy, dx) * 180) / Math.PI)
+      );
+      setSmearAngle(angle);
+      pressRef.current = null;
+      finish();
+    }
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = pressRef.current;
     pressRef.current = null;
-    setGlow(null);
     if (!p || doneRef.current) return;
-    const quick = Date.now() - p.t < 300;
-    const still = Math.hypot(e.clientX - p.startX, e.clientY - p.startY) < 10 && p.moved < 10;
+    // tap fallback — a quick, still press also spreads the haldi
+    const quick = Date.now() - p.t < 350;
+    const still =
+      Math.hypot(e.clientX - p.startX, e.clientY - p.startY) < 12;
     if (quick && still) finish();
   };
 
-  const pasteOpacity = done ? 0 : 1 - progress * 0.95;
   const detailLine = [cfg?.date, cfg?.venue ?? cfg?.city]
     .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
     .join("  ·  ");
@@ -229,7 +286,8 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     <div
       className="relative h-full w-full overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse 115% 90% at 50% 38%, ${PAPER} 0%, ${PANEL} 85%)`,
+        background:
+          "radial-gradient(ellipse 125% 95% at 50% 32%, #ffd43b 0%, #fab005 46%, #f08c00 76%, #e8590c 100%)",
         touchAction: "none",
         cursor: "pointer",
       }}
@@ -238,124 +296,220 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       onPointerUp={onPointerUp}
       onPointerCancel={() => {
         pressRef.current = null;
-        setGlow(null);
       }}
       role="button"
-      aria-label="Rub the haldi away to reveal the invitation"
+      aria-label="Swipe to spread the haldi and reveal the invitation"
     >
-      {/* the layer beneath — marigold + initials */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 0.35 + progress * 0.65, scale: 0.94 + progress * 0.06 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-        >
-          <Marigold size={196} pulse={done} />
-        </motion.div>
-        <p
-          className="font-display mt-6 text-[2rem] font-semibold tracking-[0.14em]"
-          style={{ color: INK, opacity: 0.3 + progress * 0.7 }}
-          aria-hidden
-        >
-          {INITIALS}
-        </p>
+      {/* turmeric grain over the saturated field */}
+      {SPECKLES.map((s, i) => (
         <span
-          className="mt-2 block h-px w-16"
+          key={i}
+          className="pointer-events-none absolute rounded-full"
           style={{
-            background: `linear-gradient(90deg, transparent, ${DEEP_TURMERIC}, transparent)`,
-            opacity: 0.3 + progress * 0.7,
+            left: `${s.left}%`,
+            top: `${s.top}%`,
+            width: s.size,
+            height: s.size,
+            background: i % 3 === 0 ? DEEP_TURMERIC : INK,
+            opacity: s.opacity,
           }}
           aria-hidden
         />
-        <p
-          className="mt-3 text-[0.62rem] uppercase"
-          style={{ color: DEEP_TURMERIC, letterSpacing: "0.34em", opacity: 0.3 + progress * 0.7 }}
-          aria-hidden
-        >
-          The Haldi Ceremony
-        </p>
-        {detailLine && (
-          <p
-            className="mt-4 text-center font-display text-sm tracking-[0.18em]"
-            style={{ color: INK, opacity: 0.3 + progress * 0.7 }}
-            aria-hidden
-          >
-            {detailLine}
-          </p>
-        )}
-      </div>
+      ))}
+      {/* warm sheen pooling at the top of the field */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 75% 46% at 50% 22%, rgba(255,244,200,0.5) 0%, transparent 70%)",
+        }}
+        aria-hidden
+      />
 
-      {/* rubbed glow following the pointer */}
-      {glow && !done && (
-        <div
-          className="pointer-events-none absolute h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full"
+      {/* marigold-petal cascade — coded petals drifting down the field */}
+      <PetalField
+        count={24}
+        palette="marigold"
+        className="pointer-events-none absolute inset-0"
+      />
+
+      {/* quiet header — sentence case */}
+      <motion.p
+        className="pointer-events-none absolute inset-x-0 top-[10%] text-center font-display text-xl"
+        style={{ color: INK, letterSpacing: "0.04em" }}
+        initial={false}
+        animate={{ opacity: splashed ? 0 : 0.85 }}
+        transition={{ duration: 0.4 }}
+        aria-hidden
+      >
+        You&rsquo;re invited
+      </motion.p>
+
+      {/* before the swipe — one marigold heart, gently breathing, plus a
+          faint glossy trail that teases the spreading gesture */}
+      {!splashed && (
+        <>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              animate={{ scale: [1, 1.05, 1], rotate: [0, 2, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Marigold size={168} />
+            </motion.div>
+          </div>
+          <motion.div
+            className="pointer-events-none absolute left-[-15%] top-[46%] h-[13%] w-[80%] rounded-[50%]"
+            style={{
+              rotate: -13,
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(255,243,191,0.75) 30%, rgba(255,227,102,0.9) 55%, transparent 100%)",
+              filter: "blur(3px)",
+              mixBlendMode: "screen",
+            }}
+            animate={{ x: ["0%", "52%", "0%"], opacity: [0.25, 0.7, 0.25] }}
+            transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+            aria-hidden
+          />
+        </>
+      )}
+
+      {/* the smear — a broad glossy band of haldi swept across the frame,
+          angled to the visitor's own swipe */}
+      {splashed && (
+        <motion.div
+          className="pointer-events-none absolute left-[-22%] top-[30%] h-[42%] w-[144%]"
           style={{
-            left: `${glow.x}%`,
-            top: `${glow.y}%`,
+            rotate: smearAngle,
+            borderRadius: "50%",
             background:
-              "radial-gradient(circle, rgba(255,236,170,0.85) 0%, rgba(250,176,5,0.35) 45%, transparent 70%)",
-            filter: "blur(6px)",
-            mixBlendMode: "screen",
+              "linear-gradient(100deg, rgba(240,140,0,0) 0%, #ffd43b 16%, #ffe873 38%, #fff3bf 52%, #ffe066 68%, #fab005 86%, rgba(240,140,0,0) 100%)",
+            boxShadow:
+              "0 18px 44px rgba(171,116,30,0.35), inset 0 -14px 28px rgba(232,89,12,0.28), inset 0 12px 24px rgba(255,255,255,0.55)",
+            filter: "blur(1px)",
           }}
+          initial={{ x: "-62%", opacity: 0, scaleY: 0.55 }}
+          animate={{ x: "0%", opacity: 1, scaleY: 1 }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
           aria-hidden
         />
       )}
 
-      {/* turmeric paste layer — dissolves as the guest rubs */}
-      <motion.div
-        className="pointer-events-none absolute inset-0"
-        initial={false}
-        animate={{ opacity: pasteOpacity, scale: done ? 1.03 : 1 }}
-        transition={{ duration: done ? 0.5 : 0.12, ease: "easeOut" }}
-        style={{
-          background:
-            "linear-gradient(160deg, #e9c767 0%, #dfba62 52%, #d3a94e 100%)",
-        }}
-        aria-hidden
-      >
-        {SPECKLES.map((s, i) => (
-          <span
+      {/* glossy droplets popping around the settled smear */}
+      {splashed &&
+        DROPLETS.map((d, i) => (
+          <motion.span
             key={i}
-            className="absolute rounded-full"
+            className="pointer-events-none absolute rounded-full"
             style={{
-              left: `${s.left}%`,
-              top: `${s.top}%`,
-              width: s.size,
-              height: s.size,
-              background: i % 3 === 0 ? DEEP_TURMERIC : INK,
-              opacity: s.opacity * (1 - progress),
+              left: `${d.left}%`,
+              top: `${d.top}%`,
+              width: d.size,
+              height: d.size,
+              background:
+                "radial-gradient(circle at 34% 30%, #fff3bf 0%, #ffd43b 60%, #f08c00 120%)",
+              boxShadow: "0 2px 6px rgba(121,61,22,0.35)",
             }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.95 }}
+            transition={{
+              type: "spring",
+              stiffness: 320,
+              damping: 15,
+              delay: d.delay,
+            }}
+            aria-hidden
           />
         ))}
-        {/* soft trowel sheen */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 46% at 50% 30%, rgba(255,244,200,0.35) 0%, transparent 70%)",
-          }}
-        />
-        <p
-          className="absolute inset-x-0 top-[13%] text-center font-display text-sm uppercase"
-          style={{ color: INK, letterSpacing: "0.34em", opacity: 0.75 }}
-        >
-          You&rsquo;re Invited
-        </p>
-      </motion.div>
 
-      {/* gesture hint */}
+      {/* the sunburst opens inside the smear, names rising within it */}
+      {splashed && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <motion.div
+            className="pointer-events-none absolute left-1/2 top-1/2"
+            initial={{ scale: 0.3, opacity: 0, x: "-50%", y: "-50%" }}
+            animate={{ scale: 1, opacity: 1, x: "-50%", y: "-50%" }}
+            transition={{ duration: 1.15, ease: EASE, delay: 0.18 }}
+            aria-hidden
+          >
+            <div
+              className="h-[96vmin] w-[96vmin] rounded-full"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,243,191,0.85) 0%, rgba(250,176,5,0.4) 46%, transparent 70%)",
+              }}
+            />
+          </motion.div>
+          <SunburstRays />
+          <div className="relative flex flex-col items-center">
+            <motion.div
+              className="mb-3 flex justify-center"
+              initial={{ scale: 0, rotate: -30, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 16,
+                delay: 0.3,
+              }}
+              aria-hidden
+            >
+              <Marigold size={64} />
+            </motion.div>
+            <KineticName name={COUPLE.groom} active={splashed} delay={0.38} />
+            <motion.p
+              className="my-1 font-display text-xl italic"
+              style={{ color: DEEP_TURMERIC }}
+              initial={{ opacity: 0, scale: 1.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 18,
+                delay: 0.62,
+              }}
+            >
+              weds
+            </motion.p>
+            <KineticName name={COUPLE.bride} active={splashed} delay={0.72} />
+            <motion.p
+              className="mt-5 font-display text-base"
+              style={{ color: INK, letterSpacing: "0.05em" }}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 0.9, y: 0 }}
+              transition={{ duration: 0.6, ease: EASE, delay: 1.05 }}
+              aria-hidden
+            >
+              The haldi ceremony
+            </motion.p>
+            {detailLine && (
+              <motion.p
+                className="mt-2 text-center font-display text-sm"
+                style={{ color: INK, letterSpacing: "0.06em" }}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 0.85, y: 0 }}
+                transition={{ duration: 0.6, ease: EASE, delay: 1.18 }}
+                aria-hidden
+              >
+                {detailLine}
+              </motion.p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* gesture hint — quiet, sentence case */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[7%] z-10 text-center font-display text-xs uppercase"
-        style={{ color: INK, letterSpacing: "0.34em" }}
-        animate={{ opacity: done ? 0 : [0.55, 1, 0.55] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[7%] z-10 text-center font-display text-sm"
+        style={{ color: INK, letterSpacing: "0.06em" }}
+        animate={{ opacity: splashed ? 0 : [0.55, 1, 0.55] }}
         transition={
-          done
+          splashed
             ? { duration: 0.3 }
             : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
         }
         aria-hidden
       >
-        ✦&nbsp; Rub the haldi away &nbsp;✦
+        Swipe to spread the haldi
       </motion.p>
     </div>
   );
@@ -453,41 +607,49 @@ export function Curtain({
           transition={{ duration: 1.5, ease: EASE, delay: 0.2 }}
           aria-hidden
         />
-        <motion.div
-          className="relative"
-          initial={{ opacity: 0, scale: 0.92, y: 22 }}
-          animate={parted ? { opacity: 1, scale: 1, y: 0 } : {}}
-          transition={{ duration: 1.1, ease: EASE, delay: 0.5 }}
-        >
-          <div className="mb-4 flex justify-center" aria-hidden>
-            <Marigold size={74} />
-          </div>
-          <p
-            className="font-script leading-[1.12]"
-            style={{ color: INK, fontSize: "clamp(3rem, 15vw, 4.6rem)" }}
-          >
-            {COUPLE.groom}
-          </p>
-          <p
-            className="my-1 font-display text-lg italic lg:text-2xl"
-            style={{ color: DEEP_TURMERIC }}
-          >
-            weds
-          </p>
-          <p
-            className="font-script leading-[1.12]"
-            style={{ color: INK, fontSize: "clamp(3rem, 15vw, 4.6rem)" }}
-          >
-            {COUPLE.bride}
-          </p>
-          <p
-            className="mt-5 text-[0.62rem] uppercase"
-            style={{ color: DEEP_TURMERIC, letterSpacing: "0.34em" }}
+        {parted && <SunburstRays size="104vmin" opacity={0.4} />}
+        <div className="relative flex flex-col items-center">
+          <motion.div
+            className="mb-4 flex justify-center"
+            initial={{ scale: 0, rotate: -24, opacity: 0 }}
+            animate={parted ? { scale: 1, rotate: 0, opacity: 1 } : {}}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 16,
+              delay: 0.45,
+            }}
             aria-hidden
           >
-            ✦&nbsp; The Haldi Ceremony &nbsp;✦
-          </p>
-        </motion.div>
+            <Marigold size={74} />
+          </motion.div>
+          <KineticName name={COUPLE.groom} active={parted} delay={0.5} />
+          <motion.p
+            className="my-1 font-display text-xl italic lg:text-2xl"
+            style={{ color: DEEP_TURMERIC }}
+            initial={{ opacity: 0, scale: 1.6 }}
+            animate={parted ? { opacity: 1, scale: 1 } : {}}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 18,
+              delay: 0.78,
+            }}
+          >
+            weds
+          </motion.p>
+          <KineticName name={COUPLE.bride} active={parted} delay={0.88} />
+          <motion.p
+            className="mt-5 font-display text-base"
+            style={{ color: DEEP_TURMERIC, letterSpacing: "0.05em" }}
+            initial={{ opacity: 0, y: 14 }}
+            animate={parted ? { opacity: 0.9, y: 0 } : {}}
+            transition={{ duration: 0.6, ease: EASE, delay: 1.2 }}
+            aria-hidden
+          >
+            The haldi ceremony
+          </motion.p>
+        </div>
       </div>
 
       {parted && (
@@ -580,27 +742,27 @@ export function Curtain({
         </div>
       </div>
 
-      {/* closed-state caption over the strands */}
+      {/* closed-state caption over the strands — quiet, sentence case */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 top-[16%] text-center font-display text-sm uppercase"
-        style={{ color: INK, letterSpacing: "0.34em", textShadow: "0 1px 8px rgba(255,245,217,0.9)" }}
+        className="pointer-events-none absolute inset-x-0 top-[16%] text-center font-display text-xl"
+        style={{ color: INK, letterSpacing: "0.04em", textShadow: "0 1px 8px rgba(255,245,217,0.9)" }}
         initial={false}
         animate={{ opacity: parted ? 0 : 1 }}
         transition={{ duration: 0.45 }}
         aria-hidden
       >
-        You&rsquo;re Invited
+        You&rsquo;re invited
       </motion.p>
 
       {!autoPlay && !parted && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-xs uppercase"
-          style={{ color: INK, letterSpacing: "0.34em", textShadow: "0 1px 8px rgba(255,245,217,0.9)" }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-sm"
+          style={{ color: INK, letterSpacing: "0.06em", textShadow: "0 1px 8px rgba(255,245,217,0.9)" }}
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >
-          ✦&nbsp; Tap to reveal &nbsp;✦
+          Tap to reveal
         </motion.p>
       )}
     </div>

@@ -1,12 +1,13 @@
 "use client";
 
-// royal-prestige — "Break the Royal Seal"
-// Beat 0 (Reveal): press the great crimson wax seal on a double-gold-framed
-// palace panel; it trembles, cracks into three wedges and falls in gold dust.
+// royal-prestige — "The Heritage Monogram"
+// Beat 0 (Reveal): the couple's intertwined initials draw themselves in
+// gold line-work on a deep crimson ground, ringed by a fine gold circle
+// and laurel. A tap completes the monogram in a soft glow.
 // Beat 2 (Curtain): heavy crimson velvet drapes with gold tassel tiebacks
 // part sideways, and the couple's names rise in gold under a light sweep.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
@@ -38,50 +39,26 @@ function runtimeDate(): string {
   return formatDate(typeof cfg?.date === "string" ? cfg.date : undefined);
 }
 
-const SEAL_BG =
-  "radial-gradient(circle at 38% 32%, #b3233a 0%, #7c1225 55%, #4d0a16 100%)";
-
-/* ── original generic crest: crown points, diamond, star ────────── */
-function Crest({ size = 62 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" aria-hidden>
-      {/* crown points */}
-      <path
-        d="M22 30 L26 16 L34 26 L40 13 L46 26 L54 16 L58 30 Z"
-        stroke={LIGHT_GOLD}
-        strokeWidth="2"
-        strokeLinejoin="round"
-        fill="rgba(245,220,162,0.14)"
-      />
-      <circle cx="26" cy="14" r="2" fill={LIGHT_GOLD} />
-      <circle cx="40" cy="11" r="2.2" fill={LIGHT_GOLD} />
-      <circle cx="54" cy="14" r="2" fill={LIGHT_GOLD} />
-      <rect x="21" y="33" width="38" height="3" rx="1.5" fill={LIGHT_GOLD} opacity="0.9" />
-      {/* diamond */}
-      <path
-        d="M40 42 L52 54 L40 66 L28 54 Z"
-        stroke={LIGHT_GOLD}
-        strokeWidth="2"
-        strokeLinejoin="round"
-        fill="rgba(245,220,162,0.10)"
-      />
-      {/* star at the diamond's heart */}
-      <path
-        d="M40 48 L41.8 52.2 L46 54 L41.8 55.8 L40 60 L38.2 55.8 L34 54 L38.2 52.2 Z"
-        fill={LIGHT_GOLD}
-      />
-    </svg>
-  );
+function firstInitial(name?: string): string {
+  const trimmed = (name ?? "").trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "";
 }
 
 /* ══ BEAT 0 — Reveal ══════════════════════════════════════════════ */
 export function Reveal({ onReveal }: { onReveal: () => void }) {
-  const [pressing, setPressing] = useState(false);
+  const [ready, setReady] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const downAtRef = useRef<number | null>(null);
   const finishedRef = useRef(false);
   const calledRef = useRef(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const groomInitial = firstInitial(COUPLE.groom);
+  const brideInitial = firstInitial(COUPLE.bride);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 1850);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(
     () => () => {
@@ -93,70 +70,15 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    setPressing(false);
     setFinishing(true);
     timersRef.current.push(
       setTimeout(() => {
         if (calledRef.current) return;
         calledRef.current = true;
         onReveal();
-      }, 520)
+      }, 700)
     );
   };
-  const finishRef = useRef(finish);
-  finishRef.current = finish;
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (finishing) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    downAtRef.current = Date.now();
-    setPressing(true);
-    // a long hold cracks on its own — the guest is never trapped
-    timersRef.current.push(setTimeout(() => finishRef.current(), 650));
-  };
-
-  const onPointerUp = () => {
-    if (finishing) return;
-    // ≥250ms hold and a plain tap take the same crack path: finish on release
-    if (downAtRef.current !== null) finish();
-    downAtRef.current = null;
-  };
-
-  const dust = useMemo(
-    () =>
-      Array.from({ length: 9 }, (_, i) => {
-        const angle = (i / 9) * Math.PI * 2 + (i % 3) * 0.18;
-        const dist = 74 + ((i * 29) % 44);
-        return {
-          x: Math.cos(angle) * dist,
-          y: Math.sin(angle) * dist + 26,
-          size: 4 + ((i * 7) % 5),
-          delay: i * 0.03,
-        };
-      }),
-    []
-  );
-
-  const wedges = [
-    {
-      clip: "polygon(50% 50%, 14% 0%, 86% 0%)",
-      x: 0,
-      y: -64,
-      rotate: -14,
-    },
-    {
-      clip: "polygon(50% 50%, 86% 0%, 102% 84%, 58% 102%)",
-      x: 58,
-      y: 44,
-      rotate: 22,
-    },
-    {
-      clip: "polygon(50% 50%, 58% 102%, -2% 84%, 14% 0%)",
-      x: -58,
-      y: 48,
-      rotate: -24,
-    },
-  ];
 
   return (
     <div
@@ -165,11 +87,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
         background: `linear-gradient(180deg, ${DEEP} 0%, ${DEEP_2} 55%, ${DEEP} 100%)`,
         cursor: finishing ? "default" : "pointer",
       }}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onClick={() => finish()}
       role="button"
-      aria-label="Press to break the royal seal and reveal the invitation"
+      aria-label="Tap to complete the monogram and reveal the invitation"
     >
       {/* palace glow */}
       <div
@@ -195,8 +115,8 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
       <div className="relative flex h-full flex-col items-center justify-center px-8 text-center">
         <p
-          className="font-display text-[11px] font-semibold uppercase"
-          style={{ letterSpacing: "0.36em", color: GOLD }}
+          className="font-display text-sm"
+          style={{ letterSpacing: "0.05em", color: GOLD }}
         >
           {copyText(3, "You're Invited")}
         </p>
@@ -207,110 +127,192 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
           By the grace of two families
         </p>
 
-        {/* the wax seal */}
-        <div className="relative mt-10 h-[132px] w-[132px] lg:h-[148px] lg:w-[148px]">
-          {!finishing && (
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center rounded-full"
-              style={{
-                background: SEAL_BG,
-                boxShadow: `0 0 0 3px ${GOLD}, 0 0 0 6px rgba(219,180,116,0.35), 0 12px 32px rgba(0,0,0,0.6), 0 0 44px rgba(219,180,116,0.28)`,
-              }}
-              initial={false}
-              animate={
-                pressing
-                  ? { x: [0, -2, 2, -2, 1, 0], y: [0, 1, -1, 1, 0, 0], scale: 0.97 }
-                  : { x: 0, y: 0, scale: 1 }
-              }
-              transition={
-                pressing
-                  ? { duration: 0.32, repeat: Infinity, ease: "linear" }
-                  : { duration: 0.2 }
-              }
-              aria-hidden
-            >
-              <div
-                className="flex h-[78%] w-[78%] items-center justify-center rounded-full"
-                style={{ border: `1.5px solid rgba(245,220,162,0.8)` }}
-              >
-                <Crest />
-              </div>
-            </motion.div>
-          )}
-
-          {/* cracked wedges */}
-          {finishing &&
-            wedges.map((wd, i) => (
-              <motion.div
-                key={i}
-                className="absolute inset-0 flex items-center justify-center rounded-full"
-                style={{ background: SEAL_BG, clipPath: wd.clip }}
-                initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-                animate={{ x: wd.x, y: wd.y + 60, rotate: wd.rotate, opacity: 0 }}
-                transition={{ duration: 0.55, ease: [0.3, 0.7, 0.6, 1] }}
-                aria-hidden
-              >
-                {i === 0 && <Crest size={52} />}
-              </motion.div>
-            ))}
-
-          {/* crack lines flashing at the break */}
-          {finishing && (
-            <motion.svg
-              className="absolute inset-0"
-              viewBox="0 0 120 120"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              aria-hidden
-            >
-              <path d="M60 60 L60 8 M60 60 L106 84 M60 60 L14 84" stroke={LIGHT_GOLD} strokeWidth="2" />
-            </motion.svg>
-          )}
-
-          {/* gold-dust burst */}
-          <AnimatePresence>
-            {finishing &&
-              dust.map((d, i) => (
-                <motion.span
-                  key={i}
-                  className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
-                  style={{
-                    width: d.size,
-                    height: d.size,
-                    background: `radial-gradient(circle, ${LIGHT_GOLD}, ${GOLD})`,
-                    boxShadow: "0 0 8px rgba(245,220,162,0.9)",
-                  }}
-                  initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                  animate={{ x: d.x, y: d.y, opacity: 0, scale: 0.4 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.7, delay: d.delay, ease: "easeOut" }}
-                  aria-hidden
-                />
-              ))}
-          </AnimatePresence>
-        </div>
-
-        <p
-          className="mt-10 font-display text-base"
-          style={{ color: CREAM, opacity: 0.85 }}
-        >
-          {COUPLE.groom} &amp; {COUPLE.bride}
-        </p>
-      </div>
-
-      {/* hint */}
-      {!finishing && (
-        <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-xs font-semibold uppercase"
-          style={{ letterSpacing: "0.32em", color: LIGHT_GOLD }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+        {/* heritage monogram — gold line-work drawing itself */}
+        <motion.div
+          className="relative mt-10 h-[248px] w-[248px] lg:h-[268px] lg:w-[268px]"
+          initial={false}
+          animate={
+            finishing
+              ? { scale: 1.045, filter: "drop-shadow(0 0 30px rgba(245,220,162,0.55))" }
+              : { scale: 1, filter: "drop-shadow(0 0 0px rgba(245,220,162,0))" }
+          }
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           aria-hidden
         >
-          Press to break the seal
-        </motion.p>
-      )}
+          <svg
+            className="absolute inset-0 h-full w-full"
+            viewBox="0 0 300 300"
+            fill="none"
+          >
+            {/* fine outer ring */}
+            <motion.circle
+              cx="150"
+              cy="150"
+              r="118"
+              stroke={GOLD}
+              strokeWidth="1.6"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            />
+            {/* inner hairline ring */}
+            <motion.circle
+              cx="150"
+              cy="150"
+              r="106"
+              stroke="rgba(219,180,116,0.55)"
+              strokeWidth="0.9"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.6, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            />
+            {/* laurel branches, left and right */}
+            <motion.path
+              d="M 66 214 C 46 172 48 118 80 80"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.05, delay: 1.0, ease: "easeOut" }}
+            />
+            <motion.path
+              d="M 234 214 C 254 172 252 118 220 80"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.05, delay: 1.0, ease: "easeOut" }}
+            />
+            {/* laurel leaves */}
+            <motion.path
+              d="M 60 196 L 44 190 M 54 164 L 38 156 M 60 130 L 46 116 M 70 102 L 60 84"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.9 }}
+              transition={{ duration: 0.9, delay: 1.35, ease: "easeOut" }}
+            />
+            <motion.path
+              d="M 240 196 L 256 190 M 246 164 L 262 156 M 240 130 L 254 116 M 230 102 L 240 84"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.9 }}
+              transition={{ duration: 0.9, delay: 1.35, ease: "easeOut" }}
+            />
+            {/* diamond crowning the ring */}
+            <motion.path
+              d="M150 20 L163 36 L150 52 L137 36 Z"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.5, ease: "easeOut" }}
+            />
+            {/* small star at the foot of the ring */}
+            <motion.path
+              d="M150 244 L153 254 L163 257 L153 260 L150 270 L147 260 L137 257 L147 254 Z"
+              stroke={LIGHT_GOLD}
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.6, ease: "easeOut" }}
+            />
+          </svg>
+
+          {/* intertwined initials — editorial serif, staggered kinetic entry */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.span
+              className="font-display"
+              style={{
+                color: LIGHT_GOLD,
+                fontSize: "clamp(76px, 24vw, 96px)",
+                lineHeight: 1,
+                marginRight: -16,
+                textShadow: "0 3px 18px rgba(0,0,0,0.5)",
+              }}
+              initial={{ opacity: 0, y: 26, scale: 0.86 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.85, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {groomInitial}
+            </motion.span>
+            <motion.span
+              className="font-display italic"
+              style={{
+                color: GOLD,
+                fontSize: "clamp(26px, 8vw, 34px)",
+                lineHeight: 1,
+                marginTop: 34,
+              }}
+              initial={{ opacity: 0, y: 18, scale: 0.85 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            >
+              &amp;
+            </motion.span>
+            <motion.span
+              className="font-display"
+              style={{
+                color: LIGHT_GOLD,
+                fontSize: "clamp(76px, 24vw, 96px)",
+                lineHeight: 1,
+                marginLeft: -16,
+                marginTop: 22,
+                textShadow: "0 3px 18px rgba(0,0,0,0.5)",
+              }}
+              initial={{ opacity: 0, y: 26, scale: 0.86 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.85, delay: 1.05, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {brideInitial}
+            </motion.span>
+          </div>
+        </motion.div>
+
+        {/* couple names — editorial scale, staggered */}
+        <div className="mt-9 flex flex-col items-center">
+          <motion.p
+            className="font-display leading-tight"
+            style={{ color: CREAM, fontSize: "clamp(24px, 7.5vw, 32px)" }}
+            initial={{ opacity: 0, y: 22, scale: 0.94 }}
+            animate={
+              ready
+                ? { opacity: 1, y: 0, scale: 1 }
+                : { opacity: 0, y: 22, scale: 0.94 }
+            }
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {COUPLE.groom} &amp; {COUPLE.bride}
+          </motion.p>
+        </div>
+      </div>
+
+      {/* hint — quiet modern treatment, once the drawing completes */}
+      <AnimatePresence>
+        {ready && !finishing && (
+          <motion.p
+            className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-sm"
+            style={{ letterSpacing: "0.05em", color: LIGHT_GOLD }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: [0.55, 1, 0.55], y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              opacity: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+              y: { duration: 0.5, ease: "easeOut" },
+            }}
+            aria-hidden
+          >
+            Tap to begin
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -410,7 +412,7 @@ export function Curtain({
       role={autoPlay ? undefined : "button"}
       aria-label={autoPlay ? undefined : "Tap to part the drapes"}
     >
-      {/* names layer — rises from below on a maroon panel */}
+      {/* names layer — editorial scale on a maroon panel */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <div
           className="pointer-events-none absolute inset-0"
@@ -420,27 +422,42 @@ export function Curtain({
           }}
           aria-hidden
         />
-        <motion.div
-          className="relative overflow-hidden px-4 py-2"
-          initial={false}
-          animate={open ? { y: 0, opacity: 1 } : { y: 70, opacity: 0 }}
-          transition={{ duration: 1.1, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <p
-            className="font-script text-7xl leading-[1.12] lg:text-8xl"
-            style={{ color: LIGHT_GOLD, textShadow: "0 3px 18px rgba(0,0,0,0.55)" }}
+        <div className="relative overflow-hidden px-4 py-2">
+          <motion.p
+            className="font-display leading-[1.06]"
+            style={{
+              color: LIGHT_GOLD,
+              fontSize: "clamp(48px, 14.5vw, 64px)",
+              textShadow: "0 3px 18px rgba(0,0,0,0.55)",
+            }}
+            initial={false}
+            animate={open ? { y: 0, opacity: 1, scale: 1 } : { y: 34, opacity: 0, scale: 0.93 }}
+            transition={{ duration: 1.0, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             {COUPLE.groom}
-          </p>
-          <p className="my-1 font-display text-lg italic" style={{ color: GOLD }}>
+          </motion.p>
+          <motion.p
+            className="my-1 font-display italic"
+            style={{ color: GOLD, fontSize: "clamp(19px, 5.5vw, 24px)" }}
+            initial={false}
+            animate={open ? { y: 0, opacity: 1, scale: 1 } : { y: 24, opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
             weds
-          </p>
-          <p
-            className="font-script text-7xl leading-[1.12] lg:text-8xl"
-            style={{ color: LIGHT_GOLD, textShadow: "0 3px 18px rgba(0,0,0,0.55)" }}
+          </motion.p>
+          <motion.p
+            className="font-display leading-[1.06]"
+            style={{
+              color: LIGHT_GOLD,
+              fontSize: "clamp(48px, 14.5vw, 64px)",
+              textShadow: "0 3px 18px rgba(0,0,0,0.55)",
+            }}
+            initial={false}
+            animate={open ? { y: 0, opacity: 1, scale: 1 } : { y: 34, opacity: 0, scale: 0.93 }}
+            transition={{ duration: 1.0, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
           >
             {COUPLE.bride}
-          </p>
+          </motion.p>
 
           {/* one-shot light sweep across the names */}
           {open && (
@@ -456,12 +473,12 @@ export function Curtain({
               aria-hidden
             />
           )}
-        </motion.div>
+        </div>
 
         {dateLabel && (
           <motion.p
-            className="mt-5 font-display text-xs font-semibold uppercase"
-            style={{ letterSpacing: "0.3em", color: GOLD }}
+            className="mt-5 font-display text-sm"
+            style={{ letterSpacing: "0.06em", color: GOLD }}
             initial={false}
             animate={open ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
             transition={{ duration: 0.7, delay: 1.2, ease: "easeOut" }}
@@ -535,8 +552,8 @@ export function Curtain({
             </div>
             {!autoPlay && (
               <p
-                className="absolute inset-x-0 bottom-[9%] font-display text-xs font-semibold uppercase"
-                style={{ letterSpacing: "0.32em", color: CREAM, opacity: 0.85 }}
+                className="absolute inset-x-0 bottom-[9%] font-display text-sm"
+                style={{ letterSpacing: "0.05em", color: CREAM, opacity: 0.85 }}
               >
                 Tap to reveal
               </p>

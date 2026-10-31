@@ -294,8 +294,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
       {/* hint */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-xs uppercase tracking-[0.35em] text-[#e5efda]/85"
-        animate={{ opacity: completing ? 0 : [0.55, 1, 0.55] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-sm text-[#e5efda]/85"
+        style={{ letterSpacing: "0.05em" }}
+        animate={{ opacity: completing ? 0 : [0.6, 0.92, 0.6] }}
         transition={
           completing
             ? { duration: 0.3 }
@@ -389,12 +390,7 @@ export function Curtain({
             className="pointer-events-none absolute inset-0 opacity-50"
           />
         )}
-        <motion.div
-          initial={{ opacity: 0, y: 22 }}
-          animate={lifted ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.55 }}
-          className="relative"
-        >
+        <div className="relative">
           {/* henna-brown maturing to gold — colour transition over 1.2s */}
           <div
             style={{
@@ -402,15 +398,30 @@ export function Curtain({
               transition: "color 1.2s ease",
             }}
           >
-            <p className="font-script text-7xl leading-[1.12] lg:text-9xl">
+            <motion.p
+              className="font-display font-semibold text-7xl leading-[1.08] lg:text-9xl"
+              initial={{ opacity: 0, y: 24, scale: 0.94 }}
+              animate={lifted ? { opacity: 1, y: 0, scale: 1 } : {}}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.55 }}
+            >
               {COUPLE.groom}
-            </p>
-            <p className="my-1 font-display text-lg italic opacity-80 lg:text-2xl">
+            </motion.p>
+            <motion.p
+              className="my-1 font-display text-lg italic opacity-80 lg:text-2xl"
+              initial={{ opacity: 0, y: 10, scale: 0.88 }}
+              animate={lifted ? { opacity: 0.8, y: 0, scale: 1 } : {}}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.72 }}
+            >
               weds
-            </p>
-            <p className="font-script text-7xl leading-[1.12] lg:text-9xl">
+            </motion.p>
+            <motion.p
+              className="font-display font-semibold text-7xl leading-[1.08] lg:text-9xl"
+              initial={{ opacity: 0, y: -18, scale: 0.94 }}
+              animate={lifted ? { opacity: 1, y: 0, scale: 1 } : {}}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.88 }}
+            >
               {COUPLE.bride}
-            </p>
+            </motion.p>
           </div>
           {/* gold underline flourish growing under the names */}
           <motion.div
@@ -424,7 +435,7 @@ export function Curtain({
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1], delay: 0.9 }}
             aria-hidden
           />
-        </motion.div>
+        </div>
       </div>
 
       {/* the sheer henna veil (odhni) — lifts up and over */}
@@ -481,8 +492,9 @@ export function Curtain({
       {/* tap hint — manual mode only, before the lift */}
       {!autoPlay && !lifted && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] z-10 text-center font-display text-xs uppercase tracking-[0.35em] text-[#e5efda]/90"
-          animate={{ opacity: [0.55, 1, 0.55] }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] z-10 text-center font-display text-sm text-[#e5efda]/90"
+          style={{ letterSpacing: "0.05em" }}
+          animate={{ opacity: [0.65, 0.95, 0.65] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >

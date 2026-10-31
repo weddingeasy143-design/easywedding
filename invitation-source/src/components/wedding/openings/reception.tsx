@@ -1,9 +1,11 @@
 "use client";
 
-// reception — "Pull the Card" (Champagne Forever)
-// Beat 0: drag the invitation card up out of its champagne envelope.
-// Beat 2: crystal-bead waterfall dissolves left→right over champagne silk,
-// revealing the couple's names on a deep bronze panel with a foil sweep.
+// reception — "Liquid-Glass Toast" (Champagne Forever)
+// Beat 0: a frosted liquid-glass card floats over a warm coded bokeh
+// celebration scene; the visitor drags the glass up (tap as fallback) and
+// it melts away, revealing the couple's names in editorial display type.
+// Beat 2: falling light-droplet / shimmer strands dissolve away over a
+// deep bronze panel, revealing the names at editorial scale.
 // 100% coded CSS/SVG — no external images.
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -33,7 +35,21 @@ function getConfig(): Record<string, string | undefined> {
   >;
 }
 
-/* ── Beat 0 — Pull the Card ─────────────────────────────────── */
+const GOLD = "#d9b96a";
+const GOLD_LIGHT = "#f0d99a";
+const IVORY = "#fdf6e3";
+
+/* warm bokeh glows — deterministic placement */
+const BOKEH = Array.from({ length: 14 }, (_, i) => ({
+  left: `${(i * 29 + 7) % 96}%`,
+  top: `${(i * 37 + 5) % 88}%`,
+  size: 26 + ((i * 41) % 74),
+  opacity: 0.1 + ((i * 13) % 22) / 100,
+  warm: i % 3 === 0 ? "#e8975a" : i % 3 === 1 ? "#f0d99a" : "#d9b96a",
+  drift: 2.6 + (i % 5) * 0.5,
+}));
+
+/* ── Beat 0 — Liquid-Glass Toast ────────────────────────────── */
 export function Reveal({ onReveal }: { onReveal: () => void }) {
   const [progress, setProgress] = useState(0);
   const [finishing, setFinishing] = useState(false);
@@ -49,7 +65,6 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
   const config = getConfig();
   const dateLabel = formatDate(config.date ?? "2026-12-19");
-  const initials = `${(COUPLE.groom || "G").charAt(0)} & ${(COUPLE.bride || "B").charAt(0)}`;
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
@@ -57,7 +72,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     setFinishing(true);
     setProgress(1);
     progressRef.current = 1;
-    timerRef.current = setTimeout(() => onReveal(), 500);
+    timerRef.current = setTimeout(() => onReveal(), 650);
   }, [onReveal]);
 
   useEffect(
@@ -76,9 +91,10 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current.active || finishing) return;
     const dy = dragRef.current.y - e.clientY;
-    const p = Math.max(0, Math.min(1, dy / 170));
+    const p = Math.max(0, Math.min(1, dy / 180));
     progressRef.current = p;
     setProgress(p);
+    if (p >= 0.62) finish();
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -90,7 +106,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       e.clientX - dragRef.current.x,
       e.clientY - dragRef.current.y
     );
-    if (progressRef.current >= 0.65 || (dt < 300 && dist < 10)) {
+    if (progressRef.current >= 0.45 || (dt < 300 && dist < 10)) {
       finish();
     } else {
       progressRef.current = 0;
@@ -98,23 +114,14 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     }
   };
 
-  const cardLift = finishing ? -64 : -progress * 52;
-  const flapAngle = finishing ? -165 : -progress * 160;
-
-  // gold-dust sparkle offsets (deterministic)
-  const sparks = Array.from({ length: 6 }, (_, i) => ({
-    x: (i - 2.5) * 22,
-    y: -34 - ((i * 29) % 40),
-    size: 3 + ((i * 7) % 3),
-    delay: i * 0.05,
-  }));
+  const amt = finishing ? 1 : progress;
 
   return (
     <div
       className="relative h-full w-full overflow-hidden"
       style={{
         background:
-          "linear-gradient(180deg, #fff8ec 0%, #f7ecd7 55%, #f0e5d4 100%)",
+          "linear-gradient(180deg, #1f1208 0%, #3a2210 42%, #59331a 72%, #2a180c 100%)",
         touchAction: "none",
         cursor: "grab",
       }}
@@ -123,175 +130,153 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       role="button"
-      aria-label="Pull the card to reveal the invitation"
+      aria-label="Drag the glass up to reveal the invitation"
     >
-      {/* soft top light */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-44"
-        style={{
-          background:
-            "linear-gradient(to bottom, rgba(218,196,151,0.35), transparent)",
-        }}
-        aria-hidden
-      />
+      {/* ── warm coded celebration backdrop: bokeh glows + blurred shapes ── */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        {BOKEH.map((b, i) => (
+          <motion.span
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              left: b.left,
+              top: b.top,
+              width: b.size,
+              height: b.size,
+              background: `radial-gradient(circle, ${b.warm} 0%, transparent 68%)`,
+              opacity: b.opacity,
+              filter: "blur(6px)",
+            }}
+            animate={{ y: [0, -12, 0], opacity: [b.opacity, b.opacity + 0.08, b.opacity] }}
+            transition={{ duration: b.drift, repeat: Infinity, ease: "easeInOut" }}
+          />
+        ))}
+        {/* large blurred amber shapes for depth */}
+        <div
+          className="absolute -left-16 top-[16%] h-56 w-56 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(232,151,90,0.32) 0%, transparent 70%)", filter: "blur(18px)" }}
+        />
+        <div
+          className="absolute -right-14 bottom-[10%] h-64 w-64 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(217,185,106,0.28) 0%, transparent 70%)", filter: "blur(20px)" }}
+        />
+      </div>
 
-      {/* heading */}
-      <div className="pointer-events-none absolute inset-x-0 top-[10%] px-8 text-center" aria-hidden>
+      {/* ── the names, standing behind the glass ── */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-[13%] px-6 text-center"
+        style={{
+          opacity: 0.18 + amt * 0.82,
+          transform: `translateY(${(1 - amt) * 18}px) scale(${0.93 + amt * 0.07})`,
+          transition: finishing ? "opacity 0.6s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)" : "none",
+        }}
+        aria-hidden={amt < 0.4}
+      >
         <p
-          className="font-display text-xs uppercase"
-          style={{ color: "#aa8956", letterSpacing: "0.42em" }}
+          className="font-display"
+          style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
         >
-          {copyText(9001, "You are cordially invited")}
+          {COUPLE.groom}
         </p>
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <span className="h-px w-12" style={{ background: "linear-gradient(to right, transparent, #aa8956)" }} />
-          <span style={{ color: "#aa8956", fontSize: 10 }}>◆</span>
-          <span className="h-px w-12" style={{ background: "linear-gradient(to left, transparent, #aa8956)" }} />
+        <div className="my-3 flex items-center justify-center gap-3">
+          <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${GOLD})` }} />
+          <span className="font-display italic" style={{ color: GOLD_LIGHT, fontSize: "1.15rem" }}>
+            &amp;
+          </span>
+          <span className="h-px w-10" style={{ background: `linear-gradient(to left, transparent, ${GOLD})` }} />
         </div>
-        {config.city ? (
-          <p
-            className="mt-4 font-display text-[11px] uppercase"
-            style={{ color: "#69513b", letterSpacing: "0.3em", opacity: 0.75 }}
-          >
-            {config.city}
+        <p
+          className="font-display"
+          style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
+        >
+          {COUPLE.bride}
+        </p>
+        {dateLabel ? (
+          <p className="mt-5" style={{ color: GOLD_LIGHT, fontSize: 14, letterSpacing: "0.05em", opacity: 0.9 }}>
+            {dateLabel}
+            {config.city ? ` · ${config.city}` : ""}
           </p>
         ) : null}
       </div>
 
-      {/* envelope + card */}
+      {/* ── the frosted liquid-glass card ── */}
       <div
-        className="absolute"
+        className="absolute flex flex-col items-center justify-center px-6 text-center"
         style={{
-          left: "11%",
-          right: "11%",
-          bottom: "18%",
-          height: "42%",
-          perspective: "600px",
+          left: "10%",
+          right: "10%",
+          top: "34%",
+          height: "44%",
+          borderRadius: 28,
+          background:
+            "linear-gradient(155deg, rgba(255,248,230,0.22) 0%, rgba(255,240,210,0.1) 48%, rgba(230,190,120,0.14) 100%)",
+          backdropFilter: `blur(${18 - amt * 9}px) saturate(1.35)`,
+          WebkitBackdropFilter: `blur(${18 - amt * 9}px) saturate(1.35)`,
+          border: "1px solid rgba(255,238,205,0.5)",
+          boxShadow:
+            "0 24px 54px rgba(10,4,0,0.45), inset 0 1px 0 rgba(255,250,235,0.55), inset 0 -1px 0 rgba(217,185,106,0.25)",
+          transform: `translateY(${-amt * 72}%) scale(${1 + amt * 0.05})`,
+          opacity: 1 - amt * 0.92,
+          filter: `blur(${amt * 5}px)`,
+          transition: finishing
+            ? "transform 0.65s cubic-bezier(0.22,1,0.36,1), opacity 0.6s ease, filter 0.6s ease"
+            : progress === 0
+              ? "transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease"
+              : "none",
+          pointerEvents: "none",
         }}
+        aria-hidden
       >
-        {/* the card — tucked inside, peeking ~18% above the body */}
+        {/* diagonal sheen */}
         <div
-          className="absolute flex flex-col items-center justify-center px-4 text-center"
-          style={{
-            left: "5%",
-            right: "5%",
-            top: 0,
-            height: "68%",
-            background: "#fffdf6",
-            border: "1px solid #dac497",
-            boxShadow: "0 6px 24px rgba(105,81,59,0.18)",
-            transform: `translateY(${cardLift}%)`,
-            transition: finishing
-              ? "transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.5s ease"
-              : progress === 0
-                ? "transform 0.35s ease"
-                : "none",
-            opacity: finishing ? 0.35 : 1,
-            zIndex: 20,
-          }}
-          aria-hidden
+          className="absolute inset-0 overflow-hidden"
+          style={{ borderRadius: 28 }}
         >
-          <p
-            className="font-display"
-            style={{ color: "#69513b", fontSize: 34, letterSpacing: "0.08em" }}
-          >
-            {initials}
+          <div
+            className="absolute inset-y-0 w-1/2"
+            style={{
+              left: "-20%",
+              background:
+                "linear-gradient(100deg, transparent 0%, rgba(255,252,240,0.28) 50%, transparent 100%)",
+              transform: "skewX(-14deg)",
+            }}
+          />
+        </div>
+
+        {/* two coded coupe glasses, raised in a toast */}
+        <svg viewBox="0 0 96 54" className="relative mb-4 h-12 w-24" aria-hidden>
+          <g stroke={GOLD_LIGHT} strokeWidth="1.6" fill="none" strokeLinecap="round">
+            <path d="M14 6 h30 a15 11 0 0 1 -30 0 Z" fill="rgba(240,217,154,0.18)" />
+            <path d="M29 17 v22 M18 43 h22" />
+            <path d="M52 6 h30 a15 11 0 0 1 -30 0 Z" fill="rgba(240,217,154,0.18)" />
+            <path d="M67 17 v22 M56 43 h22" />
+          </g>
+          <circle cx="48" cy="4" r="1.8" fill={GOLD_LIGHT} />
+          <circle cx="42" cy="9" r="1.2" fill={GOLD_LIGHT} opacity="0.8" />
+          <circle cx="55" cy="10" r="1.3" fill={GOLD_LIGHT} opacity="0.7" />
+        </svg>
+
+        <p className="relative font-display italic" style={{ color: IVORY, fontSize: 19, opacity: 0.95 }}>
+          {copyText(9001, "A toast to forever")}
+        </p>
+        {/* the one champagne-gold accent rule */}
+        <span
+          className="relative my-4 block h-px w-24"
+          style={{ background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)` }}
+        />
+        {dateLabel ? (
+          <p className="relative" style={{ color: "rgba(253,246,227,0.82)", fontSize: 13.5, letterSpacing: "0.05em" }}>
+            {dateLabel}
+            {config.city ? ` · ${config.city}` : ""}
           </p>
-          <span className="my-2 block h-px w-10" style={{ background: "#dac497" }} />
-          {dateLabel ? (
-            <p
-              className="font-display text-[11px] uppercase"
-              style={{ color: "#aa8956", letterSpacing: "0.28em" }}
-            >
-              {dateLabel}
-            </p>
-          ) : null}
-        </div>
-
-        {/* envelope body / front pocket */}
-        <div
-          className="absolute inset-x-0 bottom-0"
-          style={{
-            top: "18%",
-            background:
-              "linear-gradient(160deg, #f3e7cf 0%, #e9dcc0 48%, #dcc9a4 100%)",
-            border: "1px solid #aa8956",
-            boxShadow: "0 18px 40px rgba(105,81,59,0.28)",
-            zIndex: 25,
-          }}
-          aria-hidden
-        >
-          {/* side fold seams */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(115deg, transparent 49.6%, rgba(170,137,86,0.4) 50%, transparent 50.4%), linear-gradient(-115deg, transparent 49.6%, rgba(170,137,86,0.4) 50%, transparent 50.4%)",
-            }}
-          />
-          {/* pocket sheen */}
-          <div
-            className="absolute inset-x-0 top-0 h-10"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)",
-            }}
-          />
-        </div>
-
-        {/* flap — hinged at the envelope's top edge */}
-        <div
-          className="absolute inset-x-0"
-          style={{
-            top: "18%",
-            height: "40%",
-            zIndex: 30,
-            transformOrigin: "top center",
-            transform: `perspective(600px) rotateX(${flapAngle}deg)`,
-            opacity: 1 - progress * 0.25,
-            transition: finishing ? "transform 0.5s ease, opacity 0.5s ease" : "none",
-            pointerEvents: "none",
-          }}
-          aria-hidden
-        >
-          <div
-            className="h-full w-full"
-            style={{
-              clipPath: "polygon(0 0, 100% 0, 50% 100%)",
-              background:
-                "linear-gradient(180deg, #e5d3ac 0%, #d9c28e 70%, #cbb27c 100%)",
-              boxShadow: "0 4px 14px rgba(105,81,59,0.25)",
-            }}
-          />
-        </div>
-
-        {/* gold-dust sparkle as the card slips free */}
-        {finishing &&
-          sparks.map((s, i) => (
-            <motion.span
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                left: "50%",
-                top: "6%",
-                width: s.size,
-                height: s.size,
-                background: "#aa8956",
-                zIndex: 40,
-              }}
-              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-              animate={{ x: s.x, y: s.y, opacity: 0, scale: 0.4 }}
-              transition={{ duration: 0.55, delay: s.delay, ease: "easeOut" }}
-              aria-hidden
-            />
-          ))}
+        ) : null}
       </div>
 
-      {/* hint */}
+      {/* hint — quiet modern treatment */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-xs uppercase"
-        style={{ color: "#69513b", letterSpacing: "0.38em" }}
-        animate={{ opacity: finishing ? 0 : [0.55, 1, 0.55] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center"
+        style={{ color: "rgba(253,246,227,0.85)", fontSize: 13.5, letterSpacing: "0.05em" }}
+        animate={{ opacity: finishing ? 0 : [0.55, 1, 0.55], y: finishing ? 0 : [0, -5, 0] }}
         transition={
           finishing
             ? { duration: 0.3 }
@@ -299,13 +284,13 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
         }
         aria-hidden
       >
-        {copyText(9002, "Pull the card")}
+        {copyText(9002, "Drag the glass up — or tap to toast")}
       </motion.p>
     </div>
   );
 }
 
-/* ── Beat 2 — Crystal-Bead Waterfall Curtain ────────────────── */
+/* ── Beat 2 — Light-Droplet Shimmer Curtain ─────────────────── */
 export function Curtain({
   onDone,
   autoPlay,
@@ -353,153 +338,129 @@ export function Curtain({
     later(fireDone, 2400);
   };
 
-  // 18 bead strands; dots per strand and sizes are deterministic
-  const strands = Array.from({ length: 18 }, (_, i) => ({
-    dots: Array.from({ length: 20 + ((i * 3) % 6) }, (_, j) => ({
-      size: 2 + ((i + j) % 3),
+  // light-droplet strands — thin shimmer threads with falling droplets
+  const strands = Array.from({ length: 22 }, (_, i) => ({
+    delay: i * 0.07,
+    threadOpacity: 0.14 + ((i * 11) % 20) / 100,
+    droplets: Array.from({ length: 4 + ((i * 3) % 3) }, (_, j) => ({
+      top: `${8 + j * 24 + ((i * 7) % 9)}%`,
+      size: 3 + ((i + j * 2) % 4),
       gold: (i + j) % 2 === 0,
-      opacity: 0.55 + (((i * 7 + j * 13) % 40) / 100),
+      opacity: 0.5 + (((i * 7 + j * 13) % 45) / 100),
     })),
-    delay: i * 0.09,
   }));
 
   return (
     <div
       className="relative h-full w-full overflow-hidden"
-      style={{ background: "#3a2a1c", cursor: autoPlay ? undefined : "pointer" }}
+      style={{
+        background: "linear-gradient(180deg, #241407 0%, #3a2210 55%, #241407 100%)",
+        cursor: autoPlay ? undefined : "pointer",
+      }}
       onClick={handleTap}
       role="button"
       aria-label="Reveal the couple's names"
     >
-      {/* names — UNDER the material layer, on the deep bronze panel */}
+      {/* warm glow behind the names */}
+      <motion.div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[70vmin] w-[92vmin] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background:
+            "radial-gradient(ellipse, rgba(240,217,154,0.3) 0%, rgba(217,185,106,0.1) 48%, transparent 70%)",
+          filter: "blur(8px)",
+        }}
+        initial={false}
+        animate={parting ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1.4, delay: 0.5, ease: "easeOut" }}
+        aria-hidden
+      />
+
+      {/* names — UNDER the strands, editorial scale, kinetic entrance */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <motion.div
-          className="relative"
           initial={false}
-          animate={parting ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-          transition={{ duration: 1, delay: parting ? 0.55 : 0, ease: "easeOut" }}
+          animate={
+            parting
+              ? { opacity: 1, scale: 1, y: 0 }
+              : { opacity: 0, scale: 0.92, y: 22 }
+          }
+          transition={{ duration: 1.15, delay: parting ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
         >
           <p
             className="font-display"
-            style={{
-              color: "#dac497",
-              fontSize: "clamp(2rem, 9vw, 3.4rem)",
-              letterSpacing: "0.14em",
-              fontWeight: 400,
-              lineHeight: 1.15,
-            }}
+            style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
           >
             {COUPLE.groom}
           </p>
-          <p
-            className="font-display italic"
-            style={{ color: "#dac497", opacity: 0.8, fontSize: "1.05rem", margin: "0.35rem 0" }}
-          >
-            weds
-          </p>
+          <div className="my-3 flex items-center justify-center gap-3">
+            <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${GOLD})` }} />
+            <span className="font-display italic" style={{ color: GOLD_LIGHT, fontSize: "1.15rem" }}>
+              &amp;
+            </span>
+            <span className="h-px w-10" style={{ background: `linear-gradient(to left, transparent, ${GOLD})` }} />
+          </div>
           <p
             className="font-display"
-            style={{
-              color: "#dac497",
-              fontSize: "clamp(2rem, 9vw, 3.4rem)",
-              letterSpacing: "0.14em",
-              fontWeight: 400,
-              lineHeight: 1.15,
-            }}
+            style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
           >
             {COUPLE.bride}
           </p>
           {(dateLabel || config.venue) && (
-            <p
-              className="mt-5 font-display text-[11px] uppercase"
-              style={{ color: "#dac497", letterSpacing: "0.3em", opacity: 0.7 }}
-            >
+            <p className="mt-6" style={{ color: GOLD_LIGHT, fontSize: 14, letterSpacing: "0.05em", opacity: 0.85 }}>
               {[dateLabel, config.venue].filter(Boolean).join("  ·  ")}
             </p>
           )}
-
-          {/* tiny star glint pulsing at the end near the names */}
-          {parting && (
-            <motion.svg
-              viewBox="0 0 24 24"
-              className="absolute"
-              style={{ right: -26, top: -14, width: 18, height: 18 }}
-              initial={{ opacity: 0, scale: 0.4 }}
-              animate={{ opacity: [0, 1, 0.35, 1], scale: [0.4, 1.15, 0.85, 1] }}
-              transition={{ duration: 1.4, delay: 1.5, ease: "easeInOut" }}
-              aria-hidden
-            >
-              <path
-                d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z"
-                fill="#dac497"
-              />
-            </motion.svg>
-          )}
         </motion.div>
-
-        {/* diagonal foil sweep across the panel, once */}
-        {parting && (
-          <motion.div
-            className="pointer-events-none absolute"
-            style={{
-              top: "-25%",
-              bottom: "-25%",
-              width: "38%",
-              rotate: "18deg",
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,246,220,0.55) 45%, rgba(218,196,151,0.75) 55%, transparent 100%)",
-              filter: "blur(6px)",
-            }}
-            initial={{ left: "-45%", opacity: 0 }}
-            animate={{ left: "115%", opacity: [0, 1, 1, 0] }}
-            transition={{ duration: 1.5, delay: 0.5, times: [0, 0.15, 0.85, 1], ease: "easeInOut" }}
-            aria-hidden
-          />
-        )}
       </div>
 
-      {/* champagne silk beneath the beads */}
+      {/* warm veil beneath the droplets */}
       <motion.div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, #f3e7cf 0%, #e9dcc0 50%, #dcc9a4 100%)",
+            "linear-gradient(180deg, rgba(84,52,22,0.92) 0%, rgba(58,34,16,0.94) 55%, rgba(36,20,7,0.96) 100%)",
         }}
         initial={false}
-        animate={parting ? { opacity: 0, scale: 1 } : { opacity: 1, scale: 1.02 }}
-        transition={{ duration: 1.4, delay: parting ? 0.7 : 0, ease: "easeInOut" }}
+        animate={parting ? { opacity: 0 } : { opacity: 1 }}
+        transition={{ duration: 1.3, delay: parting ? 0.45 : 0, ease: "easeInOut" }}
         aria-hidden
       />
 
-      {/* crystal-bead waterfall — strands cascade down, left→right */}
-      <div
-        className="pointer-events-none absolute inset-0 flex justify-between px-3"
-        aria-hidden
-      >
+      {/* falling light-droplet / shimmer strands, dissolving away */}
+      <div className="pointer-events-none absolute inset-0 flex justify-between px-3" aria-hidden>
         {strands.map((strand, i) => (
           <motion.div
             key={i}
-            className="flex flex-col items-center"
-            style={{ gap: 7, paddingTop: 6 }}
+            className="relative h-full"
+            style={{ width: 8 }}
             initial={false}
-            animate={parting ? { y: "112%", opacity: 0 } : { y: "0%", opacity: 1 }}
-            transition={{
-              duration: 1.1,
-              delay: parting ? strand.delay : 0,
-              ease: "easeIn",
-            }}
+            animate={parting ? { y: "46%", opacity: 0 } : { y: "0%", opacity: 1 }}
+            transition={{ duration: 1.25, delay: parting ? strand.delay : 0, ease: "easeIn" }}
           >
-            {strand.dots.map((d, j) => (
-              <span
+            <span
+              className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2"
+              style={{
+                background: `linear-gradient(180deg, transparent, rgba(240,217,154,${strand.threadOpacity + 0.25}), transparent)`,
+              }}
+            />
+            {strand.droplets.map((d, j) => (
+              <motion.span
                 key={j}
-                className="rounded-full shrink-0"
+                className="absolute left-1/2 rounded-full"
                 style={{
+                  top: d.top,
                   width: d.size,
-                  height: d.size,
-                  background: d.gold ? "#dac497" : "#e8e2d2",
+                  height: d.size * 1.5,
+                  marginLeft: -d.size / 2,
+                  borderRadius: "50% 50% 50% 50% / 62% 62% 38% 38%",
+                  background: d.gold
+                    ? "radial-gradient(ellipse at 50% 30%, #fdf6e3 0%, #d9b96a 70%)"
+                    : "radial-gradient(ellipse at 50% 30%, #ffffff 0%, #e8ddc4 70%)",
                   opacity: d.opacity,
-                  boxShadow: "0 0 3px rgba(255,255,255,0.5)",
+                  boxShadow: "0 0 6px rgba(240,217,154,0.65)",
                 }}
+                animate={parting ? {} : { y: [0, 7, 0] }}
+                transition={{ duration: 2 + (j % 3) * 0.4, repeat: Infinity, ease: "easeInOut" }}
               />
             ))}
           </motion.div>
@@ -509,8 +470,8 @@ export function Curtain({
       {/* tap hint — manual mode only, while closed */}
       {!autoPlay && !parting && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-xs uppercase"
-          style={{ color: "#69513b", letterSpacing: "0.38em" }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center"
+          style={{ color: "rgba(253,246,227,0.88)", fontSize: 13.5, letterSpacing: "0.05em" }}
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden

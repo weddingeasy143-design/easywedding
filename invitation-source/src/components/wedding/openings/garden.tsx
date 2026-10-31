@@ -281,8 +281,8 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               }}
             />
             <span
-              className="mt-2 text-[0.6rem] uppercase tracking-[0.32em]"
-              style={{ color: GOLD }}
+              className="mt-2 text-[0.7rem]"
+              style={{ color: GOLD, letterSpacing: "0.05em", opacity: 0.85 }}
             >
               Botanical Forever
             </span>
@@ -345,7 +345,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
         {detailLine && (
           <p
-            className="mt-7 text-center font-display text-sm tracking-[0.18em]"
+            className="mt-7 text-center font-display text-sm tracking-[0.06em]"
             style={{ color: INK }}
             aria-hidden
           >
@@ -356,9 +356,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
       {/* gesture hint */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-xs uppercase"
-        style={{ color: DEEP, letterSpacing: "0.34em" }}
-        animate={{ opacity: done ? 0 : [0.5, 1, 0.5] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-sm"
+        style={{ color: DEEP, letterSpacing: "0.05em" }}
+        animate={{ opacity: done ? 0 : [0.6, 0.92, 0.6] }}
         transition={
           done
             ? { duration: 0.3 }
@@ -469,11 +469,11 @@ export function Curtain({
       {/* revealed names layer — under the leaves */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
         <motion.p
-          className="font-script leading-[1.12]"
-          style={{ color: DEEP, fontSize: "clamp(3rem, 15vw, 4.6rem)" }}
-          initial={{ opacity: 0, y: 26 }}
-          animate={parted ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.9, ease: EASE, delay: 0.55 }}
+          className="font-display font-semibold leading-[1.08]"
+          style={{ color: DEEP, fontSize: "clamp(3.4rem, 16vw, 5.4rem)" }}
+          initial={{ opacity: 0, y: 26, scale: 0.94 }}
+          animate={parted ? { opacity: 1, y: 0, scale: 1 } : {}}
+          transition={{ duration: 0.95, ease: EASE, delay: 0.55 }}
         >
           {COUPLE.groom}
         </motion.p>
@@ -518,11 +518,11 @@ export function Curtain({
         </div>
 
         <motion.p
-          className="font-script leading-[1.12]"
-          style={{ color: DEEP, fontSize: "clamp(3rem, 15vw, 4.6rem)" }}
-          initial={{ opacity: 0, y: -26 }}
-          animate={parted ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.9, ease: EASE, delay: 0.7 }}
+          className="font-display font-semibold leading-[1.08]"
+          style={{ color: DEEP, fontSize: "clamp(3.4rem, 16vw, 5.4rem)" }}
+          initial={{ opacity: 0, y: -26, scale: 0.94 }}
+          animate={parted ? { opacity: 1, y: 0, scale: 1 } : {}}
+          transition={{ duration: 0.95, ease: EASE, delay: 0.72 }}
         >
           {COUPLE.bride}
         </motion.p>
@@ -539,8 +539,8 @@ export function Curtain({
             style={{ borderRadius: "0 60% 0 60%", background: GOLD, transform: "rotate(-24deg)" }}
           />
           <span
-            className="text-[0.62rem] uppercase"
-            style={{ color: GOLD, letterSpacing: "0.34em" }}
+            className="text-[0.7rem]"
+            style={{ color: GOLD, letterSpacing: "0.05em", opacity: 0.85 }}
           >
             Botanical Forever
           </span>
@@ -612,18 +612,18 @@ export function Curtain({
         aria-hidden
       >
         <p
-          className="font-display text-sm uppercase"
-          style={{ color: PAPER, letterSpacing: "0.34em", textShadow: "0 2px 10px rgba(29,66,48,0.65)" }}
+          className="font-display text-base"
+          style={{ color: PAPER, letterSpacing: "0.05em", opacity: 0.94, textShadow: "0 2px 10px rgba(29,66,48,0.65)" }}
         >
-          You&rsquo;re Invited
+          You&rsquo;re invited
         </p>
       </motion.div>
 
       {!autoPlay && !parted && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-xs uppercase"
-          style={{ color: PAPER, letterSpacing: "0.34em", textShadow: "0 2px 10px rgba(29,66,48,0.7)" }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
+          className="pointer-events-none absolute inset-x-0 bottom-[8%] text-center font-display text-sm"
+          style={{ color: PAPER, letterSpacing: "0.05em", textShadow: "0 2px 10px rgba(29,66,48,0.7)" }}
+          animate={{ opacity: [0.65, 0.95, 0.65] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >

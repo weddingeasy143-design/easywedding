@@ -1,8 +1,9 @@
 "use client";
 
-// ivory-arch — "Untie the Jasmine Ribbon"
-// Beat 0 (Reveal): drag sideways to untie a silk ribbon bow on an ivory
-// arch; the jasmine bud behind it blooms as the ribbon falls away.
+// ivory-arch — "The Falling Jasmine Garlands"
+// Beat 0 (Reveal): a veil of jasmine garland strands hangs over a soft
+// ivory arch. One upward swipe parts the strands to the edges and the
+// couple's names arrive at editorial scale inside the arch.
 // Beat 2 (Curtain): a veil of jasmine petals unsticks and falls, revealing
 // the couple's names inside a gold arch outline.
 
@@ -36,53 +37,16 @@ function runtimeDate(): string {
   return formatDate(typeof cfg?.date === "string" ? cfg.date : undefined);
 }
 
-/* ── one petal of the closed / blooming jasmine bud ─────────────── */
-function BudPetal({
-  angle,
-  blooming,
-  tall,
-}: {
-  angle: number;
-  blooming: boolean;
-  tall: number;
-}) {
-  return (
-    <motion.div
-      className="absolute left-1/2 top-1/2"
-      aria-hidden
-      style={{
-        width: 22,
-        height: tall,
-        marginLeft: -11,
-        marginTop: -tall,
-        borderRadius: "50% 50% 50% 50% / 62% 62% 38% 38%",
-        background:
-          "radial-gradient(ellipse at 50% 78%, #ffffff 0%, #fdf6e3 58%, #eee0bd 100%)",
-        border: `1px solid ${LIGHT_GOLD}`,
-        boxShadow: "0 1px 5px rgba(112,60,43,0.18)",
-        transformOrigin: "50% 100%",
-      }}
-      initial={false}
-      animate={
-        blooming
-          ? { rotate: angle * 2.1, scale: 1.28, opacity: 0.96 }
-          : { rotate: angle, scale: 1, opacity: 1 }
-      }
-      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-    />
-  );
-}
-
 /* ══ BEAT 0 — Reveal ══════════════════════════════════════════════ */
 export function Reveal({ onReveal }: { onReveal: () => void }) {
-  const [dragX, setDragX] = useState(0);
+  const [dragY, setDragY] = useState(0);
   const [finishing, setFinishing] = useState(false);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const finishedRef = useRef(false);
   const calledRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const progress = Math.min(Math.abs(dragX) / 180, 1);
+  const progress = Math.min(Math.abs(Math.min(dragY, 0)) / 150, 1);
 
   useEffect(
     () => () => {
@@ -99,7 +63,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       if (calledRef.current) return;
       calledRef.current = true;
       onReveal();
-    }, 520);
+    }, 1080);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -111,9 +75,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const s = startRef.current;
     if (!s || finishing) return;
-    const dx = e.clientX - s.x;
-    setDragX(dx);
-    if (Math.abs(dx) / 180 >= 0.65) finish();
+    const dy = e.clientY - s.y;
+    setDragY(Math.min(0, dy));
+    if (Math.abs(Math.min(0, dy)) / 150 >= 0.62) finish();
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -123,20 +87,29 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
     const isTap = Date.now() - s.t < 300 && Math.hypot(dx, dy) < 10;
-    if (isTap || Math.abs(dx) / 180 >= 0.65) finish();
-    else setDragX(0);
+    if (isTap || Math.abs(Math.min(0, dy)) / 150 >= 0.62) finish();
+    else setDragY(0);
   };
 
-  const loopScale = 1 - progress * 0.72;
-  const driftPetals = useMemo(
+  // Garland strands: rows of jasmine buds strung on fine threads.
+  // Strands nearest the centre travel furthest when the veil parts.
+  const strands = useMemo(
     () =>
-      Array.from({ length: 6 }, (_, i) => ({
-        x: ((i * 53) % 160) - 80,
-        y: 110 + ((i * 37) % 70),
-        rotate: (i * 67) % 180,
-        size: 10 + ((i * 13) % 8),
-        delay: i * 0.05,
-      })),
+      Array.from({ length: 9 }, (_, i) => {
+        const dir = i - 4;
+        const side = i <= 4 ? -1 : 1;
+        const closeness = 5 - Math.abs(dir);
+        return {
+          id: i,
+          left: 10 + i * 10,
+          buds: 11 + ((i * 3) % 4),
+          height: 64 + ((i * 7) % 14),
+          side,
+          partX: side * closeness * 38,
+          swayDelay: i * 0.22,
+          swayDur: 2.6 + (i % 3) * 0.45,
+        };
+      }),
     []
   );
 
@@ -152,7 +125,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       role="button"
-      aria-label="Drag to untie the ribbon and reveal the invitation"
+      aria-label="Swipe up to part the jasmine garlands and reveal the invitation"
     >
       {/* soft garden light */}
       <div
@@ -164,7 +137,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
         aria-hidden
       />
 
-      {/* the ivory arch */}
+      {/* the ivory arch — names wait behind the garlands */}
       <div
         className="absolute left-1/2 top-[9%] flex w-[min(80vw,340px)] -translate-x-1/2 flex-col items-center"
         style={{ height: "74%" }}
@@ -189,126 +162,135 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               border: `1px solid rgba(184,139,54,0.4)`,
             }}
           />
-          <p
-            className="absolute inset-x-0 top-[16%] text-center font-display text-[11px] font-semibold uppercase"
-            style={{ letterSpacing: "0.34em", color: GOLD }}
-          >
-            {copyText(3, "You're Invited")}
-          </p>
-          <p
-            className="absolute inset-x-0 top-[21%] text-center font-script text-3xl"
-            style={{ color: INK }}
-          >
-            {COUPLE.groom} &amp; {COUPLE.bride}
-          </p>
 
-          {/* jasmine bud — behind the bow, blooms on completion */}
-          <div className="absolute left-1/2 top-[47%] h-2 w-2 -translate-x-1/2">
-            {[-38, -19, 0, 19, 38].map((a) => (
-              <BudPetal key={a} angle={a} blooming={finishing} tall={a === 0 ? 52 : 44} />
-            ))}
-            <div
-              className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1 rounded-full"
-              style={{ background: `radial-gradient(circle at 38% 32%, #ffeeb0, ${GOLD})` }}
-            />
+          {/* couple names — editorial scale, kinetic staggered entrance */}
+          <div className="absolute inset-x-0 top-[24%] flex flex-col items-center px-5 text-center">
+            <motion.p
+              className="font-display leading-[1.04]"
+              style={{ color: INK, fontSize: "clamp(40px, 12vw, 54px)" }}
+              initial={false}
+              animate={
+                finishing
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 30, scale: 0.92 }
+              }
+              transition={{ duration: 0.85, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {COUPLE.groom}
+            </motion.p>
+            <motion.p
+              className="font-display italic"
+              style={{ color: GOLD, fontSize: "clamp(20px, 6vw, 26px)" }}
+              initial={false}
+              animate={
+                finishing
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 22, scale: 0.9 }
+              }
+              transition={{ duration: 0.75, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            >
+              &amp;
+            </motion.p>
+            <motion.p
+              className="font-display leading-[1.04]"
+              style={{ color: INK, fontSize: "clamp(40px, 12vw, 54px)" }}
+              initial={false}
+              animate={
+                finishing
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 30, scale: 0.92 }
+              }
+              transition={{ duration: 0.85, delay: 0.46, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {COUPLE.bride}
+            </motion.p>
           </div>
         </div>
       </div>
 
-      {/* silk ribbon + bow — slides down and fades on completion */}
-      <motion.div
-        className="pointer-events-none absolute left-1/2 top-[47%] w-[min(92vw,420px)]"
-        style={{ x: "-50%" }}
-        initial={false}
-        animate={
-          finishing
-            ? { y: 210, opacity: 0 }
-            : { y: 0, opacity: 1, x: `calc(-50% + ${dragX * 0.14}px)` }
-        }
-        transition={{ duration: finishing ? 0.5 : 0.12, ease: "easeOut" }}
+      {/* quiet invitation line above the veil */}
+      <p
+        className="pointer-events-none absolute inset-x-0 top-[5.5%] text-center font-display text-sm"
+        style={{ letterSpacing: "0.05em", color: GOLD }}
         aria-hidden
       >
-        {/* band */}
-        <div
-          className="absolute inset-x-0 top-1/2 h-[34px] -translate-y-1/2"
-          style={{
-            background: `linear-gradient(180deg, #f2dfae 0%, ${LIGHT_GOLD} 48%, #cfa856 100%)`,
-            boxShadow: "0 4px 14px rgba(112,60,43,0.28)",
-          }}
-        />
-        {/* bow loops */}
-        <div className="relative mx-auto h-[64px] w-[190px]">
-          <div
-            className="absolute left-0 top-1/2 h-[44px] w-[76px]"
-            style={{
-              transform: `translateY(-50%) rotate(-22deg) scaleX(${loopScale}) scaleY(${1 - progress * 0.3})`,
-              transformOrigin: "100% 50%",
-              borderRadius: "50% 12% 50% 12%",
-              border: `1.5px solid ${GOLD}`,
-              background:
-                "linear-gradient(135deg, #fff6dc 0%, #eed9a0 60%, #d9ba6d 100%)",
-              boxShadow: "0 3px 10px rgba(112,60,43,0.25)",
-            }}
-          />
-          <div
-            className="absolute right-0 top-1/2 h-[44px] w-[76px]"
-            style={{
-              transform: `translateY(-50%) rotate(22deg) scaleX(${loopScale}) scaleY(${1 - progress * 0.3})`,
-              transformOrigin: "0% 50%",
-              borderRadius: "12% 50% 12% 50%",
-              border: `1.5px solid ${GOLD}`,
-              background:
-                "linear-gradient(225deg, #fff6dc 0%, #eed9a0 60%, #d9ba6d 100%)",
-              boxShadow: "0 3px 10px rgba(112,60,43,0.25)",
-            }}
-          />
-          {/* knot — slides with the drag */}
-          <div
-            className="absolute left-1/2 top-1/2 h-[34px] w-[34px] rounded-full"
-            style={{
-              transform: `translate(calc(-50% + ${dragX * 0.38}px), -50%)`,
-              background: `radial-gradient(circle at 36% 30%, #ffedb5 0%, ${LIGHT_GOLD} 52%, ${GOLD} 100%)`,
-              border: `1.5px solid ${GOLD}`,
-              boxShadow: "0 3px 10px rgba(112,60,43,0.32)",
-            }}
-          />
-        </div>
-      </motion.div>
+        {copyText(3, "You're Invited")}
+      </p>
 
-      {/* petals drift free as the bud blooms */}
-      <AnimatePresence>
-        {finishing &&
-          driftPetals.map((p, i) => (
-            <motion.span
-              key={i}
-              className="pointer-events-none absolute left-1/2 top-[47%]"
-              style={{
-                width: p.size,
-                height: p.size * 0.72,
-                borderRadius: "62% 4% 62% 4%",
-                background:
-                  "radial-gradient(ellipse at 30% 30%, #ffffff 0%, #f6ead0 70%, #e8d5a8 100%)",
-                boxShadow: "0 1px 4px rgba(112,60,43,0.2)",
-              }}
-              initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
-              animate={{ x: p.x, y: p.y, opacity: 0, rotate: p.rotate }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.9, delay: p.delay, ease: "easeOut" }}
-              aria-hidden
-            />
-          ))}
-      </AnimatePresence>
+      {/* falling jasmine garlands — the veil itself */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        {strands.map((s) => (
+          <motion.div
+            key={s.id}
+            className="absolute top-[-2%]"
+            style={{
+              left: `${s.left}%`,
+              height: `${s.height}%`,
+              width: 26,
+              marginLeft: -13,
+              transformOrigin: "50% 0%",
+            }}
+            initial={false}
+            animate={
+              finishing
+                ? { x: s.partX, rotate: s.side * 7, opacity: 0.94 }
+                : { x: s.partX * progress * 0.55, rotate: s.side * progress * 2.5, opacity: 1 }
+            }
+            transition={{
+              duration: finishing ? 0.95 : 0.15,
+              ease: finishing ? [0.22, 1, 0.36, 1] : "easeOut",
+            }}
+          >
+            <motion.div
+              className="relative h-full w-full"
+              style={{ transformOrigin: "50% 0%" }}
+              animate={{ rotate: [-1.6, 1.6, -1.6] }}
+              transition={{ duration: s.swayDur, delay: s.swayDelay, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {/* thread */}
+              <span
+                className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(184,139,54,0.15), rgba(184,139,54,0.55) 18%, rgba(184,139,54,0.55) 88%, rgba(184,139,54,0.2))",
+                }}
+              />
+              {/* jasmine buds strung along the thread */}
+              {Array.from({ length: s.buds }, (_, j) => {
+                const size = 9 + ((j * 5 + s.id) % 5);
+                const offset = j % 2 === 0 ? -5 : 5;
+                return (
+                  <span
+                    key={j}
+                    className="absolute left-1/2 rounded-full"
+                    style={{
+                      top: `${((j + 0.6) / s.buds) * 100}%`,
+                      width: size,
+                      height: size * 0.86,
+                      marginLeft: offset - size / 2,
+                      background:
+                        "radial-gradient(circle at 36% 30%, #ffffff 0%, #fdf6e3 58%, #eee0bd 100%)",
+                      border: `1px solid rgba(184,139,54,0.55)`,
+                      boxShadow: "0 1px 4px rgba(112,60,43,0.18)",
+                    }}
+                  />
+                );
+              })}
+            </motion.div>
+          </motion.div>
+        ))}
+      </div>
 
-      {/* hint */}
+      {/* hint — quiet modern treatment */}
       {!finishing && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-xs font-semibold uppercase"
-          style={{ letterSpacing: "0.32em", color: INK, opacity: 0.78 }}
-          animate={{ opacity: [0.5, 0.85, 0.5] }}
+          className="pointer-events-none absolute inset-x-0 bottom-[7%] text-center font-display text-sm"
+          style={{ letterSpacing: "0.05em", color: INK }}
+          animate={{ opacity: [0.5, 0.9, 0.5], y: [0, -5, 0] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >
-          Drag to untie the ribbon
+          Swipe up to part the garlands
         </motion.p>
       )}
     </div>
@@ -390,7 +372,7 @@ export function Curtain({
       role={autoPlay ? undefined : "button"}
       aria-label={autoPlay ? undefined : "Tap to reveal the names"}
     >
-      {/* names layer — inside a gold arch outline */}
+      {/* names layer — inside a gold arch outline, editorial scale */}
       <div className="absolute inset-0 flex items-center justify-center px-6">
         <div
           className="flex w-[min(84vw,360px)] flex-col items-center px-6 pb-10 pt-20 text-center"
@@ -402,31 +384,52 @@ export function Curtain({
             minHeight: "62%",
           }}
         >
-          <motion.div
-            initial={false}
-            animate={
-              falling
-                ? { opacity: 1, letterSpacing: "0em" }
-                : { opacity: 0, letterSpacing: "0.06em" }
-            }
-            transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center"
-          >
-            <p className="font-script text-6xl leading-[1.12] lg:text-7xl" style={{ color: INK }}>
+          <div className="flex flex-col items-center">
+            <motion.p
+              className="font-display leading-[1.06]"
+              style={{ color: INK, fontSize: "clamp(44px, 13vw, 60px)" }}
+              initial={false}
+              animate={
+                falling
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 30, scale: 0.93 }
+              }
+              transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            >
               {COUPLE.groom}
-            </p>
-            <p className="my-1 font-display text-base italic" style={{ color: GOLD }}>
+            </motion.p>
+            <motion.p
+              className="my-1 font-display italic"
+              style={{ color: GOLD, fontSize: "clamp(19px, 5.5vw, 24px)" }}
+              initial={false}
+              animate={
+                falling
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 20, scale: 0.9 }
+              }
+              transition={{ duration: 0.75, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
               weds
-            </p>
-            <p className="font-script text-6xl leading-[1.12] lg:text-7xl" style={{ color: INK }}>
+            </motion.p>
+            <motion.p
+              className="font-display leading-[1.06]"
+              style={{ color: INK, fontSize: "clamp(44px, 13vw, 60px)" }}
+              initial={false}
+              animate={
+                falling
+                  ? { opacity: 1, y: 0, scale: 1 }
+                  : { opacity: 0, y: 30, scale: 0.93 }
+              }
+              transition={{ duration: 0.9, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
+            >
               {COUPLE.bride}
-            </p>
-          </motion.div>
+            </motion.p>
+          </div>
 
           {dateLabel && (
             <motion.p
-              className="mt-6 font-display text-xs font-semibold uppercase"
-              style={{ letterSpacing: "0.3em", color: GOLD }}
+              className="mt-6 font-display text-sm"
+              style={{ letterSpacing: "0.06em", color: GOLD }}
               initial={false}
               animate={falling ? { opacity: 1, y: 0 } : { opacity: 0, y: -8 }}
               transition={{ duration: 0.6, delay: 1.15, ease: "easeOut" }}
@@ -496,8 +499,8 @@ export function Curtain({
             </div>
             {!autoPlay && (
               <p
-                className="mt-8 font-display text-xs font-semibold uppercase"
-                style={{ letterSpacing: "0.32em", color: INK, opacity: 0.7 }}
+                className="mt-8 font-display text-sm"
+                style={{ letterSpacing: "0.05em", color: INK, opacity: 0.75 }}
               >
                 Tap to reveal
               </p>

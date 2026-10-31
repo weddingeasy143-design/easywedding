@@ -175,10 +175,10 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
           </svg>
 
           <p
-            className="mt-4 font-display text-[11px] uppercase tracking-[0.42em]"
-            style={{ color: MUTED }}
+            className="mt-4 font-display text-xs"
+            style={{ color: MUTED, letterSpacing: "0.05em", opacity: 0.85 }}
           >
-            {copyText(92, "The Invitation")}
+            {copyText(92, "The invitation")}
           </p>
           <p
             className="mt-2 font-display text-sm italic"
@@ -244,9 +244,9 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
 
       {/* hint */}
       <motion.p
-        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-[11px] uppercase tracking-[0.38em]"
-        style={{ color: MUTED }}
-        animate={{ opacity: finishing ? 0 : [0.55, 1, 0.55] }}
+        className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-sm"
+        style={{ color: MUTED, letterSpacing: "0.05em" }}
+        animate={{ opacity: finishing ? 0 : [0.6, 0.92, 0.6] }}
         transition={
           finishing
             ? { duration: 0.25 }
@@ -398,43 +398,55 @@ export function Curtain({
 
       {/* names staged on the flower's heart */}
       <div className="absolute inset-0 flex items-center justify-center px-6">
-        <motion.div
-          className="text-center"
-          initial={false}
-          animate={
-            open
-              ? { opacity: 1, scale: 1, y: 0 }
-              : { opacity: 0, scale: 0.9, y: 10 }
-          }
-          transition={{ duration: 0.9, delay: open ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <p
-            className="font-script text-6xl leading-[1.12] sm:text-7xl"
+        <div className="text-center">
+          <motion.p
+            className="font-display font-semibold text-6xl leading-[1.08] sm:text-7xl"
             style={{ color: INK, textShadow: "0 1px 0 rgba(255,255,255,0.65)" }}
+            initial={false}
+            animate={
+              open
+                ? { opacity: 1, scale: 1, y: 0 }
+                : { opacity: 0, scale: 0.94, y: -16 }
+            }
+            transition={{ duration: 0.9, delay: open ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
           >
             {COUPLE.groom}
-          </p>
-          <p
+          </motion.p>
+          <motion.p
             className="my-1 font-display text-base italic tracking-wide"
             style={{ color: ROSE_GOLD }}
+            initial={false}
+            animate={
+              open
+                ? { opacity: 1, scale: 1, y: 0 }
+                : { opacity: 0, scale: 0.88, y: 8 }
+            }
+            transition={{ duration: 0.7, delay: open ? 0.72 : 0, ease: [0.22, 1, 0.36, 1] }}
           >
             weds
-          </p>
-          <p
-            className="font-script text-6xl leading-[1.12] sm:text-7xl"
+          </motion.p>
+          <motion.p
+            className="font-display font-semibold text-6xl leading-[1.08] sm:text-7xl"
             style={{ color: INK, textShadow: "0 1px 0 rgba(255,255,255,0.65)" }}
+            initial={false}
+            animate={
+              open
+                ? { opacity: 1, scale: 1, y: 0 }
+                : { opacity: 0, scale: 0.94, y: 16 }
+            }
+            transition={{ duration: 0.9, delay: open ? 0.88 : 0, ease: [0.22, 1, 0.36, 1] }}
           >
             {COUPLE.bride}
-          </p>
-        </motion.div>
+          </motion.p>
+        </div>
       </div>
 
       {/* tap hint — manual mode only, until the bloom starts */}
       {!autoPlay && !open && (
         <motion.p
-          className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-[11px] uppercase tracking-[0.38em]"
-          style={{ color: MUTED }}
-          animate={{ opacity: [0.55, 1, 0.55] }}
+          className="pointer-events-none absolute inset-x-0 bottom-[6%] text-center font-display text-sm"
+          style={{ color: MUTED, letterSpacing: "0.05em" }}
+          animate={{ opacity: [0.65, 0.95, 0.65] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden
         >
