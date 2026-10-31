@@ -40,6 +40,9 @@ export function applyPricing(doc, pricing) {
       el.textContent = anyLaunch ? 'Grand opening offer — every design from' : 'Every design from';
     });
     doc.querySelectorAll('[data-offer-note]').forEach((el) => { el.hidden = !anyLaunch; });
+    /* The strip exists only to announce the offer. With no launch price on
+       it leaves the homepage entirely — no price line appears in its place. */
+    doc.querySelectorAll('#cat-offer').forEach((el) => { el.hidden = !anyLaunch; });
   }
   return true;
 }
