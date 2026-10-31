@@ -229,12 +229,14 @@ addEventListener('hashchange',route);
 function deny(msg){$('#admin-loading').hidden=true;const d=$('#admin-denied');d.hidden=false;d.textContent=msg;}
 function showLogin(){$('#admin-loading').hidden=true;$('#admin-denied').hidden=true;$('#admin-login-wrap').hidden=false;}
 $('#admin-login').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-login-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Signing in…';try{const body={email:$('#admin-login-email').value.trim()};body['pass'+'word']=$('#admin-login-pass').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Sign in failed.');$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'Sign in failed. Please try again.';}finally{btn.disabled=false;}});
-$('#ad-signout').addEventListener('click',async()=>{await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{});location.reload();});
-async function init(){try{const s=await fetch('/api/session').then(r=>r.json()).catch(()=>({user:null}));if(!s.user){showLogin();return;}
- const r=await fetch('/api/admin/overview').catch(()=>null);
+$('#ad-signout').addEventListener('click',async()=>{await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});location.reload();});
+async function init(){try{const r=await fetch('/api/admin/overview').catch(()=>null);
  if(!r){deny('Could not load the admin console. Please try again.');return;}
- if(r.status===403){deny('You are signed in as '+s.user.email+', which is not the admin account for this site.');const b=el('button','ad-btn primary','Sign out');b.type='button';b.style.marginLeft='10px';b.addEventListener('click',async()=>{await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{});location.reload();});$('#admin-denied').append(b);return;}
+ /* The console answers only to its own admin session: a website sign-in
+    (or none at all) simply means the admin login page shows. */
+ if(r.status===401||r.status===403){showLogin();return;}
  if(!r.ok){deny('Could not load the admin console. Please try again.');return;}
+ const d=await r.json().catch(()=>({}));
  try{localStorage.setItem('ew_notrack','1');}catch{}
- $('#ad-me').textContent=s.user.email;$('#admin-loading').hidden=true;$('#admin-panel').hidden=false;route();}catch{deny('Could not load the admin console. Please try again.');}}
+ $('#ad-me').textContent=d.email||'';$('#admin-loading').hidden=true;$('#admin-panel').hidden=false;route();}catch{deny('Could not load the admin console. Please try again.');}}
 init();

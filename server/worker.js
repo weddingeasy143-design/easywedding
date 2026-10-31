@@ -17,6 +17,7 @@ let sessionColsReady=false;
 async function ensureSessionColumns(env){
  if(sessionColsReady||!env.DB)return;sessionColsReady=true;
  try{await env.DB.prepare('ALTER TABLE sessions ADD COLUMN last_seen_at TEXT').run();}catch(e){/* column already there */}
+ try{await env.DB.prepare('ALTER TABLE sessions ADD COLUMN kind TEXT').run();}catch(e){/* column already there */}
 }
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
 async function rateHit(env,name,request,limit,windowSec){
@@ -48,8 +49,15 @@ async function makePasswordRecord(password){const salt=b64encode(crypto.getRando
 async function verifyPassword(password,record){const parts=String(record||'').split('$');if(parts.length!==4||parts[0]!=='pbkdf2')return false;const actual=await hashPassword(password,parts[2],Number(parts[1]));if(actual.length!==parts[3].length)return false;let diff=0;for(let i=0;i<actual.length;i++)diff|=actual.charCodeAt(i)^parts[3].charCodeAt(i);return diff===0;}
 function sessionToken(request){const match=/(?:^|;\s*)ew_session=([a-f0-9]{64})/.exec(request.headers.get('Cookie')||'');return match?match[1]:null;}
 function sessionCookie(token,maxAge){return 'ew_session='+token+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age='+maxAge;}
-async function currentUser(request,env){const token=sessionToken(request);if(!token||!env.DB)return null;await ensureSessionColumns(env);const hash=await sha256hex(token);const row=await env.DB.prepare('SELECT u.id,u.email,u.name,s.created_at AS s_created,s.last_seen_at AS s_seen FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>? AND s.created_at>?').bind(hash,new Date().toISOString(),new Date(Date.now()-SESSION_MS).toISOString()).first();if(!row)return null;const nowMs=Date.now(),seenMs=Date.parse(row.s_seen||row.s_created);if(!isNaN(seenMs)){if(nowMs-seenMs>IDLE_MAX_MS){await env.DB.prepare('DELETE FROM sessions WHERE id=?').bind(hash).run().catch(()=>{});return null;}if(nowMs-seenMs>60000)await env.DB.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').bind(new Date(nowMs).toISOString(),hash).run().catch(()=>{});}return{id:row.id,email:row.email,name:row.name};}
-async function startSession(env,userId){await ensureSessionColumns(env);const token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');const now=new Date();await db(env).prepare('INSERT INTO sessions(id,user_id,created_at,expires_at,last_seen_at) VALUES(?,?,?,?,?)').bind(await sha256hex(token),userId,now.toISOString(),new Date(now.getTime()+SESSION_MS).toISOString(),now.toISOString()).run();return token;}
+async function currentUser(request,env){const token=sessionToken(request);if(!token||!env.DB)return null;await ensureSessionColumns(env);const hash=await sha256hex(token);const row=await env.DB.prepare('SELECT u.id,u.email,u.name,s.created_at AS s_created,s.last_seen_at AS s_seen FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>? AND s.created_at>? AND (s.kind IS NULL OR s.kind=?)').bind(hash,new Date().toISOString(),new Date(Date.now()-SESSION_MS).toISOString(),'user').first();if(!row)return null;const nowMs=Date.now(),seenMs=Date.parse(row.s_seen||row.s_created);if(!isNaN(seenMs)){if(nowMs-seenMs>IDLE_MAX_MS){await env.DB.prepare('DELETE FROM sessions WHERE id=?').bind(hash).run().catch(()=>{});return null;}if(nowMs-seenMs>60000)await env.DB.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').bind(new Date(nowMs).toISOString(),hash).run().catch(()=>{});}return{id:row.id,email:row.email,name:row.name};}
+async function startSession(env,userId,kind){await ensureSessionColumns(env);const token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');const now=new Date();await db(env).prepare('INSERT INTO sessions(id,user_id,created_at,expires_at,last_seen_at,kind) VALUES(?,?,?,?,?,?)').bind(await sha256hex(token),userId,now.toISOString(),new Date(now.getTime()+SESSION_MS).toISOString(),now.toISOString(),kind||'user').run();return token;}
+/* The admin console (/boss) has its OWN session, fully separate from the
+   website's: it lives in a different cookie (ew_admin) and a different
+   session kind, so signing in to the console never signs the browser in
+   to the website, and a website sign-in never opens the console. */
+function adminToken(request){const match=/(?:^|;\s*)ew_admin=([a-f0-9]{64})/.exec(request.headers.get('Cookie')||'');return match?match[1]:null;}
+function adminCookie(token,maxAge){return 'ew_admin='+token+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age='+maxAge;}
+async function currentAdmin(request,env){const token=adminToken(request);if(!token||!env.DB)return null;await ensureSessionColumns(env);const hash=await sha256hex(token);const row=await env.DB.prepare('SELECT u.id,u.email,u.name,s.created_at AS s_created,s.last_seen_at AS s_seen FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>? AND s.created_at>? AND s.kind=?').bind(hash,new Date().toISOString(),new Date(Date.now()-SESSION_MS).toISOString(),'admin').first();if(!row)return null;const nowMs=Date.now(),seenMs=Date.parse(row.s_seen||row.s_created);if(!isNaN(seenMs)){if(nowMs-seenMs>IDLE_MAX_MS){await env.DB.prepare('DELETE FROM sessions WHERE id=?').bind(hash).run().catch(()=>{});return null;}if(nowMs-seenMs>60000)await env.DB.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').bind(new Date(nowMs).toISOString(),hash).run().catch(()=>{});}return{id:row.id,email:row.email,name:row.name};}
 const hexOf=buf=>[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
 async function hmacHex(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return hexOf(await crypto.subtle.sign('HMAC',key,textEnc.encode(data)));}
 async function hmacB64(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64encode(new Uint8Array(await crypto.subtle.sign('HMAC',key,textEnc.encode(data))));}
@@ -187,7 +195,7 @@ export default {async fetch(request,env){
   const callback=path.startsWith('/api/payments/webhook/')||path==='/api/payments/payu-return';
   const adminPath=path==='/boss'||path==='/boss/'||path==='/admin.js'||path==='/admin.css'||path==='/auth.js'||path==='/brand.css'||path==='/assets/fonts/fonts.css'||path==='/api/auth/login'||path==='/api/auth/logout'||path==='/api/session'||path.startsWith('/api/admin/');
   let adminOk=false;
-  if(!cookieOk&&!adminPath){try{const u=await currentUser(request,env);adminOk=!!u&&u.email.toLowerCase()===(await adminEmail(env));}catch{adminOk=false;}}
+  if(!cookieOk&&!adminPath){try{const u=await currentAdmin(request,env);adminOk=!!u&&u.email.toLowerCase()===(await adminEmail(env));}catch{adminOk=false;}}
   if(!cookieOk&&!callback&&!adminPath&&!adminOk){
    if(path.startsWith('/api/'))return json({error:'Easy Wedding is opening very soon.'},503);
    return new Response(MAINTENANCE_HTML,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
@@ -334,6 +342,7 @@ export default {async fetch(request,env){
   return new Response(null,{status:302,headers:{'Location':'/register?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
  }
  let authUser=await currentUser(request,env);
+ const adminUser=await currentAdmin(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
  if(path==='/api/auth/signup'&&request.method==='POST'){
   await rateHit(env,'signup',request,8,600);
@@ -379,14 +388,14 @@ export default {async fetch(request,env){
    let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
    if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
    else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
-   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),SESSION_COOKIE_AGE)});
+   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,owner.id,'admin'),SESSION_COOKIE_AGE)});
   }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
   if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
   const ownerEmail=await adminEmail(env);
   if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
-  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),SESSION_COOKIE_AGE)});
+  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,row.id,'admin'),SESSION_COOKIE_AGE)});
  }
 
  // Forgot password: the email AND the mobile number used when paying must match; then the customer sets a new password.
@@ -416,6 +425,13 @@ export default {async fetch(request,env){
   if(token)await db(env).prepare('DELETE FROM sessions WHERE id=?').bind(await sha256hex(token)).run();
   return json({ok:true},200,{'Set-Cookie':sessionCookie('',0)});
  }
+ // Admin sign-out ends ONLY the console session; a website sign-in in the
+ // same browser is a separate session and is left untouched.
+ if(path==='/api/admin/logout'&&request.method==='POST'){
+  const token=adminToken(request);
+  if(token)await db(env).prepare('DELETE FROM sessions WHERE id=?').bind(await sha256hex(token)).run().catch(()=>{});
+  return json({ok:true},200,{'Set-Cookie':adminCookie('',0)});
+ }
 
  // Guest checkout: no account exists until a payment succeeds. The sign-up details wait on the order.
  let guestSignup=null,guestOrder=null;
@@ -444,8 +460,10 @@ export default {async fetch(request,env){
   if(!guestOrder)fail('Order not found.',404);
   authUser={id:guestOrder.user_id,email:guestOrder.signup_email,name:guestOrder.signup_name};
  }
- if(!authUser)fail('Sign in to save your wedding workspace.',401);
- const owner=authUser.id;
+ /* The admin console passes this gate with its own admin session — it
+    never needs (or gets) a website workspace identity. */
+ if(!authUser&&!(adminUser&&path.startsWith('/api/admin/')))fail('Sign in to save your wedding workspace.',401);
+ const owner=authUser?authUser.id:'';
  if(!['GET','HEAD'].includes(request.method)&&request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
  // ---- Your data: download everything as a ZIP, or erase everything permanently (DPDP Act rights) ----
  if(path==='/api/account/export'&&request.method==='GET'){
@@ -633,7 +651,7 @@ export default {async fetch(request,env){
  }
  // ---- Admin console API (owner only) ----
  if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
   const all=async(sql,...b)=>(await d.prepare(sql).bind(...b).all()).results||[];
@@ -649,7 +667,7 @@ export default {async fetch(request,env){
    const newest=await all('SELECT email,name,created_at FROM users ORDER BY created_at DESC LIMIT 5');
    const gateways=[];for(const g of GATEWAYS){const row=await gatewayRow(env,g).catch(()=>null);gateways.push({gateway:g,ready:usable(row),mode:row?.mode||'test',fromEnv:!!envGateway(env,g)});}
    const maint=await one("SELECT value FROM site_settings WHERE key='maintenance'");
-   return json({revenue:{today:rToday,week:rWeek,month:rMonth,total:rAll},orders:status,customers:{total:customers.n,today:newCustomers.n},visitors:{today:visitors.n,views:visitors.views},revenueDaily,recent,newest,gateways,open:!maint||maint.value!=='1'});
+   return json({revenue:{today:rToday,week:rWeek,month:rMonth,total:rAll},orders:status,customers:{total:customers.n,today:newCustomers.n},visitors:{today:visitors.n,views:visitors.views},revenueDaily,recent,newest,gateways,open:!maint||maint.value!=='1',email:adminUser?adminUser.email:''});
   }
   if(name==='analytics'){
    const days=Math.min(Math.max(parseInt(q.get('days')||'30',10)||30,1),365),from=istDay(days-1);
@@ -785,7 +803,7 @@ export default {async fetch(request,env){
   fail('Not found.',404);
  }
  if(path==='/api/admin/site'){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   if(request.method==='GET'){const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='maintenance'").first();return json({open:!row||row.value!=='1'});}
   if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();return json({open});}
   fail('Not found.',404);
@@ -794,7 +812,7 @@ export default {async fetch(request,env){
  // (and the Pass) between its launch price and its regular price. The
  // homepage offer strip and its wording follow /api/pricing on their own.
  if(path==='/api/admin/launch'){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   if(request.method==='GET'){const rows=await db(env).prepare('SELECT launch_active FROM prices').all();const list=rows.results||[];const on=list.filter(r=>r.launch_active).length;return json({active:on>0,on,total:list.length});}
   if(request.method==='PUT'){const input=await body(request,2000);const active=!!input?.active;const total=(await db(env).prepare('SELECT COUNT(*) AS n FROM prices').first())?.n||0;await db(env).prepare('UPDATE prices SET launch_active=?').bind(active?1:0).run();return json({active,on:active?total:0,total});}
   fail('Not found.',404);
@@ -802,7 +820,7 @@ export default {async fetch(request,env){
  // Owner unlocks a design for a couple who paid outside the site (UPI/WhatsApp).
  // Recorded as a paid 'manual' order so it shows in Recent orders.
  if(path==='/api/admin/grant'&&request.method==='POST'){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const input=await body(request,4000);
   const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',designId=typeof input?.designId==='string'?input.designId:'';
   const amount=Math.round(Number(input?.amount||0)*100);
@@ -812,13 +830,13 @@ export default {async fetch(request,env){
   if(!Number.isFinite(amount)||amount<0||amount>100000000)fail('Enter the amount received in ₹.');
   const now=new Date().toISOString(),order={id:crypto.randomUUID(),user_id:user.id,design_id:designId,status:'created'};
   await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(order.id,user.id,designId,amount,'manual','created',now,now).run();
-  await completeOrder(env,order,'manual-'+authUser.email);
+  await completeOrder(env,order,'manual-'+(adminUser?adminUser.email:authUser.email));
   return json({ok:true,designs:await entitledDesigns(env,user.id)});
  }
  // Owner-assisted password reset (no email provider yet): issues a one-off
  // temporary password and signs the account out everywhere.
  if(path==='/api/admin/reset-password'&&request.method==='POST'){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const input=await body(request,2000);
   const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'';
   const user=await db(env).prepare('SELECT id FROM users WHERE email=?').bind(email).first();
@@ -830,7 +848,7 @@ export default {async fetch(request,env){
   return json({temporaryPassword:temporary});
  }
  if(path==='/api/admin/payments'){
-  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   if(request.method==='GET'){
    const settings=await db(env).prepare('SELECT * FROM payment_settings').all();
    const gateways=(settings.results||[]).map(r=>{const fromEnv=envGateway(env,r.gateway);if(fromEnv)r={...r,...fromEnv};const x=extraOf(r);return {fromEnv:!!fromEnv,gateway:r.gateway,enabled:!!r.enabled,mode:r.mode,key_id:r.key_id||'',has_secret:!!r.key_secret,client_version:x.client_version||'',webhook_username:x.webhook_username||'',has_webhook_secret:!!x['webhook_'+'secret'],has_webhook_password:!!x['webhook_'+'password']};});
