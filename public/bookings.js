@@ -44,7 +44,8 @@ function bookingForm(b){
   const items=[...svcs.children].map(r=>({service:r.querySelector('.bk-svc-name').value.trim(),amount:r.querySelector('.bk-svc-amt').value||0})).filter(x=>x.service);
   if(!String(fd.get('vendor')).trim()){err.textContent='Please enter the vendor or contact name.';return;}
   if(!items.length){err.textContent='Add at least one service.';return;}
-  const payload={vendor:fd.get('vendor'),phone:fd.get('phone'),category:fd.get('category'),eventDate:fd.get('eventDate'),note:fd.get('note'),items};
+  let phone=String(fd.get('phone')||'').trim();{const d=phone.replace(/\D/g,'');let n=d;if(n.length===12&&n.startsWith('91'))n=n.slice(2);else if(n.length===11&&n.startsWith('0'))n=n.slice(1);if(/^[6-9]\d{9}$/.test(n))phone=n;}
+  const payload={vendor:fd.get('vendor'),phone,category:fd.get('category'),eventDate:fd.get('eventDate'),note:fd.get('note'),items};
   if(!edit&&Number(fd.get('advance'))>0)payload.advance={amount:fd.get('advance'),paidOn:fd.get('advDate'),mode:fd.get('advMode')};
   try{if(edit){const d=await api('/api/bookings/'+b.id,'PUT',payload);state.bookings=state.bookings.map(x=>x.id===b.id?d.booking:x);}else{const d=await api('/api/bookings','POST',payload);state.bookings.unshift(d.booking);}
    state.adding=false;state.editing=null;state.message=edit?'Booking updated.':'Booking saved.';draw();}

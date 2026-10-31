@@ -37,7 +37,7 @@ async function main(){
  const events=(cfg.events||[]).slice(0,6).map(e=>'<div><span>'+esc(e.title||'Celebration')+'</span><b>'+esc(e.time||'')+'</b></div>').join('');
  app.innerHTML='<div class="bar"><p>Your print-ready card — print it, or save it as a PDF to share anywhere.</p><button type="button" id="print-btn">Print / Save PDF</button></div>'
   +'<section class="sheet"><div class="om">॥ श्री गणेशाय नमः ॥</div>'
-  +'<p class="occasion">'+esc(cfg.occasion||'The wedding celebration of')+'</p>'
+  +'<p class="occasion">The wedding celebration of</p>'
   +'<h1 class="names">'+esc(cfg.partner1||'')+' <span class="amp">&amp;</span> '+esc(cfg.partner2||'')+'</h1>'
   +(cfg.blessing?'<p class="blessing">'+esc(cfg.blessing)+'</p>':'')
   +'<p class="when">'+esc(prettyDate(cfg.date,cfg.time))+'</p>'

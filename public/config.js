@@ -7,7 +7,7 @@ export const DEFAULTS = Object.freeze({
   reference:null,version:3,theme:'premium-original',partner1:'Rupesh',partner2:'Usha',partner1Details:'',partner2Details:'',groomName:'Rupesh',brideName:'Usha',groomDetails:'',brideDetails:'',groomAddress:'',brideAddress:'',hostSide:'groom',occasion:'The wedding celebration of',date:'2027-02-14',time:'19:00',timezone:'+05:30',city:'Udaipur, Rajasthan',
   blessing:'A love that grows.\nA lifetime that blooms.',message:'Together with our families, we invite you to share in the joy of our wedding. Join us for an evening of love, laughter and a beautiful new beginning.',
   families:'With the blessings of our families',venue:'The Lake Pichola Palace',address:'Lake Palace Road',venueNote:'Please arrive 15 minutes before the ceremony.',dressCode:'Garden formal. Soft colours, flowing silhouettes and your happiest smile.',gifts:'Your love and blessings are the greatest gift of all.',note:'',
-  rsvpContact:'',rsvpMethod:'whatsapp',rsvpDeadline:'2027-01-31',photoUrl:'',groomPhoto:'',bridePhoto:'',venuePhotoUrl:'',audioUrl:'',audioName:'',videoUrl:'',languages:[],ganeshIcon:'gold',music:true,scratch:true,preEvents:'',transport:'',accommodation:'',gallery:[],
+  rsvpContact:'',rsvpMethod:'whatsapp',rsvpDeadline:'2027-01-31',photoUrl:'',groomPhoto:'',bridePhoto:'',venuePhotoUrl:'',audioUrl:'',audioName:'',videoUrl:'',languages:[],ganeshIcon:'gold',music:true,preEvents:'',transport:'',accommodation:'',gallery:[],
   events:[...eventPreset('premium-original').events,{time:'21:30',title:'Family blessings & farewell',description:'With love, we begin our new journey.'}]
 });
 const limit=(value,fallback,max=300)=>typeof value==='string'?value.trim().slice(0,max):fallback;
@@ -33,7 +33,7 @@ export function normalizeConfig(value={}){
   // Earlier drafts shipped with an empty Ganesh slot. Upgrade that default;
   // an explicit choice in the current editor still survives copied links.
   c.ganeshIcon=value.ganeshIcon==='none'&&value.version!==3?'gold':Object.hasOwn(ganeshOptions,value.ganeshIcon)?value.ganeshIcon:DEFAULTS.ganeshIcon;
-  c.music=value.music!==false;c.scratch=value.scratch!==false;
+  c.music=value.music!==false;
   c.reference=normalizeReference(value.reference,safeImageUrl);
   if(Array.isArray(value.events))c.events=value.events.slice(0,10).filter(e=>e&&typeof e==='object'&&validTime(e.time)&&typeof e.title==='string'&&e.title.trim()).map(e=>({time:e.time,title:limit(e.title,'',70),description:limit(e.description,'',150)}));if(Object.hasOwn(legacyThemes,value.theme)){const previous=legacyPreset(value.theme),wedding=eventPreset(value.theme);for(const key of ['occasion','blessing','message'])if(c[key]===previous[key])c[key]=wedding[key];if(JSON.stringify(c.events)===JSON.stringify(previous.events))c.events=wedding.events.map(e=>({...e}));}return c;
 }
