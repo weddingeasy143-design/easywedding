@@ -21,7 +21,7 @@ import {
   type SectionMusicConfig,
 } from "./music-zones";
 
-const MUSIC_KEY = "chandan-pinki-music";
+const MUSIC_KEY = "easy-wedding-music";
 const STABILITY_MS = 700;
 const DUCK_LEVEL = 0.12;
 

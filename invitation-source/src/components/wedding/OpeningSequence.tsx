@@ -6,7 +6,7 @@ import {useMotionPreference} from "../../../adapters/motion-preference";
 //     (100% reference-matched, untouched)
 //  2. Name-reveal curtain (3-10s) — red silk curtain with invitation
 //     messages ("You're Invited" + "Two Families…"), then parts
-//     left+right revealing "Chandan weds Pinki" with light rays + petals
+//     left+right revealing the couple's names with light rays + petals
 //  3. Final (10s+) — existing RoyalOpening as-is (Open Invitation → doors)
 //
 // Auto-advances, 0.5s crossfades.

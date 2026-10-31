@@ -36,7 +36,7 @@ export default function InvalidInvitationLink() {
           for a fresh invitation link to view your personal invitation.
         </p>
         <p className="mt-8 text-xs uppercase tracking-[0.22em] text-bark/50">
-          Chandan &amp; Pinki &middot; 26 November 2026
+          Easy Wedding
         </p>
       </div>
     </main>

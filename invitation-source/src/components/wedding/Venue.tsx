@@ -232,7 +232,9 @@ export default function Venue() {
                 {VENUE.name}
               </p>
               <p className="font-display text-[13px] leading-snug text-[#6B4A3A] sm:text-sm">
-                Bokaro, Jharkhand
+                {VENUE.addressLines.length
+                  ? VENUE.addressLines[VENUE.addressLines.length - 1]
+                  : ""}
               </p>
             </div>
             <div className="flex flex-col items-center px-2 text-center">

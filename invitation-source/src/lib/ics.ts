@@ -1,6 +1,7 @@
 // src/lib/ics.ts
 // Generates a downloadable .ics calendar file for a wedding event.
 import type { WeddingEvent } from "@/content/wedding";
+import { COUPLE } from "@/content/wedding";
 
 /** "2026-11-24T20:00:00+05:30" -> "20261124T200000" (floating local time) */
 function toIcsLocal(iso: string): string {
@@ -31,14 +32,14 @@ export function downloadEventIcs(event: WeddingEvent): void {
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ChandanPinki//Wedding Invitation//EN",
+    "PRODID:-//Easy Wedding//Wedding Invitation//EN",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
-    `UID:${event.id}-chandan-pinki-wedding@invitation`,
+    `UID:${event.id}-easy-wedding@invitation`,
     `DTSTAMP:${stamp}`,
     `DTSTART:${toIcsLocal(event.dateISO)}`,
     `DTEND:${toIcsLocal(end.toISOString())}`,
-    `SUMMARY:${escapeIcs(`${event.name} — Chandan weds Pinki`)}`,
+    `SUMMARY:${escapeIcs(`${event.name} — ${COUPLE.groom} weds ${COUPLE.bride}`)}`,
     `DESCRIPTION:${escapeIcs(`${event.tagline}. ${event.description}`)}`,
     `LOCATION:${escapeIcs(event.address)}`,
     "END:VEVENT",
@@ -50,7 +51,7 @@ export function downloadEventIcs(event: WeddingEvent): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `chandan-pinki-${event.id}.ics`;
+  a.download = `easy-wedding-${event.id}.ics`;
   document.body.appendChild(a);
   a.click();
   a.remove();

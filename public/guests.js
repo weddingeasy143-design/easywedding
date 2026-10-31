@@ -55,7 +55,7 @@ async function main(){
  app.querySelector('#add-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const status=app.querySelector('#f-status');
-  const name=app.querySelector('#f-name').value.trim(),phone=app.querySelector('#f-phone').value.replace(/\D/g,''),invitationId=app.querySelector('#f-invite').value;
+  const name=app.querySelector('#f-name').value.trim(),invitationId=app.querySelector('#f-invite').value;let phone=app.querySelector('#f-phone').value.replace(/\D/g,'');if(phone.length===12&&phone.startsWith('91'))phone=phone.slice(2);else if(phone.length===11&&phone.startsWith('0'))phone=phone.slice(1);
   if(!name){status.textContent='Please enter the guest\u2019s name.';return;}
   if(phone&&!/^[6-9]\d{9}$/.test(phone)){status.textContent='Please enter a valid 10-digit mobile number, or leave it empty.';return;}
   status.textContent='Creating the link…';
