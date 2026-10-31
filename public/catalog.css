@@ -238,3 +238,5 @@ dialog.tpl-dialog{width:fit-content;max-width:calc(100% - 24px);max-height:calc(
 .mob-play{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--line)}
 .mob-play .play-badge{margin:0;min-height:44px;padding:4px 14px 4px 12px;border-radius:10px}
 .mob-play .play-tester{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1.5px solid var(--gold);border-radius:999px;color:var(--maroon);font-weight:600;font-size:14px;text-decoration:none}
+
+.foot-admin{display:inline-flex;margin-left:7px;vertical-align:-1px;color:inherit;opacity:.45}.foot-admin svg{width:10px;height:10px}.foot-admin:hover{opacity:.85}
