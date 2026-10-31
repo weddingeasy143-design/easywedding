@@ -86,19 +86,13 @@ if (dialog) {
     return target || candidates[0];
   }
 
-  function pressByText(doc, pattern) {
-    /* State-driven: only presses a control that is actually on screen now.
-       The app can swallow a press that lands before it is ready, so the
-       caller re-checks the visible state on every tick instead of trusting
-       that one press worked. */
-    const target = findByText(doc, pattern);
-    if (!target) return false;
-    press(target, doc);
-    return true;
-  }
-
-  let idleTicks = 0;
-  let pressTicks = 0;
+  /* Preview choreography state (owner's rule): the preview waits at the
+     Tap to Reveal screen for the visitor's own tap, plays through the
+     reveal beats, then holds at the Open Invitation cover for 10 seconds
+     before pressing it once — only if the visitor hasn't taken over by
+     scrolling or keyboard (their taps are part of the flow). */
+  let coverSince = 0;
+  let coverPressed = false;
 
   function hideLoading() {
     if (loading) loading.hidden = true;
@@ -111,36 +105,38 @@ if (dialog) {
        reference/render.html. Keep our loader up until the real card is there. */
     const onCard = !!doc && !!doc.body && /\/reference\/render\.html$/.test(doc.location.pathname);
     if (onCard) {
-      /* The visitor has started scrolling the invitation: autoplay must never press anything again,
-         or its "open invitation" press (the cover button is still near the top) throws them back to the top. */
+      /* The visitor has started scrolling the invitation: the driver must
+         never press anything again, or its cover press (the button is still
+         near the top) throws them back to the top. */
       if (doc.defaultView && doc.defaultView.scrollY > 24) { stopAutoplay(); return; }
       const text = doc.body.textContent || '';
-      /* The cover's Open Invitation button is the visitor's own moment
-         (owner's rule): once it is on screen the preview WAITS there.
-         Autoplay never presses it and never asks the card to open itself
-         past it — the visitor's own tap opens the invitation. */
-      if (findByText(doc, /open invitation/i)) { hideLoading(); stopAutoplay(); return; }
-      const pressed = pressByText(doc, /tap to reveal/i);
-      if (pressed || text.length > 3000) hideLoading();
-      if (pressed) {
-        idleTicks = 0;
-        pressTicks += 1;
-        /* Some reveals need a scratch or swipe a synthetic tap can't make.
-           After ~9s of pressing, ask the invitation to open itself. This
-           can only fire while the Open Invitation button is NOT on screen —
-           the check above stops autoplay the moment it appears. */
-        if (pressTicks >= 10) {
-          try { frame.contentWindow.postMessage({ type: 'wedcanvas:open' }, location.origin); } catch (err) { /* frame gone */ }
+      /* The loader can come down once the app itself has mounted (the
+         runtime's "Preparing…" placeholder is replaced by the real card). */
+      const root = doc.querySelector('#reference-root');
+      if ((root && root.children.length && !doc.querySelector('.invitation-loading')) || text.length > 3000) hideLoading();
+      /* The Open Invitation cover is the one place the driver still acts —
+         and only after a 10-second hold (owner's choreography): the preview
+         reaches the cover through the visitor's own tap on Tap to Reveal,
+         waits 10 s there, then presses Open Invitation exactly once. A
+         visitor who taps the cover themselves opens it instantly through
+         the app (and the opened card ends the driver's work); scrolling or
+         keyboard input stops the driver first (see the frame listener). */
+      const cover = findByText(doc, /open invitation/i);
+      if (cover) {
+        hideLoading();
+        if (!coverSince) coverSince = Date.now();
+        if (!coverPressed && Date.now() - coverSince >= 10000) {
+          coverPressed = true;
+          press(cover, doc);
+          stopAutoplay();
         }
-      } else {
-        idleTicks += 1;
-        /* Done only once the invitation itself is open (its RSVP section or
-           replay control exists). Text length alone also matches the curtain
-           and reveal screens, which stopped autoplay before the card. */
-        const opened = !!doc.querySelector('#rsvp') ||
-          [...doc.querySelectorAll('button')].some((b) => /replay invitation/i.test(b.textContent || ''));
-        if (idleTicks >= 2 && opened) stopAutoplay();
+        return;
       }
+      /* Nothing to drive while the visitor is at the reveal screen or the
+         beats are playing. If they opened the card themselves, we are done. */
+      const opened = !!doc.querySelector('#rsvp') ||
+        [...doc.querySelectorAll('button')].some((b) => /replay invitation/i.test(b.textContent || ''));
+      if (opened) stopAutoplay();
     }
     const elapsed = Date.now() - startedAt;
     if (elapsed > 15000) hideLoading();
@@ -157,9 +153,15 @@ if (dialog) {
       /* Wheel and touch scrolling move the page directly (no CSS smoothing lag) and never chain to the page behind. */
       view.document.documentElement.style.scrollBehavior = 'auto';
       view.document.documentElement.style.overscrollBehavior = 'contain';
-      /* Any touch, wheel, key or click by the visitor means they are in control: stop autoplay. */
-      /* Only real input counts (isTrusted): autoplay's own synthetic presses must not stop itself. */
-      ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((type) => view.addEventListener(type, (event) => { if (event.isTrusted) stopAutoplay(); }, { passive: true }));
+      /* Real scrolling or keyboard input means the visitor is exploring on
+         their own: stop the driver. Taps are NOT a stop signal — they are
+         part of the choreography itself (the Tap to Reveal tap, beat skips,
+         and the cover's own button, which always opens instantly when the
+         visitor presses it). If taps stopped the driver, the required first
+         tap would kill the cover's 10-second hold before it began. */
+      /* Only real input counts (isTrusted): the driver's own synthetic
+         cover press must not stop itself. */
+      ['wheel', 'keydown'].forEach((type) => view.addEventListener(type, (event) => { if (event.isTrusted) stopAutoplay(); }, { passive: true }));
     } catch (err) { /* about:blank or navigated away */ }
   });
 
@@ -167,8 +169,8 @@ if (dialog) {
     title.textContent = design.name;
     makeLink.href = '/studio?template=' + design.id;
     if (loading) loading.hidden = false;
-    idleTicks = 0;
-    pressTicks = 0;
+    coverSince = 0;
+    coverPressed = false;
     startedAt = Date.now();
     requestAnimationFrame(fitPreview);
     frame.src = 'reference/render.html?template=' + design.id;

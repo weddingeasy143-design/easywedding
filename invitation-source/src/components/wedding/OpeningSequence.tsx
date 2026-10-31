@@ -22,6 +22,7 @@ import { COUPLE } from "@/content/wedding";
 import PetalField from "./PetalField";
 import SurpriseAwaits from "./SurpriseAwaits";
 import RoyalOpening from "./RoyalOpening";
+import { OPENING_ACTS } from "./openings/index";
 import { startMusic } from "@/lib/music";
 
 // ─────────────────────────────────────────────
@@ -499,6 +500,12 @@ export default function OpeningSequence({ onOpen }: { onOpen: () => void }) {
   const reduce = useMotionPreference() ?? false;
   const [beat, setBeat] = useState<Beat>(0);
   const showGanesh=(window as any).__easyWedding.config.ganeshIcon!=="none";
+  /* Per-design opening act (beats 0 and 2 only). Premium Original has no
+     entry in OPENING_ACTS and keeps the shared beats untouched; beat 3
+     (the Open Invitation cover) is shared by every design. */
+  const ewGlobal=(window as any).__easyWedding||{};
+  const designId:string=ewGlobal.design?.id||ewGlobal.config?.theme||"";
+  const act=OPENING_ACTS[designId];
 
   // Ganesh aarti from the very start (plays on first tap if autoplay blocks)
   useEffect(() => {
@@ -553,9 +560,9 @@ export default function OpeningSequence({ onOpen }: { onOpen: () => void }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          {beat === 0 && <SurpriseAwaits onReveal={() => setBeat(showGanesh?1:2)} />}
+          {beat === 0 && (act ? <act.Reveal onReveal={() => setBeat(showGanesh?1:2)} /> : <SurpriseAwaits onReveal={() => setBeat(showGanesh?1:2)} />)}
           {beat === 1 && <BeatGanesh onReady={() => setGaneshReady(true)} />}
-          {beat === 2 && <BeatCurtain onDone={() => setBeat(3)} autoPlay />}
+          {beat === 2 && (act ? <act.Curtain onDone={() => setBeat(3)} autoPlay /> : <BeatCurtain onDone={() => setBeat(3)} autoPlay />)}
           {beat === 3 && <RoyalOpening onOpen={onOpen} />}
         </motion.div>
       </AnimatePresence>

@@ -225,15 +225,27 @@ const PREVIEW_TIMEOUT_MS=10000;let previewTimer=null;
 function previewStatus(){let s=$('#pv-status');if(!s){s=document.createElement('div');s.id='pv-status';s.className='pv-status';s.setAttribute('role','status');$('#preview-full').before(s);}return s;}
 function previewLoaded(){const frame=$('#preview-full');if(frame.dataset.loading!=='1')return;frame.dataset.loading='';clearTimeout(previewTimer);const s=$('#pv-status');if(s){s.hidden=true;s.replaceChildren();}}
 function previewSlow(href){const frame=$('#preview-full');if(frame.dataset.loading!=='1')return;const s=previewStatus(),p=document.createElement('p'),a=document.createElement('a');p.textContent='Your preview is taking longer than usual.';a.href=href;a.target='_blank';a.rel='noopener';a.className='primary pv-newtab';a.textContent='Open preview in a new tab';s.replaceChildren(p,a);s.hidden=false;s.classList.add('pv-slow');}
+/* Full-screen preview choreography — the same rule as the homepage preview
+   (owner's rule): the card waits at Tap to Reveal for the visitor's own tap;
+   if the Open Invitation cover then sits untouched for 10 seconds it is
+   pressed once. Any real input inside the frame stops this driver at once.
+   (The side preview's Invite tab is an editor control and is NOT driven.) */
+let pvGateTimer=null,pvCoverSince=0,pvCoverPressed=false,pvGateStarted=0;
+function pvStopGate(){if(pvGateTimer){clearInterval(pvGateTimer);pvGateTimer=null;}}
+function pvFindOpen(doc){const view=doc.defaultView;const cands=[...doc.querySelectorAll('button, a, [role="button"], div, span')].filter(el=>{if(!/open invitation/i.test((el.textContent||'').trim()))return false;const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&r.bottom>-50&&r.right>-50&&r.top<(view?view.innerHeight+200:1e9)&&r.left<(view?view.innerWidth+200:1e9);});if(!cands.length)return null;cands.sort((a,b)=>(a.textContent||'').length-(b.textContent||'').length);let t=cands.find(el=>el.tagName==='BUTTON')||cands[0];for(let i=0;i<5&&t;i++){if(t.tagName==='BUTTON'||t.tagName==='A'||t.getAttribute('role')==='button'||t.onclick)break;t=t.parentElement;}return t||cands[0];}
+function pvPress(el,doc){const view=doc.defaultView||window;const Pointer=view.PointerEvent||view.MouseEvent;const Mouse=view.MouseEvent;const opts={bubbles:true,cancelable:true,view};try{el.dispatchEvent(new Pointer('pointerdown',opts));el.dispatchEvent(new Mouse('mousedown',opts));el.dispatchEvent(new Pointer('pointerup',opts));el.dispatchEvent(new Mouse('mouseup',opts));el.dispatchEvent(new Mouse('click',opts));}catch(err){el.click();}}
+function pvGateTick(){const frame=$('#preview-full');let doc=null;try{doc=frame.contentDocument;}catch(err){doc=null;}if(!doc||!doc.body||!/\/reference\/render\.html$/.test(doc.location.pathname))return;if(doc.defaultView&&doc.defaultView.scrollY>24){pvStopGate();return;}const cover=pvFindOpen(doc);if(cover){if(!pvCoverSince)pvCoverSince=Date.now();if(!pvCoverPressed&&Date.now()-pvCoverSince>=10000){pvCoverPressed=true;pvPress(cover,doc);pvStopGate();}return;}if(doc.querySelector('#rsvp'))pvStopGate();if(Date.now()-pvGateStarted>90000)pvStopGate();}
+function pvStartGate(){pvStopGate();pvCoverSince=0;pvCoverPressed=false;pvGateStarted=Date.now();pvGateTimer=setInterval(pvGateTick,900);}
 function openPreviewStep(){clearTimeout(updateTimer);refresh();const src='reference/render.html'+(previewMark()?'?wm=1':'')+'#card='+encodeConfig(config);if(window.EWApp&&typeof window.EWApp.openPreview==='function'&&window.EWApp.openPreview(new URL(src,location.href).href))return;
  $('#pv-title').textContent=eventThemes[config.theme].name+' · your preview';$('#pv-continue').textContent='Make it yours →';$('#pv-continue').hidden=isOwner();
  const frame=$('#preview-full'),dialog=$('#preview-dialog'),status=previewStatus();status.classList.remove('pv-slow');status.textContent='Loading your preview…';status.hidden=false;
- frame.dataset.loading='1';clearTimeout(previewTimer);previewTimer=setTimeout(()=>previewSlow(new URL(src,location.href).href),PREVIEW_TIMEOUT_MS);frame.src=src;
+ frame.dataset.loading='1';clearTimeout(previewTimer);previewTimer=setTimeout(()=>previewSlow(new URL(src,location.href).href),PREVIEW_TIMEOUT_MS);frame.src=src;pvStartGate();
  if(typeof dialog.showModal==='function'){try{dialog.showModal();}catch{dialog.setAttribute('open','');}}else dialog.setAttribute('open','');}
 $('#preview-full').addEventListener('load',previewLoaded);
+$('#preview-full').addEventListener('load',()=>{try{const view=$('#preview-full').contentWindow;['wheel','keydown'].forEach(t=>view.addEventListener(t,e=>{if(e.isTrusted)pvStopGate();},{passive:true}));}catch(err){}});
 $('#pv-back').addEventListener('click',()=>{$('#preview-dialog').close();});
 $('#pv-continue').addEventListener('click',()=>{$('#preview-dialog').close();if(!isOwner()&&!previewIsSaved()){refresh();markPreviewSaved();}openShare();});
-$('#preview-dialog').addEventListener('close',()=>{clearTimeout(previewTimer);const frame=$('#preview-full');frame.dataset.loading='';frame.src='about:blank';});
+$('#preview-dialog').addEventListener('close',()=>{clearTimeout(previewTimer);pvStopGate();const frame=$('#preview-full');frame.dataset.loading='';frame.src='about:blank';});
 async function migrateLocalPhotos(){
  const nodes=[...form.querySelectorAll('input,textarea')].filter(n=>typeof n.value==='string'&&n.value.includes('data:image/'));
  if(!nodes.length)return;
