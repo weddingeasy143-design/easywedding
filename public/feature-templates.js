@@ -61,25 +61,21 @@ if (dialog) {
     } catch (err) { el.click(); }
   }
 
-  function pressByText(doc, pattern) {
-    /* State-driven: only presses a control that is actually on screen now.
-       The app can swallow a press that lands before it is ready, so the
-       caller re-checks the visible state on every tick instead of trusting
-       that one press worked. */
+  function findByText(doc, pattern) {
+    /* The live control whose text matches, or null. The app unmounts
+       inactive screens, so a match is what is on screen now. */
     const view = doc.defaultView;
     const candidates = [...doc.querySelectorAll('button, a, [role="button"], div, span')]
       .filter((el) => {
         if (!pattern.test((el.textContent || '').trim())) return false;
         const r = el.getBoundingClientRect();
-        /* Rendered and near the frame: the app unmounts inactive screens, so
-           a match is the live control. A generous margin is needed because
-           the card's open button can sit just below the frame's fold, and a
-           synthetic press reaches it there. */
+        /* Rendered and near the frame: a generous margin is needed because
+           the card's open button can sit just below the frame's fold. */
         return r.width > 0 && r.height > 0 && r.bottom > -50 && r.right > -50 &&
           r.top < (view ? view.innerHeight + 200 : 1e9) &&
           r.left < (view ? view.innerWidth + 200 : 1e9);
       });
-    if (!candidates.length) return false;
+    if (!candidates.length) return null;
     candidates.sort((a, b) => (a.textContent || '').length - (b.textContent || '').length);
     let target = candidates.find((el) => el.tagName === 'BUTTON') || candidates[0];
     for (let i = 0; i < 5 && target; i++) {
@@ -87,7 +83,17 @@ if (dialog) {
           target.getAttribute('role') === 'button' || target.onclick) break;
       target = target.parentElement;
     }
-    press(target || candidates[0], doc);
+    return target || candidates[0];
+  }
+
+  function pressByText(doc, pattern) {
+    /* State-driven: only presses a control that is actually on screen now.
+       The app can swallow a press that lands before it is ready, so the
+       caller re-checks the visible state on every tick instead of trusting
+       that one press worked. */
+    const target = findByText(doc, pattern);
+    if (!target) return false;
+    press(target, doc);
     return true;
   }
 
@@ -109,15 +115,20 @@ if (dialog) {
          or its "open invitation" press (the cover button is still near the top) throws them back to the top. */
       if (doc.defaultView && doc.defaultView.scrollY > 24) { stopAutoplay(); return; }
       const text = doc.body.textContent || '';
-      /* Later stage first: once the card is showing, its open control is the
-         goal — an off-screen leftover of the reveal screen must not starve it. */
-      const pressed = pressByText(doc, /open invitation/i) || pressByText(doc, /tap to reveal/i);
+      /* The cover's Open Invitation button is the visitor's own moment
+         (owner's rule): once it is on screen the preview WAITS there.
+         Autoplay never presses it and never asks the card to open itself
+         past it — the visitor's own tap opens the invitation. */
+      if (findByText(doc, /open invitation/i)) { hideLoading(); stopAutoplay(); return; }
+      const pressed = pressByText(doc, /tap to reveal/i);
       if (pressed || text.length > 3000) hideLoading();
       if (pressed) {
         idleTicks = 0;
         pressTicks += 1;
         /* Some reveals need a scratch or swipe a synthetic tap can't make.
-           After ~9s of pressing, ask the invitation to open itself. */
+           After ~9s of pressing, ask the invitation to open itself. This
+           can only fire while the Open Invitation button is NOT on screen —
+           the check above stops autoplay the moment it appears. */
         if (pressTicks >= 10) {
           try { frame.contentWindow.postMessage({ type: 'wedcanvas:open' }, location.origin); } catch (err) { /* frame gone */ }
         }
