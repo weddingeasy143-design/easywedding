@@ -45,7 +45,7 @@ function kpi(label,value,sub){const k=el('div','ad-kpi');k.append(el('small',nul
 function bars(target,items,fmt){clear(target);if(!items.length||!items.some(i=>i.value>0)){target.append(el('p','ad-empty','No data yet.'));return;}const max=Math.max(...items.map(i=>i.value),1);const box=el('div','ad-bars');for(const i of items){const b=el('div',i.value>0?'':'zero');b.style.height=(i.value/max*100)+'%';b.title=i.label+': '+(fmt?fmt(i.value):i.value);box.append(b);}target.append(box);const ax=el('div','ad-axis');ax.append(el('span',null,items[0].label),el('span',null,items[items.length-1].label));target.append(ax);}
 function hbars(target,items,empty){clear(target);if(!items.length){target.append(el('p','ad-empty',empty||'No data yet.'));return;}const max=Math.max(...items.map(i=>i.value),1);for(const i of items){const row=el('div','ad-hrow');const t=el('div','t');const f=el('i');f.style.width=(i.value/max*100)+'%';t.append(f);row.append(el('span',null,i.label),t,el('b',null,i.text||num(i.value)));target.append(row);}}
 const pct=(a,b)=>b>0?Math.round(a/b*1000)/10+'%':'0%';
-let payState=null,siteOpen=true,lastOrders=[];
+let payState=null,siteOpen=true,launchOn=false,lastOrders=[];
 
 // ---- Dashboard ----
 async function loadDashboard(){
@@ -60,6 +60,8 @@ async function loadDashboard(){
 }
 function paintSite(){document.querySelectorAll('.site-toggle').forEach(t=>t.checked=siteOpen);document.querySelectorAll('.site-label').forEach(s=>s.textContent=siteOpen?'Shop is open to everyone':'Shop is CLOSED — visitors see “Opening very soon”');}
 document.addEventListener('change',async e=>{if(!e.target.classList.contains('site-toggle'))return;const wanted=e.target.checked;document.querySelectorAll('.site-status').forEach(s=>s.textContent='Saving…');try{const d=await send('/api/admin/site',{open:wanted});siteOpen=d.open;document.querySelectorAll('.site-status').forEach(s=>s.textContent=d.open?'Saved — the shop is now open to everyone.':'Saved — the shop is closed to the public.');}catch(err){document.querySelectorAll('.site-status').forEach(s=>s.textContent=err.message);}paintSite();});
+function paintLaunch(){document.querySelectorAll('.launch-toggle').forEach(t=>t.checked=launchOn);document.querySelectorAll('.launch-label').forEach(s=>s.textContent=launchOn?'Grand Opening is ON — launching prices are live':'Grand Opening is OFF — normal prices are live');}
+document.addEventListener('change',async e=>{if(!e.target.classList.contains('launch-toggle'))return;const wanted=e.target.checked;document.querySelectorAll('.launch-status').forEach(s=>s.textContent='Saving…');try{const d=await send('/api/admin/launch',{active:wanted});launchOn=!!d.active;if(payState&&payState.prices)payState.prices.forEach(p=>p.launch_active=launchOn?1:0);document.querySelectorAll('[data-p="active"]').forEach(c=>c.checked=launchOn);document.querySelectorAll('.launch-status').forEach(s=>s.textContent=launchOn?'Saved — Grand Opening is ON. Launching prices are live everywhere.':'Saved — Grand Opening is OFF. Normal prices are live everywhere.');}catch(err){document.querySelectorAll('.launch-status').forEach(s=>s.textContent=err.message);}paintLaunch();});
 
 // ---- Analytics ----
 async function loadAnalytics(){
@@ -185,7 +187,7 @@ let cuTimer;$('#cu-q').addEventListener('input',()=>{clearTimeout(cuTimer);cuTim
  $('#reset-form').addEventListener('submit',async e=>{e.preventDefault();const status=$('#reset-status');status.textContent='Creating…';try{const d=await send('/api/admin/reset-password',{email:$('#reset-email').value},'POST');status.textContent='New password for '+$('#reset-email').value+': '+d.temporaryPassword+' — send it to them now; it is not shown again.';e.target.reset();}catch(err){status.textContent=err.message;}});}
 
 // ---- Settings & system ----
-async function loadSettings(){const [s,b]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner')]);siteOpen=s.open;paintSite();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;}
+async function loadSettings(){const [s,b,l]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner'),api('/api/admin/launch')]);siteOpen=s.open;paintSite();launchOn=!!l.active;paintLaunch();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;}
 $('#banner-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#bn-status');st.textContent='Saving…';try{const d=await send('/api/admin/banner',{text:$('#bn-text').value,on:$('#bn-on').checked});$('#bn-on').checked=d.on;st.textContent=d.on?'Saved — the banner is live on the homepage (refreshes within a minute).':'Saved — the banner is hidden.';}catch(err){st.textContent=err.message;}});
 async function loadSystem(){
  const d=await api('/api/admin/system'),ok=(v,yes,no)=>badge(v?yes:no,v?'on':'off');

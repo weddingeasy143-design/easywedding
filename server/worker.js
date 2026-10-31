@@ -790,6 +790,15 @@ export default {async fetch(request,env){
   if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();return json({open});}
   fail('Not found.',404);
  }
+ // Master switch for the Grand Opening offer: one flip moves every design
+ // (and the Pass) between its launch price and its regular price. The
+ // homepage offer strip and its wording follow /api/pricing on their own.
+ if(path==='/api/admin/launch'){
+  if(!await isAdminUser(env,authUser))fail('Admin access only.',403);
+  if(request.method==='GET'){const rows=await db(env).prepare('SELECT launch_active FROM prices').all();const list=rows.results||[];const on=list.filter(r=>r.launch_active).length;return json({active:on>0,on,total:list.length});}
+  if(request.method==='PUT'){const input=await body(request,2000);const active=!!input?.active;const total=(await db(env).prepare('SELECT COUNT(*) AS n FROM prices').first())?.n||0;await db(env).prepare('UPDATE prices SET launch_active=?').bind(active?1:0).run();return json({active,on:active?total:0,total});}
+  fail('Not found.',404);
+ }
  // Owner unlocks a design for a couple who paid outside the site (UPI/WhatsApp).
  // Recorded as a paid 'manual' order so it shows in Recent orders.
  if(path==='/api/admin/grant'&&request.method==='POST'){
