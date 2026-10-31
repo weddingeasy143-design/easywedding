@@ -10,7 +10,7 @@
   'use strict';
   var CACHE = 'ew_user_cache_v1';
   var HINT = 'ew_session_hint';
-  var MAX_AGE = 2592000; /* 30 days, matches the server session */
+  var MAX_AGE = 604800; /* 7 days, matches the server session cap */
 
   function readCache() {
     try {
@@ -98,5 +98,89 @@
       location.href = '/';
     }
   };
+
+  /* Inactivity sign-out — the owner's rule: 15 quiet minutes brings a
+     warning with a 2-minute countdown; if nobody answers, the visitor is
+     signed out. Activity is shared across tabs through localStorage, so
+     using any one tab counts as being here, and working inside an
+     embedded preview frame counts too. While the visitor is active, a
+     light session check every few minutes keeps the server's own idle
+     clock (which ends untouched sessions on its side) in step. */
+  var IDLE_LIMIT = 15 * 60 * 1000;
+  var WARN_TIME = 2 * 60 * 1000;
+  var ACTIVE_KEY = 'ew_last_active_v1';
+  var warnBox = null;
+  var warnTimer = null;
+  var warnEndsAt = 0;
+  var lastPing = 0;
+
+  function lastActive() {
+    try { return Number(localStorage.getItem(ACTIVE_KEY)) || 0; } catch (e) { return 0; }
+  }
+  function markActive() {
+    try { localStorage.setItem(ACTIVE_KEY, String(Date.now())); } catch (e) { /* storage blocked */ }
+  }
+  function hideWarn() {
+    if (warnTimer) { clearInterval(warnTimer); warnTimer = null; }
+    if (warnBox) { warnBox.remove(); warnBox = null; }
+  }
+  function updateCount() {
+    if (!warnBox) return;
+    var left = Math.max(0, warnEndsAt - Date.now());
+    var el = warnBox.querySelector('#ew-idle-count');
+    if (el) {
+      var s = Math.ceil(left / 1000);
+      el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+    if (left <= 0) { hideWarn(); window.EWAuth.signOut(); }
+  }
+  function showWarn() {
+    if (warnBox || !document.body) return;
+    warnEndsAt = Date.now() + WARN_TIME;
+    var box = document.createElement('div');
+    box.setAttribute('role', 'alertdialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'You are about to be signed out');
+    box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(26,5,12,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+    box.innerHTML = '<div style="background:#fffaf0;color:#3d0a1a;border:1px solid #e8bd6b;border-radius:16px;max-width:420px;width:100%;padding:26px 24px;text-align:center;box-shadow:0 24px 60px rgba(10,1,5,.35)">' +
+      '<h2 style="font:600 22px Georgia,serif;margin:0 0 8px">Are you still there?</h2>' +
+      '<p style="margin:0;font-size:15px;line-height:1.5">You have been quiet for a while. For your security, you will be signed out in</p>' +
+      '<p id="ew-idle-count" style="font:700 30px Georgia,serif;color:#75152e;margin:6px 0 14px">2:00</p>' +
+      '<button id="ew-idle-stay" type="button" style="min-height:48px;padding:10px 22px;border:0;border-radius:999px;background:#75152e;color:#fff;font-size:15px;cursor:pointer">I am here — keep me signed in</button>' +
+      '<div><button id="ew-idle-out" type="button" style="margin-top:8px;min-height:44px;padding:8px 16px;border:0;background:transparent;color:#75152e;font-size:14px;cursor:pointer;text-decoration:underline">Sign out now</button></div>' +
+      '</div>';
+    document.body.appendChild(box);
+    warnBox = box;
+    box.querySelector('#ew-idle-stay').addEventListener('click', function () {
+      markActive();
+      window.EWAuth.refresh();
+      hideWarn();
+    });
+    box.querySelector('#ew-idle-out').addEventListener('click', function () {
+      hideWarn();
+      window.EWAuth.signOut();
+    });
+    updateCount();
+    warnTimer = setInterval(updateCount, 500);
+  }
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (type) {
+    window.addEventListener(type, function () {
+      if (Date.now() - lastActive() > 5000) markActive();
+      if (warnBox) { markActive(); hideWarn(); } /* any real activity answers the warning */
+    }, { passive: true });
+  });
+  function idleTick() {
+    if (!window.EWAuth.session()) { hideWarn(); return; }
+    if (!lastActive()) { markActive(); return; }
+    /* Focus inside an embedded frame (the studio's live preview) is work too. */
+    if (document.activeElement && document.activeElement.tagName === 'IFRAME') markActive();
+    if (warnBox) return; /* the countdown is running; activity or its end decides */
+    if (Date.now() - lastActive() >= IDLE_LIMIT) { showWarn(); return; }
+    if (Date.now() - lastPing > 4 * 60 * 1000) {
+      lastPing = Date.now();
+      window.EWAuth.refresh();
+    }
+  }
+  setInterval(idleTick, 15000);
 
 })();

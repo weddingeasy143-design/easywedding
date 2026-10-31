@@ -200,9 +200,9 @@ dialog::backdrop{background:#1a050cb3}
 .icon-button{flex:none;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border:0;border-radius:12px;background:transparent;color:var(--maroon);cursor:pointer}
 .icon-button:hover{background:#75152e12}
 dialog.tpl-dialog{width:fit-content;max-width:calc(100% - 24px);max-height:calc(100dvh - 24px);padding:16px 22px 20px;overflow:auto;overscroll-behavior:contain}
-.tpl-frame-wrap{position:relative;height:min(690px,calc(100dvh - 190px));min-height:380px;aspect-ratio:9/17.5;max-width:calc(100vw - 72px);margin:0 auto;padding:12px;border-radius:46px;background:linear-gradient(160deg,#2b0a15,#12030a);box-shadow:inset 0 0 0 2px #e8bd6b55,0 24px 60px #0a010588}
+.tpl-frame-wrap{position:relative;height:min(690px,calc(100dvh - 190px));min-height:380px;aspect-ratio:9/17.5;max-width:calc(100vw - 72px);margin:0 auto;padding:12px;border-radius:46px;background:linear-gradient(160deg,#2b0a15,#12030a);box-shadow:inset 0 0 0 2px #e8bd6b55,0 24px 60px #0a010588;overflow:hidden}
 .tpl-notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:34%;height:22px;border-radius:0 0 14px 14px;background:#12030a;z-index:2;pointer-events:none}
-#tpl-frame{width:100%;height:100%;border:0;display:block;border-radius:34px;background:#20040d}
+#tpl-frame{position:absolute;left:12px;top:12px;width:390px;height:844px;border:0;display:block;border-radius:34px;background:#20040d;transform-origin:top left}
 .tpl-loading{position:absolute;inset:12px;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;border-radius:34px;background:#20040d;color:#f7e8cd;text-align:center;padding:20px}
 .tpl-loading::before{content:"";width:34px;height:34px;border-radius:50%;border:3px solid #e8bd6b40;border-top-color:#e8bd6b;animation:tpl-spin 1s linear infinite}
 @keyframes tpl-spin{to{transform:rotate(360deg)}}
@@ -215,7 +215,7 @@ dialog.tpl-dialog{width:fit-content;max-width:calc(100% - 24px);max-height:calc(
  .tpl-dialog .dialog-heading h2{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .tpl-frame-wrap{flex:1;width:100%;max-width:none;height:auto;min-height:0;aspect-ratio:auto;padding:0;border-radius:0;box-shadow:none;background:#20040d}
  .tpl-notch{display:none}
- #tpl-frame{border-radius:0}
+ #tpl-frame{border-radius:0;left:0;top:0}
  .tpl-loading{inset:0;border-radius:0}
  .tpl-make{flex:none;width:auto;margin:0;border-radius:0;min-height:56px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
 }

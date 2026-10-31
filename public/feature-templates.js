@@ -11,8 +11,34 @@ if (dialog) {
   const title = dialog.querySelector('#tpl-title');
   const makeLink = dialog.querySelector('#tpl-make');
   const loading = dialog.querySelector('#tpl-loading');
+  const wrap = dialog.querySelector('.tpl-frame-wrap');
   let pollTimer = null;
   let startedAt = 0;
+
+  /* The invitation is designed for a 360–430px phone. On shorter desktop
+     windows the shell used to shrink the frame below that range and the
+     big display type broke mid-word, so the frame always renders at a
+     fixed 390px phone width and is scaled down to fit the shell — the
+     same treatment the studio preview uses. */
+  function fitPreview() {
+    if (!wrap || !frame) return;
+    const cs = getComputedStyle(wrap);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
+    const padT = parseFloat(cs.paddingTop) || 0;
+    const padB = parseFloat(cs.paddingBottom) || 0;
+    const innerW = wrap.clientWidth - padL - padR;
+    const innerH = wrap.clientHeight - padT - padB;
+    if (!innerW || !innerH) return;
+    const s = Math.min(1, innerW / 390);
+    frame.style.left = (padL + Math.max(0, (innerW - 390 * s) / 2)) + 'px';
+    frame.style.top = padT + 'px';
+    frame.style.width = '390px';
+    frame.style.height = Math.round(innerH / s) + 'px';
+    frame.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+  }
+  if (wrap && window.ResizeObserver) new ResizeObserver(() => fitPreview()).observe(wrap);
+  window.addEventListener('resize', () => { if (dialog.open) fitPreview(); });
 
   function stopAutoplay() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -133,6 +159,7 @@ if (dialog) {
     idleTicks = 0;
     pressTicks = 0;
     startedAt = Date.now();
+    requestAnimationFrame(fitPreview);
     frame.src = 'reference/render.html?template=' + design.id;
     stopAutoplay();
     pollTimer = setInterval(tick, 900);

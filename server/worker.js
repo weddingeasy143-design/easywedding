@@ -3,6 +3,21 @@ import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
 import {exportAccountZip,eraseAccountData} from './account-data.js';
 import {inviteProgress} from './invite-progress.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
+/* Sign-in lifetime, the owner's rule: 15 quiet minutes brings a warning
+   with a 2-minute countdown on screen (auth.js), and no answer signs the
+   visitor out. The server enforces the same clock — a session untouched
+   for IDLE_MAX_MS (15 minutes + the 2-minute warning) is ended here, so a
+   tab left open or closed cannot keep a session alive. SESSION_DAYS is
+   only the absolute backstop on top of that. */
+const SESSION_DAYS=7;
+const SESSION_MS=SESSION_DAYS*86400000;
+const SESSION_COOKIE_AGE=SESSION_MS/1000;
+const IDLE_MAX_MS=17*60*1000;
+let sessionColsReady=false;
+async function ensureSessionColumns(env){
+ if(sessionColsReady||!env.DB)return;sessionColsReady=true;
+ try{await env.DB.prepare('ALTER TABLE sessions ADD COLUMN last_seen_at TEXT').run();}catch(e){/* column already there */}
+}
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
 async function rateHit(env,name,request,limit,windowSec){
  const ip=(request.headers.get('CF-Connecting-IP')||'unknown').slice(0,64);
@@ -33,8 +48,8 @@ async function makePasswordRecord(password){const salt=b64encode(crypto.getRando
 async function verifyPassword(password,record){const parts=String(record||'').split('$');if(parts.length!==4||parts[0]!=='pbkdf2')return false;const actual=await hashPassword(password,parts[2],Number(parts[1]));if(actual.length!==parts[3].length)return false;let diff=0;for(let i=0;i<actual.length;i++)diff|=actual.charCodeAt(i)^parts[3].charCodeAt(i);return diff===0;}
 function sessionToken(request){const match=/(?:^|;\s*)ew_session=([a-f0-9]{64})/.exec(request.headers.get('Cookie')||'');return match?match[1]:null;}
 function sessionCookie(token,maxAge){return 'ew_session='+token+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age='+maxAge;}
-async function currentUser(request,env){const token=sessionToken(request);if(!token||!env.DB)return null;const row=await env.DB.prepare('SELECT u.id,u.email,u.name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>?').bind(await sha256hex(token),new Date().toISOString()).first();return row?{id:row.id,email:row.email,name:row.name}:null;}
-async function startSession(env,userId){const token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');const now=new Date();await db(env).prepare('INSERT INTO sessions(id,user_id,created_at,expires_at) VALUES(?,?,?,?)').bind(await sha256hex(token),userId,now.toISOString(),new Date(now.getTime()+2592000000).toISOString()).run();return token;}
+async function currentUser(request,env){const token=sessionToken(request);if(!token||!env.DB)return null;await ensureSessionColumns(env);const hash=await sha256hex(token);const row=await env.DB.prepare('SELECT u.id,u.email,u.name,s.created_at AS s_created,s.last_seen_at AS s_seen FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires_at>? AND s.created_at>?').bind(hash,new Date().toISOString(),new Date(Date.now()-SESSION_MS).toISOString()).first();if(!row)return null;const nowMs=Date.now(),seenMs=Date.parse(row.s_seen||row.s_created);if(!isNaN(seenMs)){if(nowMs-seenMs>IDLE_MAX_MS){await env.DB.prepare('DELETE FROM sessions WHERE id=?').bind(hash).run().catch(()=>{});return null;}if(nowMs-seenMs>60000)await env.DB.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').bind(new Date(nowMs).toISOString(),hash).run().catch(()=>{});}return{id:row.id,email:row.email,name:row.name};}
+async function startSession(env,userId){await ensureSessionColumns(env);const token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,'0')).join('');const now=new Date();await db(env).prepare('INSERT INTO sessions(id,user_id,created_at,expires_at,last_seen_at) VALUES(?,?,?,?,?)').bind(await sha256hex(token),userId,now.toISOString(),new Date(now.getTime()+SESSION_MS).toISOString(),now.toISOString()).run();return token;}
 const hexOf=buf=>[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
 async function hmacHex(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return hexOf(await crypto.subtle.sign('HMAC',key,textEnc.encode(data)));}
 async function hmacB64(secret,data){const key=await crypto.subtle.importKey('raw',textEnc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64encode(new Uint8Array(await crypto.subtle.sign('HMAC',key,textEnc.encode(data))));}
@@ -334,7 +349,7 @@ export default {async fetch(request,env){
   if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase())fail('An account with this email already exists. Please log in instead.',409);
   const id=crypto.randomUUID();
   await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,name,await makePasswordRecord(password),new Date().toISOString()).run();
-  return json({user:{id,email,name,admin:email===(await adminEmail(env))}},201,{'Set-Cookie':sessionCookie(await startSession(env,id),2592000)});
+  return json({user:{id,email,name,admin:email===(await adminEmail(env))}},201,{'Set-Cookie':sessionCookie(await startSession(env,id),SESSION_COOKIE_AGE)});
  }
  if(path==='/api/auth/login'&&request.method==='POST'){
   await rateHit(env,'login',request,20,300);
@@ -347,12 +362,12 @@ export default {async fetch(request,env){
    let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
    if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
    else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
-   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),2592000)});
+   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),SESSION_COOKIE_AGE)});
   }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
   if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
-  return json({user:{id:row.id,email:row.email,name:row.name,admin:row.email.toLowerCase()===(await adminEmail(env))}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
+  return json({user:{id:row.id,email:row.email,name:row.name,admin:row.email.toLowerCase()===(await adminEmail(env))}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),SESSION_COOKIE_AGE)});
  }
  // Admin-only sign-in used by /boss: a normal registered customer can never get a session here.
  if(path==='/api/admin/login'&&request.method==='POST'){
@@ -364,14 +379,14 @@ export default {async fetch(request,env){
    let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
    if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
    else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
-   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),2592000)});
+   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),SESSION_COOKIE_AGE)});
   }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
   if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
   const ownerEmail=await adminEmail(env);
   if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
-  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),2592000)});
+  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),SESSION_COOKIE_AGE)});
  }
 
  // Forgot password: the email AND the mobile number used when paying must match; then the customer sets a new password.
@@ -417,7 +432,7 @@ export default {async fetch(request,env){
   if(existing){
    // An earlier account that never paid: signing in with its password lets the customer continue.
    if(!await verifyPassword(sPass,existing.password_hash))fail('This email is already registered. Please log in, or enter the password you used before.',409);
-   return json({relogin:true},200,{'Set-Cookie':sessionCookie(await startSession(env,existing.id),2592000)});
+   return json({relogin:true},200,{'Set-Cookie':sessionCookie(await startSession(env,existing.id),SESSION_COOKIE_AGE)});
   }
   guestSignup={id:'pending-'+crypto.randomUUID(),name:sName,email:sEmail,hash:await makePasswordRecord(sPass)};
   authUser={id:guestSignup.id,email:sEmail,name:sName};
@@ -592,7 +607,7 @@ export default {async fetch(request,env){
    const done=await db(env).prepare('SELECT user_id FROM orders WHERE id=?').bind(order.id).first();
    const claim=await db(env).prepare('UPDATE orders SET claimed=1,signup_hash=NULL WHERE id=? AND claimed=0').bind(order.id).run();
    if(!claim.meta?.changes)fail('This payment was already used. Please log in with your email and password.',409);
-   return json({ok:true,signedIn:true,designs:await entitledDesigns(env,done.user_id)},200,{'Set-Cookie':sessionCookie(await startSession(env,done.user_id),2592000)});
+   return json({ok:true,signedIn:true,designs:await entitledDesigns(env,done.user_id)},200,{'Set-Cookie':sessionCookie(await startSession(env,done.user_id),SESSION_COOKIE_AGE)});
   };
   if(order.status==='paid')return finish();
   const cfg=await gatewayRow(env,order.gateway);if(!usable(cfg))fail('This payment option is not available right now.',400);
