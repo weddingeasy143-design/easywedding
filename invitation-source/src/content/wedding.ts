@@ -93,7 +93,10 @@ function readSiteContentOverrides(): SiteContentOverrides {
 const SITE_OVERRIDES = readSiteContentOverrides();
 
 function ovStr(v: unknown, fallback: string): string {
-  return typeof v === "string" && v.trim().length > 0 ? v : fallback;
+  /* Only a missing value falls back to the seed. A string the customer
+     cleared stays cleared — their invitation must never resurrect sample
+     text they deliberately removed. */
+  return typeof v === "string" ? v : fallback;
 }
 
 /** For photo URLs: explicit "" means "removed" (show nothing), only undefined/null falls back. */
@@ -131,7 +134,7 @@ export const COUPLE = {
   ),
   quote: ovStr(SITE_OVERRIDES.quote, COUPLE_SEED.quote),
   heroPhoto: ovPhoto(SITE_OVERRIDES.heroPhoto, COUPLE_SEED.heroPhoto),
-  heroPhotoFit: ovStr(SITE_OVERRIDES.heroPhotoFit, "cover") as "cover" | "contain",
+  heroPhotoFit: ovStr(SITE_OVERRIDES.heroPhotoFit, "contain") as "cover" | "contain",
   invitationPhoto: ovPhoto(
     SITE_OVERRIDES.invitationPhoto,
     COUPLE_SEED.invitationPhoto
@@ -141,7 +144,7 @@ export const COUPLE = {
 
 export const WEDDING_DATE_ISO = ovStr(
   SITE_OVERRIDES.weddingDateISO,
-  "2026-11-26T20:00:00+05:30"
+  "2027-02-14T19:00:00+05:30"
 );
 
 // ── family intro (first section of the home page) ───────────────────────
@@ -152,16 +155,16 @@ const FAMILY_SEED = {
   groomPhotoFocus: "62,22",
   groomPhotoFit: "contain",
   groomRelationLabel: "Son of",
-  groomParents: "Shri Rajesh Sharma & Shrimati Sunita Sharma",
+  groomParents: "Shri Mohan Kapoor & Shrimati Rekha Kapoor",
   groomAddress:
-    "Civil Lines, Jaipur,\nRajasthan \u2013 302001",
+    "MG Road, Udaipur,\nRajasthan \u2013 313001",
   bridePhoto: "/reference/assets/current-823d1cc4ff47.jpg",
   bridePhotoFocus: "38,60",
   bridePhotoFit: "contain",
   brideRelationLabel: "Daughter of",
-  brideParents: "Shri Vikram Mehta & Shrimati Anjali Mehta",
+  brideParents: "Shri Anil Verma & Shrimati Sunita Verma",
   brideAddress:
-    "Malviya Nagar, Jaipur,\nRajasthan \u2013 302017",
+    "Hiran Magri, Udaipur,\nRajasthan \u2013 313002",
 };
 
 function ovFit(v: unknown, fallback: string): "cover" | "contain" {
@@ -225,11 +228,11 @@ export const SITE_TEXTS = {
 export const WEDDING_DATE_LABEL = new Date(WEDDING_DATE_ISO).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Kolkata"});
 
 const VENUE_SEED = {
-  name: "The Garden Pavilion",
-  addressLines: ["Palace Road, Civil Lines", "Jaipur, Rajasthan"],
-  pin: "302001",
+  name: "The Lake Pichola Palace",
+  addressLines: ["Lake Palace Road", "Udaipur, Rajasthan"],
+  pin: "313001",
   mapUrl:
-    "https://www.google.com/maps/search/?api=1&query=The+Garden+Pavilion+Palace+Road+Civil+Lines+Jaipur",
+    "https://www.google.com/maps/search/?api=1&query=The+Lake+Pichola+Palace+Lake+Palace+Road+Udaipur",
   photo: "/reference/assets/current-a1240688e514.jpg",
 };
 
@@ -256,9 +259,9 @@ export const EVENTS: WeddingEvent[] = [
     id: "haldi",
     name: "Haldi Ceremony",
     tagline: "Colours of Love",
-    dateISO: "2026-11-24T20:00:00+05:30",
-    dateLabel: "Tuesday, 24 November 2026",
-    timeLabel: "8:00 PM",
+    dateISO: "2027-02-12T11:00:00+05:30",
+    dateLabel: "Friday, 12 February 2027",
+    timeLabel: "11:00 AM",
     venue: VENUE.name,
     address: VENUE.full,
     description:
@@ -274,9 +277,9 @@ export const EVENTS: WeddingEvent[] = [
     id: "mehendi",
     name: "Mehendi Ceremony",
     tagline: "Mehendi Wali Shaam",
-    dateISO: "2026-11-25T20:00:00+05:30",
-    dateLabel: "Wednesday, 25 November 2026",
-    timeLabel: "8:00 PM",
+    dateISO: "2027-02-13T17:00:00+05:30",
+    dateLabel: "Saturday, 13 February 2027",
+    timeLabel: "5:00 PM",
     venue: VENUE.name,
     address: VENUE.full,
     description:
@@ -292,9 +295,9 @@ export const EVENTS: WeddingEvent[] = [
     id: "wedding",
     name: "The Wedding",
     tagline: "Two Souls, One Forever",
-    dateISO: "2026-11-26T20:00:00+05:30",
-    dateLabel: "Thursday, 26 November 2026",
-    timeLabel: "8:00 PM",
+    dateISO: "2027-02-14T19:00:00+05:30",
+    dateLabel: "Sunday, 14 February 2027",
+    timeLabel: "7:00 PM",
     venue: VENUE.name,
     address: VENUE.full,
     description:
@@ -309,11 +312,10 @@ export const EVENTS: WeddingEvent[] = [
   {
     id: "reception",
     name: "Reception",
-    // CRITICAL: Reception is 28 Nov 2026 at 4:00 PM — never 8:00 PM.
     tagline: "Let's Celebrate Our New Beginning",
-    dateISO: "2026-11-28T16:00:00+05:30",
-    dateLabel: "Saturday, 28 November 2026",
-    timeLabel: "4:00 PM",
+    dateISO: "2027-02-16T19:00:00+05:30",
+    dateLabel: "Tuesday, 16 February 2027",
+    timeLabel: "7:00 PM",
     venue: VENUE.name,
     address: VENUE.full,
     description:

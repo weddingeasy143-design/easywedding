@@ -51,8 +51,16 @@ export default function RSVPForm() {
 
     if (!name.trim()) return setError("Please enter your name.");
     const mobile = normalizeIndianPhone(phone);
-    if (!mobile)
-      return setError("Please enter a valid 10-digit Indian mobile number.");
+    if (!mobile) {
+      setError(
+        "Please enter a valid 10-digit Indian mobile number — with or without +91."
+      );
+      /* Take the guest straight to the field that needs fixing. */
+      const el = document.getElementById("rsvp-phone");
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      (el as HTMLInputElement | null)?.focus({ preventScroll: true });
+      return;
+    }
     const guestCount = parseInt(guests, 10);
     if (!guestCount || guestCount < 1 || guestCount > 50)
       return setError("Number of guests must be between 1 and 50.");
@@ -193,11 +201,17 @@ export default function RSVPForm() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit mobile number"
+                  onBlur={() => {
+                    /* Show the number exactly as it will be saved, so the
+                       guest can see their +91 number was accepted. */
+                    const m = normalizeIndianPhone(phone);
+                    if (m && m !== phone) setPhone(m);
+                  }}
+                  placeholder="e.g. +91 98765 43210"
                   className={inputCls}
                   autoComplete="tel"
                   inputMode="tel"
-                  maxLength={14}
+                  maxLength={17}
                 />
               </div>
 

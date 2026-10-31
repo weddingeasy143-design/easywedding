@@ -39,4 +39,4 @@ export async function prepareLocalPhoto(file,maxBytes=50000){
  const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
  try{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');let edge=1280,result='';for(let attempt=0;attempt<7;attempt++){const ratio=Math.min(1,edge/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*ratio);canvas.height=Math.round(bitmap.height*ratio);ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);for(const quality of [.88,.76,.64,.52]){result=canvas.toDataURL('image/jpeg',quality);if(result.length*.75<=maxBytes)return result;}edge=Math.round(edge*.8);}throw Error('This photograph could not be prepared. Try a smaller image.');}finally{bitmap.close();}
 }
-export function browserOnlySession(){try{return !!window.EWAuth?.session()?.fake||new URLSearchParams(location.search).get('demo')==='1';}catch{return false;}}
+export function browserOnlySession(){try{const s=window.EWAuth?.session();return !s||!!s.fake||new URLSearchParams(location.search).get('demo')==='1';}catch{return false;}}

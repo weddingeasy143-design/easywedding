@@ -31,12 +31,12 @@ function goHome(){if(!user||isLocalUser()||!window.EWAuth){location.href='/';ret
 const localKey=()=>user.demo?'ew_demo_state_v1':'ew_workspace_v1_'+user.id;
 function readLocal(){try{const raw=localStorage.getItem(localKey());return raw?JSON.parse(raw):null;}catch(e){return null;}}
 function demoPlan(){
- const p=createPlan({groomName:'Rupesh',brideName:'Usha',hostSide:'groom',date:'2027-02-14',city:'Jaipur',guests:300,budget:1200000,contingency:10});
- p.events[0].venue='The Fern Residency, Jaipur';p.events[3].venue='Rajmahal Palace, Jaipur';
+ const p=createPlan({groomName:'Rupesh',brideName:'Usha',hostSide:'groom',date:'2027-02-14',city:'Udaipur',guests:300,budget:1200000,contingency:10});
+ p.events[0].venue='The Lake Pichola Palace, Udaipur';p.events[3].venue='Taj Aravali, Udaipur';
  p.tasks[0].done=true;p.tasks[1].done=true;
  p.vendors=[
-  {id:uid(),name:'Sharma Tent House',category:'Venue & pandal',area:'MI Road, Jaipur',phone:'+91 98290 12345',quote:250000,deposit:50000,status:'Shortlisted',notes:'Big lawn, in-house catering'},
-  {id:uid(),name:'Lens & Light Studio',category:'Photo & video',area:'C-Scheme, Jaipur',phone:'+91 98290 67890',quote:85000,deposit:20000,status:'Booked',notes:'Candid + traditional'}
+  {id:uid(),name:'Sharma Tent House',category:'Venue & pandal',area:'Lake Palace Road, Udaipur',phone:'+91 98290 12345',quote:250000,deposit:50000,status:'Shortlisted',notes:'Big lawn, in-house catering'},
+  {id:uid(),name:'Lens & Light Studio',category:'Photo & video',area:'Fateh Sagar Road, Udaipur',phone:'+91 98290 67890',quote:85000,deposit:20000,status:'Booked',notes:'Candid + traditional'}
  ];
  p.budget=[
   {id:uid(),title:'Venue booking',category:'Venue & pandal',quantity:1,rate:250000,paid:50000,notes:''},
@@ -95,7 +95,7 @@ function render(){
  floralCleanup=attachFloralMotion($('.cine-hero'))||(()=>{});
  if(view==='settings')$('#profile-form').addEventListener('submit',saveProfile);if(window.lucide)window.lucide.createIcons();animateWorkspace();if(view==='ai')bridge.check();
 }
-function profileFields(p={}){return select('hostSide','Invitation from',[['groom','Groom’s side · Groom weds Bride'],['bride','Bride’s side · Bride weds Groom']],p.hostSide||'groom')+field('groomName','Groom’s name',p.groomName||p.partner2||'','text','required maxlength="70"')+field('brideName','Bride’s name',p.brideName||p.partner1||'','text','required maxlength="70" autocomplete="given-name"')+field('date','Wedding date',p.date||'','date','required')+field('city','Wedding city',p.city||'','text','required maxlength="120" placeholder="e.g. Jaipur, Rajasthan"')+field('guests','Expected guests',p.guests??250,'number','required min="1" max="100000" step="1"')+field('budget','Wedding budget (INR)',p.budget??1500000,'number','required min="0" max="10000000000" step="100"')+field('contingency','Contingency (%)',p.contingency??10,'number','required min="0" max="100" step="0.5"');}
+function profileFields(p={}){return select('hostSide','Invitation from',[['groom','Groom’s side · Groom weds Bride'],['bride','Bride’s side · Bride weds Groom']],p.hostSide||'groom')+field('groomName','Groom’s name',p.groomName||p.partner2||'','text','required maxlength="70"')+field('brideName','Bride’s name',p.brideName||p.partner1||'','text','required maxlength="70" autocomplete="given-name"')+field('date','Wedding date',p.date||'','date','required')+field('city','Wedding city',p.city||'','text','required maxlength="120" placeholder="e.g. Udaipur, Rajasthan"')+field('guests','Expected guests',p.guests??250,'number','required min="1" max="100000" step="1"')+field('budget','Wedding budget (INR)',p.budget??1500000,'number','required min="0" max="10000000000" step="100"')+field('contingency','Contingency (%)',p.contingency??10,'number','required min="0" max="100" step="0.5"');}
 function renderOnboarding(){
  $('#main-content').innerHTML=`<div class="welcome-layout"><div class="welcome-art"><p class="eyebrow">LET YOUR STORY BEGIN</p><h1>Many celebrations.<br>One beautiful journey.</h1><p>Your invitations, celebrations, outfits and wedding budget, all in one place.</p></div><form id="onboarding" class="welcome-form"><p class="eyebrow">WELCOME TO EASY WEDDING</p><h2>Tell us about your wedding</h2><p>You can change every detail as your plans take shape.</p><div class="form-grid">${profileFields({})}</div><button class="button" type="submit">Create my wedding workspace <span>→</span></button><p class="field-help" style="margin-top:15px">Saved privately to your signed-in account. Planning is free — you pay only when you publish your invitation.</p></form></div>`;$('#save-state').textContent='Create your wedding profile';$('#onboarding').addEventListener('submit',async e=>{e.preventDefault();if(requestBusy)return;requestBusy=true;const f=e.currentTarget,p=Object.fromEntries(new FormData(f));for(const k of ['guests','budget','contingency'])p[k]=Number(p[k]);state=createPlan(p);dirty=true;f.querySelector('button').disabled=true;await save();requestBusy=false;if(revision>0){view='overview';render();toast('Your wedding workspace is ready.');}else{state=null;f.querySelector('button').disabled=false;}});
 }

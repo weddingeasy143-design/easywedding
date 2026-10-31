@@ -13,9 +13,9 @@ const source=seedModule.exports;
 const snapshot=JSON.parse(await readFile('public/reference/source-data.json','utf8'));
 const previous=await import(pathToFileURL(resolve('public/reference-fields.js')).href+'?build='+Date.now());
 const content={...snapshot.site.content,...source.FAMILY,
- groomName:source.COUPLE.groom,brideName:source.COUPLE.bride,
+ groomName:source.COUPLE.groom,brideName:source.COUPLE.bride,weddingDateISO:source.WEDDING_DATE_ISO,
  headline:source.COUPLE.headline,quote:source.COUPLE.quote,invitationMessage:source.COUPLE.invitationMessage,
- heroPhoto:source.COUPLE.heroPhoto,heroPhotoFit:'cover',invitationPhoto:source.COUPLE.invitationPhoto,invitationPhotoFit:'contain',
+ heroPhoto:source.COUPLE.heroPhoto,heroPhotoFit:'contain',invitationPhoto:source.COUPLE.invitationPhoto,invitationPhotoFit:'contain',
  venueName:source.VENUE.name,venueAddressLines:source.VENUE.addressLines,venuePhoto:source.VENUE.photo,
  venuePin:'',venueMapUrl:'',siteTexts:source.SITE_TEXTS};
 const defaults={content,story:source.STORY_SEED,events:source.EVENTS,
@@ -41,8 +41,8 @@ for(const key of ['groomRelationLabel','groomParents','groomAddress','brideRelat
 for(const key of ['groomPhotoFit','bridePhotoFit','heroPhotoFit','invitationPhotoFit'])add('content.'+key,label(key),'select','Photo framing',['cover','contain']);
 for(const key of ['groomPhotoFocus','bridePhotoFocus'])add('content.'+key,label(key)+' · horizontal, vertical %','text','Photo framing');
 defaults.story.forEach((row,i)=>{for(const key of ['title','dateLabel','description','photo'])add(`story.${i}.${key}`,`Story ${i+1} · ${key}`,key==='photo'?'image':'text','Our story · 3 chapters');});
-defaults.events.forEach((row,i)=>{for(const key of ['name','tagline','dateISO','description','dressCode','image'])add(`events.${i}.${key}`,`Event ${i+1} · ${key}`,key==='image'?'image':key==='dateISO'?'datetime':'text','Festivities · 4 events');});
-defaults.gallery.forEach((row,i)=>{for(const key of ['src','caption'])add(`gallery.${i}.${key}`,`Gallery ${i+1} · ${key==='src'?'photo':key}`,key==='src'?'image':'text','Our moments · 11 photos');});
+defaults.events.forEach((row,i)=>{for(const key of ['name','tagline','dateISO','description','dressCode','image'])add(`events.${i}.${key}`,`Event ${i+1} · ${key}`,key==='image'?'image':key==='dateISO'?'datetime':'text','Festivities · 4 events');add(`events.${i}.enabled`,`Event ${i+1} · show on invitation`,'bool','Festivities · 4 events');add(`events.${i}.sortOrder`,`Event ${i+1} · order`,'int','Festivities · 4 events');});
+defaults.gallery.forEach((row,i)=>{for(const key of ['src','caption'])add(`gallery.${i}.${key}`,`Gallery ${i+1} · ${key==='src'?'photo':key}`,key==='src'?'image':'text','Our moments · 11 photos');add(`gallery.${i}.fit`,`Gallery ${i+1} · framing`,'select','Our moments · 11 photos',['contain','cover']);add(`gallery.${i}.focus`,`Gallery ${i+1} · focus · horizontal, vertical %`,'text','Our moments · 11 photos');add(`gallery.${i}.isCover`,`Gallery ${i+1} · cover photo (shown first)`,'bool','Our moments · 11 photos');});
 for(const key of Object.keys(defaults.sagun))if(!['qr1IconsImage','qr2IconsImage'].includes(key))add('sagun.'+key,label(key),['qr1Image','qr2Image'].includes(key)?'image':'text','Blessings & your UPI QR codes');
 add('contactPhone','Venue contact number','text','Venue & sharing');
 for(const key of ['title','subtitle','scanLabel','whatsappMessage'])add('share.'+key,'Share · '+key,'text','Venue & sharing');

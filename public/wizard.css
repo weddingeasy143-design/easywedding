@@ -346,3 +346,7 @@ body.in-app #app-toast.show{opacity:1;transform:none}
 #save-preview.wz-pulse{animation:wzPulse .8s ease-in-out 2}
 @keyframes wzPulse{50%{box-shadow:0 0 0 6px rgba(232,200,118,.45)}}
 #share-bottom[disabled]{opacity:.45;cursor:not-allowed}
+
+/* Function date & time pickers (calendar + clock, side by side) */
+.wz-datetime{display:flex;gap:8px;margin-top:6px}
+.wz-datetime input{flex:1;min-width:0}

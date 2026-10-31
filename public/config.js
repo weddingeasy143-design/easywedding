@@ -4,11 +4,11 @@ import {validVideoUrl} from './video-embed.js';
 import {eventPreset as legacyPreset,eventThemes as legacyThemes} from './event-themes.js';
 import {weddingThemes as eventThemes,weddingPreset as eventPreset,ganeshOptions} from './wedding-themes.js';
 export const DEFAULTS = Object.freeze({
-  reference:null,version:3,theme:'premium-original',partner1:'Rupesh',partner2:'Usha',partner1Details:'',partner2Details:'',groomName:'Rupesh',brideName:'Usha',groomDetails:'',brideDetails:'',hostSide:'groom',occasion:'The wedding celebration of',date:'2026-12-12',time:'18:00',timezone:'+05:30',city:'Jaipur, India',
+  reference:null,version:3,theme:'premium-original',partner1:'Rupesh',partner2:'Usha',partner1Details:'',partner2Details:'',groomName:'Rupesh',brideName:'Usha',groomDetails:'',brideDetails:'',groomAddress:'',brideAddress:'',hostSide:'groom',occasion:'The wedding celebration of',date:'2027-02-14',time:'19:00',timezone:'+05:30',city:'Udaipur, Rajasthan',
   blessing:'A love that grows.\nA lifetime that blooms.',message:'Together with our families, we invite you to share in the joy of our wedding. Join us for an evening of love, laughter and a beautiful new beginning.',
-  families:'With the blessings of our families',venue:'The Garden Pavilion',address:'Palace Road, Civil Lines',venueNote:'Please arrive 15 minutes before the ceremony.',dressCode:'Garden formal. Soft colours, flowing silhouettes and your happiest smile.',gifts:'Your love and blessings are the greatest gift of all.',note:'',
-  rsvpContact:'',rsvpMethod:'whatsapp',rsvpDeadline:'2026-11-25',photoUrl:'',groomPhoto:'',bridePhoto:'',venuePhotoUrl:'',audioUrl:'',audioName:'',videoUrl:'',languages:[],ganeshIcon:'gold',music:true,scratch:true,preEvents:'',transport:'',accommodation:'',gallery:[],
-  events:[...eventPreset('ivory-arch').events,{time:'21:30',title:'Family blessings & farewell',description:'With love, we begin our new journey.'}]
+  families:'With the blessings of our families',venue:'The Lake Pichola Palace',address:'Lake Palace Road',venueNote:'Please arrive 15 minutes before the ceremony.',dressCode:'Garden formal. Soft colours, flowing silhouettes and your happiest smile.',gifts:'Your love and blessings are the greatest gift of all.',note:'',
+  rsvpContact:'',rsvpMethod:'whatsapp',rsvpDeadline:'2027-01-31',photoUrl:'',groomPhoto:'',bridePhoto:'',venuePhotoUrl:'',audioUrl:'',audioName:'',videoUrl:'',languages:[],ganeshIcon:'gold',music:true,scratch:true,preEvents:'',transport:'',accommodation:'',gallery:[],
+  events:[...eventPreset('premium-original').events,{time:'21:30',title:'Family blessings & farewell',description:'With love, we begin our new journey.'}]
 });
 const limit=(value,fallback,max=300)=>typeof value==='string'?value.trim().slice(0,max):fallback;
 export function validDate(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return false;const d=new Date(s+'T12:00:00Z');return !isNaN(d)&&d.toISOString().slice(0,10)===s;}
@@ -17,12 +17,14 @@ export function safeImageUrl(value){try{if(typeof value!=='string')return '';if(
 export function safeAudioUrl(value){if(typeof value!=='string'||value.length>2000)return '';if(/^(?:local-audio:|\/api\/invitation-audio\/)[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value))return value;try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:'';}catch{return '';}}
 export function normalizeConfig(value={}){
   const c={...DEFAULTS,events:DEFAULTS.events.map(e=>({...e}))};
-  for(const [key,max] of Object.entries({partner1:35,partner2:35,partner1Details:220,partner2Details:220,occasion:80,city:100,blessing:180,message:800,families:300,venue:120,address:350,venueNote:350,dressCode:350,gifts:350,note:500,rsvpContact:120,preEvents:1500,transport:500,accommodation:500}))c[key]=limit(value[key],c[key],max);
+  for(const [key,max] of Object.entries({partner1:35,partner2:35,partner1Details:220,partner2Details:220,occasion:80,city:100,blessing:180,message:800,families:300,venue:120,address:350,groomAddress:350,brideAddress:350,venueNote:350,dressCode:350,gifts:350,note:500,rsvpContact:120,preEvents:1500,transport:500,accommodation:500}))c[key]=limit(value[key],c[key],max);
   c.theme=Object.hasOwn(eventThemes,value.theme)?value.theme:'royal-prestige';c.gallery=Array.isArray(value.gallery)?value.gallery.slice(0,12).map(safeImageUrl).filter(Boolean):[];c.languages=Array.isArray(value.languages)?value.languages.filter(x=>x==='hi'):[];
   c.hostSide=value.hostSide==='bride'?'bride':'groom';
   const gIn=limit(value.groomName,'',35),bIn=limit(value.brideName,'',35);
-  c.groomName=(gIn&&gIn!==DEFAULTS.groomName)?gIn:((c.hostSide==='bride'?c.partner2:c.partner1)||gIn||DEFAULTS.groomName);
-  c.brideName=(bIn&&bIn!==DEFAULTS.brideName)?bIn:((c.hostSide==='bride'?c.partner1:c.partner2)||bIn||DEFAULTS.brideName);
+  /* A name the customer typed is theirs — even when it happens to match a
+     sample name. Only an empty name falls back to the partner fields. */
+  c.groomName=gIn||((c.hostSide==='bride'?c.partner2:c.partner1)||DEFAULTS.groomName);
+  c.brideName=bIn||((c.hostSide==='bride'?c.partner1:c.partner2)||DEFAULTS.brideName);
   c.groomDetails=limit(value.groomDetails,c.partner1Details,220);c.brideDetails=limit(value.brideDetails,c.partner2Details,220);
   if(c.hostSide==='bride'){c.partner1=c.brideName;c.partner2=c.groomName;c.partner1Details=c.brideDetails;c.partner2Details=c.groomDetails;}
   else{c.partner1=c.groomName;c.partner2=c.brideName;c.partner1Details=c.groomDetails;c.partner2Details=c.brideDetails;}

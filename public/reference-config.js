@@ -23,7 +23,13 @@ export function refreshReferenceDates(reference){
 export function normalizeReference(value,safeImage){
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  const result=JSON.parse(JSON.stringify(referenceDefaults));
- for(const field of referenceFields){const eventField=field.path.match(/^events\.(\d+)\.(.+)$/);const savedEvent=eventField&&Array.isArray(value.events)?value.events.find(e=>e?.id===referenceDefaults.events[Number(eventField[1])]?.id):null;const input=eventField&&Array.isArray(value.events)&&value.events.some(e=>e?.id)?savedEvent?.[eventField[2]]:getReferencePath(value,field.path);if(typeof input!=='string')continue;
+ for(const field of referenceFields){const eventField=field.path.match(/^events\.(\d+)\.(.+)$/);const savedEvent=eventField&&Array.isArray(value.events)?value.events.find(e=>e?.id===referenceDefaults.events[Number(eventField[1])]?.id):null;const input=eventField&&Array.isArray(value.events)&&value.events.some(e=>e?.id)?savedEvent?.[eventField[2]]:getReferencePath(value,field.path);
+  /* Non-text settings (a function's show/hide switch, its order, a photo's
+     cover flag) are not strings — carry them through typed, or every save
+     would silently reset them to the defaults. */
+  if(field.kind==='bool'){if(typeof input==='boolean'||input==='true'||input==='false')setReferencePath(result,field.path,input===true||input==='true');continue;}
+  if(field.kind==='int'){const n=typeof input==='number'?input:(typeof input==='string'&&/^-?\d+$/.test(input.trim())?parseInt(input,10):NaN);if(Number.isFinite(n))setReferencePath(result,field.path,n);continue;}
+  if(typeof input!=='string')continue;
   let v=input.trim();
   if(field.path==='copy.text21'&&v==='॥ श्री गणेशाय नमः ॥')v='Shree Ganeshaya Namah';
   if(field.path==='content.venueMapUrl'){try{const u=new URL(v);v=u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{v=''}}

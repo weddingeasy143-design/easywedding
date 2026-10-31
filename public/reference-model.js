@@ -12,8 +12,10 @@ export function invitationModel(config,seed,base,snapshotId=''){
  site.content.quote=r.content?.quote??config.blessing;
  site.content.venueName=config.venue;site.content.venueAddressLines=[config.address,config.city];site.content.venuePin=r.content?.venuePin||'';
  if(config.venuePhotoUrl)site.content.venuePhoto=config.venuePhotoUrl;
- if(config.photoUrl)site.content.invitationPhoto=config.photoUrl;
  if(config.photoUrl)site.content.heroPhoto=config.photoUrl;
+ /* The couple photo also fills the invitation photo — until the customer
+    gives the invitation its own photograph in Fine-tune; theirs then wins. */
+ if(config.photoUrl&&(!r.content?.invitationPhoto||r.content.invitationPhoto===referenceDefaults.content.invitationPhoto))site.content.invitationPhoto=config.photoUrl;
  if(config.groomPhoto)site.content.groomPhoto=config.groomPhoto;
  if(config.bridePhoto)site.content.bridePhoto=config.bridePhoto;
  site.content.venueMapUrl=r.content?.venueMapUrl||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([config.venue,config.address,config.city].join(', ')));

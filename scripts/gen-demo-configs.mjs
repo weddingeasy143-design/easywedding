@@ -8,6 +8,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { DEFAULTS, normalizeConfig } from '../public/config.js';
 import { referenceDefaults } from '../public/reference-fields.js';
+import { refreshReferenceDates } from '../public/reference-config.js';
 
 const A = '/reference/assets/';
 const P = {
@@ -139,11 +140,13 @@ for (const [i, d] of D.entries()) {
   const ref = JSON.parse(JSON.stringify(referenceDefaults));
   const c = ref.content;
   c.headline = d.headline; c.quote = d.quote;
-  /* Note: the couple's names and the wedding date live in the FLAT config
-     (set below in cfg) — the render takes them from there. The reference
-     content's own name/date entries are fixed seed text that
-     normalizeReference never reads from a saved config, so they cannot leak
-     into a rendered invitation. */
+  /* Every layer of the file tells this design's own story — names, date,
+     venue and family all belong to this couple, so no surface (preview,
+     studio, published link, or the raw saved data) can show another
+     design's details. */
+  c.groomName = `${d.groom} ${d.gLast}`; c.brideName = `${d.bride} ${d.bLast}`;
+  c.weddingDateISO = `${d.date}T${d.time}:00+05:30`;
+  c.venueName = d.venue; c.venueAddressLines = [d.street, d.city];
   c.heroPhoto = hero; c.invitationPhoto = invite;
   c.groomPhoto = groomPhoto; c.bridePhoto = bridePhoto; c.venuePhoto = venuePhoto;
   c.groomParents = d.gp; c.brideParents = d.bp;
@@ -158,7 +161,7 @@ for (const [i, d] of D.entries()) {
      portrait shots, so they stay in the hero/story/gallery slots). */
   const WED = [P.varmala, P.wedland1, P.wedland2, P.wedland3];
   const images = { haldi: P.haldi, mehendi: P.mehendi, wedding: WED[i % WED.length], reception: P.reception };
-  ref.events = ref.events.map(e => ({ ...e, dateISO: `${shiftDate(d.date, offsets[e.id])}T${times[e.id]}:00+05:30`, image: images[e.id] || e.image }));
+  ref.events = ref.events.map(e => ({ ...e, dateISO: `${shiftDate(d.date, offsets[e.id])}T${times[e.id]}:00+05:30`, image: images[e.id] || e.image, venue: d.venue, address: `${d.venue}, ${d.street}, ${d.city} – ${d.pin}`, mapUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${d.venue} ${d.street} ${d.city}`) }));
   const gal = [
     [groomPhoto, d.groom], [bridePhoto, d.bride], [hero, 'Together'], [P.blessed, 'Blessed moments'],
     [P.us, 'Us'], [groomPhoto, 'The Groom'], [venuePhoto, 'The Venue'], [P.road, 'On the road'],
@@ -167,11 +170,17 @@ for (const [i, d] of D.entries()) {
   ref.gallery = ref.gallery.map((g, j) => ({ ...g, src: gal[j][0], caption: gal[j][1], fit: 'contain' }));
   const cfg = normalizeConfig({
     ...DEFAULTS, theme: d.id, partner1: d.groom, partner2: d.bride,
-    groomName: d.groom, brideName: d.bride, date: d.date, time: d.time,
+    groomName: d.groom, brideName: d.bride, groomDetails: d.gp, brideDetails: d.bp,
+    groomAddress: d.gAddr, brideAddress: d.bAddr,
+    date: d.date, time: d.time,
     venue: d.venue, address: d.street, city: d.city,
     photoUrl: hero, groomPhoto, bridePhoto, venuePhotoUrl: venuePhoto,
     gallery: gal.map(([src]) => src), reference: ref,
   });
+  /* Keep the design's own reference exactly as built above (normalizeConfig
+     would rebuild it from the shared defaults); only the date/time labels
+     still need computing for this design's dates. */
+  cfg.reference = refreshReferenceDates(ref);
   await writeFile(`public/demo-configs/${d.id}.json`, JSON.stringify(cfg, null, 1));
   console.log(`${d.id}: ${d.groom} & ${d.bride} · ${d.date} ${d.time} · ${d.city}`);
 }
