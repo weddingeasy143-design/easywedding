@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 const MONTHS = [
@@ -176,7 +176,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
           className="font-display"
           style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
         >
-          {COUPLE.groom}
+          {ORDERED_COUPLE[0].name}
         </p>
         <div className="my-3 flex items-center justify-center gap-3">
           <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${GOLD})` }} />
@@ -189,7 +189,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
           className="font-display"
           style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
         >
-          {COUPLE.bride}
+          {ORDERED_COUPLE[1].name}
         </p>
         {dateLabel ? (
           <p className="mt-5" style={{ color: GOLD_LIGHT, fontSize: 14, letterSpacing: "0.05em", opacity: 0.9 }}>
@@ -390,7 +390,7 @@ export function Curtain({
             className="font-display"
             style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
           >
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </p>
           <div className="my-3 flex items-center justify-center gap-3">
             <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${GOLD})` }} />
@@ -403,7 +403,7 @@ export function Curtain({
             className="font-display"
             style={{ color: IVORY, fontSize: "clamp(2.9rem, 12.5vw, 4.4rem)", lineHeight: 1.04, fontWeight: 500 }}
           >
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </p>
           {(dateLabel || config.venue) && (
             <p className="mt-6" style={{ color: GOLD_LIGHT, fontSize: 14, letterSpacing: "0.05em", opacity: 0.85 }}>

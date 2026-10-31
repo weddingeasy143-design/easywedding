@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import {
   BookIcon,
   CalendarIcon,
@@ -61,9 +61,9 @@ export default function DesktopNav() {
           className="flex items-center gap-2 font-script text-3xl text-maroon"
           aria-label="Back to top"
         >
-          {COUPLE.groom[0]}
+          {ORDERED_COUPLE[0].name[0]}
           <HeartIcon size={18} className="shrink-0" />
-          {COUPLE.bride[0]}
+          {ORDERED_COUPLE[1].name[0]}
         </a>
         <ul className="flex items-center gap-8">
           {ITEMS.map(({ href, label, Icon }) => {

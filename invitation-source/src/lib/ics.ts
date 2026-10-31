@@ -1,7 +1,7 @@
 // src/lib/ics.ts
 // Generates a downloadable .ics calendar file for a wedding event.
 import type { WeddingEvent } from "@/content/wedding";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 
 /** "2026-11-24T20:00:00+05:30" -> "20261124T200000" (floating local time) */
 function toIcsLocal(iso: string): string {
@@ -39,7 +39,7 @@ export function downloadEventIcs(event: WeddingEvent): void {
     `DTSTAMP:${stamp}`,
     `DTSTART:${toIcsLocal(event.dateISO)}`,
     `DTEND:${toIcsLocal(end.toISOString())}`,
-    `SUMMARY:${escapeIcs(`${event.name} — ${COUPLE.groom} weds ${COUPLE.bride}`)}`,
+    `SUMMARY:${escapeIcs(`${event.name} — ${ORDERED_COUPLE[0].name} weds ${ORDERED_COUPLE[1].name}`)}`,
     `DESCRIPTION:${escapeIcs(`${event.tagline}. ${event.description}`)}`,
     `LOCATION:${escapeIcs(event.address)}`,
     "END:VEVENT",

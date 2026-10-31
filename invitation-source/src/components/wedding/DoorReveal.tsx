@@ -8,7 +8,7 @@ import {useMotionPreference} from "../../../adapters/motion-preference";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import PetalField from "./PetalField";
 import { HeartIcon } from "./icons";
 
@@ -199,7 +199,7 @@ export default function DoorReveal({ onDone }: { onDone: () => void }) {
         aria-hidden
       >
         <p className="flex items-center justify-center gap-3 font-script text-7xl text-maroon-deep drop-shadow-[0_2px_14px_rgba(255,240,200,0.95)] sm:text-8xl lg:gap-5 lg:text-9xl">
-          {COUPLE.groom[0]} <HeartIcon size={40} className="shrink-0 lg:h-[56px] lg:w-[56px]" /> {COUPLE.bride[0]}
+          {ORDERED_COUPLE[0].name[0]} <HeartIcon size={40} className="shrink-0 lg:h-[56px] lg:w-[56px]" /> {ORDERED_COUPLE[1].name[0]}
         </p>
         <p className="mt-4 font-script text-3xl text-[#5b2a1e] drop-shadow-[0_1px_8px_rgba(255,240,200,0.9)] sm:text-4xl lg:text-5xl">
           Our Story Begins…

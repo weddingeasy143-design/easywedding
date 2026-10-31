@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 /* ── palette ─────────────────────────────────────────────── */
@@ -97,7 +97,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
     if ((dt < 300 && dist < 10) || clamp01(dist / 420) >= 0.65) finish();
   };
 
-  const initials = `${(COUPLE.groom?.[0] ?? "").toUpperCase()}${(COUPLE.bride?.[0] ?? "").toUpperCase()}`;
+  const initials = `${(ORDERED_COUPLE[0].name?.[0] ?? "").toUpperCase()}${(ORDERED_COUPLE[1].name?.[0] ?? "").toUpperCase()}`;
   const p = finishing ? 1 : progress;
   // peel front position along the diagonal (bottom-left ← top-right)
   const front = p * 92;
@@ -410,7 +410,7 @@ export function Curtain({
             }
             transition={{ duration: 0.9, delay: open ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
           >
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </motion.p>
           <motion.p
             className="my-1 font-display text-base italic tracking-wide"
@@ -436,7 +436,7 @@ export function Curtain({
             }
             transition={{ duration: 0.9, delay: open ? 0.88 : 0, ease: [0.22, 1, 0.36, 1] }}
           >
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </motion.p>
         </div>
       </div>

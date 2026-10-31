@@ -7,7 +7,7 @@ import assetMap from './reference/asset-map.json' with {type:'json'};
 /** Shared by every template; a design change never replaces personal content. */
 export function invitationModel(config,seed,base,snapshotId=''){
  const site=structuredClone(seed.site),wedding=structuredClone(seed.wedding),r=referenceForConfig(config);
- Object.assign(site.content,r.content||{},{groomName:config.groomName||config.partner1,brideName:config.brideName||config.partner2,weddingDateISO:config.date+'T'+config.time+':00'+config.timezone});
+ Object.assign(site.content,r.content||{},{groomName:config.groomName||config.partner1,brideName:config.brideName||config.partner2,hostSide:config.hostSide==='bride'?'bride':'groom',weddingDateISO:config.date+'T'+config.time+':00'+config.timezone});
  site.content.invitationMessage=r.content?.invitationMessage??config.message;
  site.content.quote=r.content?.quote??config.blessing;
  site.content.venueName=config.venue;site.content.venueAddressLines=[config.address,config.city];site.content.venuePin=r.content?.venuePin||'';

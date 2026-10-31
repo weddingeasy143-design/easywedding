@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 const DEEP = "#32121f";
@@ -52,8 +52,8 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const calledRef = useRef(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const groomInitial = firstInitial(COUPLE.groom);
-  const brideInitial = firstInitial(COUPLE.bride);
+  const leadInitial = firstInitial(ORDERED_COUPLE[0].name);
+  const secondInitial = firstInitial(ORDERED_COUPLE[1].name);
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 1850);
@@ -241,7 +241,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.85, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
             >
-              {groomInitial}
+              {leadInitial}
             </motion.span>
             <motion.span
               className="font-display italic"
@@ -271,7 +271,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.85, delay: 1.05, ease: [0.22, 1, 0.36, 1] }}
             >
-              {brideInitial}
+              {secondInitial}
             </motion.span>
           </div>
         </motion.div>
@@ -289,7 +289,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
             }
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
-            {COUPLE.groom} &amp; {COUPLE.bride}
+            {ORDERED_COUPLE[0].name} &amp; {ORDERED_COUPLE[1].name}
           </motion.p>
         </div>
       </div>
@@ -434,7 +434,7 @@ export function Curtain({
             animate={open ? { y: 0, opacity: 1, scale: 1 } : { y: 34, opacity: 0, scale: 0.93 }}
             transition={{ duration: 1.0, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </motion.p>
           <motion.p
             className="my-1 font-display italic"
@@ -456,7 +456,7 @@ export function Curtain({
             animate={open ? { y: 0, opacity: 1, scale: 1 } : { y: 34, opacity: 0, scale: 0.93 }}
             transition={{ duration: 1.0, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
           >
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </motion.p>
 
           {/* one-shot light sweep across the names */}

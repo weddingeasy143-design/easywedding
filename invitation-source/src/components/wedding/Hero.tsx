@@ -9,7 +9,7 @@ import { SITE_TEXTS } from "@/content/wedding";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { COUPLE, VENUE, WEDDING_DATE_ISO, WEDDING_DATE_LABEL } from "@/content/wedding";
+import { COUPLE, ORDERED_COUPLE, VENUE, WEDDING_DATE_ISO, WEDDING_DATE_LABEL } from "@/content/wedding";
 import { useGuestName } from "@/lib/guest";
 import { CalendarIcon, ChevronDownIcon, PinIcon } from "./icons";
 import PetalField from "./PetalField";
@@ -155,7 +155,7 @@ export default function Hero() {
 
             {/* names with prominent weds */}
             <p className="mt-6 font-script text-6xl leading-[1.15] text-maroon sm:text-7xl lg:text-8xl">
-              {COUPLE.groom}
+              {ORDERED_COUPLE[0].name}
             </p>
             <div className="mt-3 flex items-center justify-center gap-4">
               <FlourishLine />
@@ -165,7 +165,7 @@ export default function Hero() {
               <FlourishLine flip />
             </div>
             <p className="mt-3 font-script text-6xl leading-[1.15] text-maroon sm:text-7xl lg:text-8xl">
-              {COUPLE.bride}
+              {ORDERED_COUPLE[1].name}
             </p>
 
             {/* heart divider */}

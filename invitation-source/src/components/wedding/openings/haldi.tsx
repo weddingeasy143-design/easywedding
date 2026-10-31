@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import PetalField from "../PetalField";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -455,7 +455,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
             >
               <Marigold size={64} />
             </motion.div>
-            <KineticName name={COUPLE.groom} active={splashed} delay={0.38} />
+            <KineticName name={ORDERED_COUPLE[0].name} active={splashed} delay={0.38} />
             <motion.p
               className="my-1 font-display text-xl italic"
               style={{ color: DEEP_TURMERIC }}
@@ -470,7 +470,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
             >
               weds
             </motion.p>
-            <KineticName name={COUPLE.bride} active={splashed} delay={0.72} />
+            <KineticName name={ORDERED_COUPLE[1].name} active={splashed} delay={0.72} />
             <motion.p
               className="mt-5 font-display text-base"
               style={{ color: INK, letterSpacing: "0.05em" }}
@@ -623,7 +623,7 @@ export function Curtain({
           >
             <Marigold size={74} />
           </motion.div>
-          <KineticName name={COUPLE.groom} active={parted} delay={0.5} />
+          <KineticName name={ORDERED_COUPLE[0].name} active={parted} delay={0.5} />
           <motion.p
             className="my-1 font-display text-xl italic lg:text-2xl"
             style={{ color: DEEP_TURMERIC }}
@@ -638,7 +638,7 @@ export function Curtain({
           >
             weds
           </motion.p>
-          <KineticName name={COUPLE.bride} active={parted} delay={0.88} />
+          <KineticName name={ORDERED_COUPLE[1].name} active={parted} delay={0.88} />
           <motion.p
             className="mt-5 font-display text-base"
             style={{ color: DEEP_TURMERIC, letterSpacing: "0.05em" }}

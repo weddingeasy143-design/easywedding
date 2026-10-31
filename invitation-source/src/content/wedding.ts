@@ -32,6 +32,7 @@ export interface WeddingEvent {
 interface SiteContentOverrides {
   groomName?: unknown;
   brideName?: unknown;
+  hostSide?: unknown;
   headline?: unknown;
   quote?: unknown;
   invitationMessage?: unknown;
@@ -197,6 +198,51 @@ export const FAMILY = {
   brideParents: ovStr(SITE_OVERRIDES.brideParents, FAMILY_SEED.brideParents),
   brideAddress: ovStr(SITE_OVERRIDES.brideAddress, FAMILY_SEED.brideAddress),
 };
+
+// ── presentation order ("Name shown first" in the studio) ────────────
+// COUPLE and FAMILY above stay role-keyed forever: a person's photo,
+// parents, relation label and address belong to that PERSON, never to a
+// display slot, and are never swapped. ORDERED_COUPLE is the pure
+// presentation layer renderers consume — [first shown, second shown] —
+// derived from the customer's hostSide choice. Groom-first is the
+// default and renders exactly as it always has.
+export interface PersonInfo {
+  name: string;
+  photo: string;
+  photoFocus: string;
+  photoFit: "cover" | "contain";
+  relationLabel: string;
+  parents: string;
+  address: string;
+}
+
+export const HOST_SIDE: "groom" | "bride" =
+  SITE_OVERRIDES.hostSide === "bride" ? "bride" : "groom";
+
+const GROOM_PERSON: PersonInfo = {
+  name: COUPLE.groom,
+  photo: FAMILY.groomPhoto,
+  photoFocus: FAMILY.groomPhotoFocus,
+  photoFit: FAMILY.groomPhotoFit,
+  relationLabel: FAMILY.groomRelationLabel,
+  parents: FAMILY.groomParents,
+  address: FAMILY.groomAddress,
+};
+
+const BRIDE_PERSON: PersonInfo = {
+  name: COUPLE.bride,
+  photo: FAMILY.bridePhoto,
+  photoFocus: FAMILY.bridePhotoFocus,
+  photoFit: FAMILY.bridePhotoFit,
+  relationLabel: FAMILY.brideRelationLabel,
+  parents: FAMILY.brideParents,
+  address: FAMILY.brideAddress,
+};
+
+export const ORDERED_COUPLE: readonly [PersonInfo, PersonInfo] =
+  HOST_SIDE === "bride"
+    ? [BRIDE_PERSON, GROOM_PERSON]
+    : [GROOM_PERSON, BRIDE_PERSON];
 
 const SITE_TEXTS_SEED = {
   tapToReveal: "Tap to Reveal",

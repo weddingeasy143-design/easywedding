@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import PetalField from "../PetalField";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -48,8 +48,8 @@ function useConfig(): SiteConfig | undefined {
   return cfg;
 }
 
-const INITIALS = `${(COUPLE.groom?.charAt(0) ?? "").toUpperCase()} · ${(
-  COUPLE.bride?.charAt(0) ?? ""
+const INITIALS = `${(ORDERED_COUPLE[0].name?.charAt(0) ?? "").toUpperCase()} · ${(
+  ORDERED_COUPLE[1].name?.charAt(0) ?? ""
 ).toUpperCase()}`;
 
 /* ── one coded leaf — a rotated teardrop with a centre vein ── */
@@ -475,7 +475,7 @@ export function Curtain({
           animate={parted ? { opacity: 1, y: 0, scale: 1 } : {}}
           transition={{ duration: 0.95, ease: EASE, delay: 0.55 }}
         >
-          {COUPLE.groom}
+          {ORDERED_COUPLE[0].name}
         </motion.p>
 
         {/* the vine — grows across the middle as the leaves unfurl */}
@@ -524,7 +524,7 @@ export function Curtain({
           animate={parted ? { opacity: 1, y: 0, scale: 1 } : {}}
           transition={{ duration: 0.95, ease: EASE, delay: 0.72 }}
         >
-          {COUPLE.bride}
+          {ORDERED_COUPLE[1].name}
         </motion.p>
 
         <motion.div

@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 const PAPER = "#fff9ee";
@@ -176,7 +176,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               }
               transition={{ duration: 0.85, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
             >
-              {COUPLE.groom}
+              {ORDERED_COUPLE[0].name}
             </motion.p>
             <motion.p
               className="font-display italic"
@@ -202,7 +202,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               }
               transition={{ duration: 0.85, delay: 0.46, ease: [0.22, 1, 0.36, 1] }}
             >
-              {COUPLE.bride}
+              {ORDERED_COUPLE[1].name}
             </motion.p>
           </div>
         </div>
@@ -396,7 +396,7 @@ export function Curtain({
               }
               transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
-              {COUPLE.groom}
+              {ORDERED_COUPLE[0].name}
             </motion.p>
             <motion.p
               className="my-1 font-display italic"
@@ -422,7 +422,7 @@ export function Curtain({
               }
               transition={{ duration: 0.9, delay: 0.85, ease: [0.22, 1, 0.36, 1] }}
             >
-              {COUPLE.bride}
+              {ORDERED_COUPLE[1].name}
             </motion.p>
           </div>
 

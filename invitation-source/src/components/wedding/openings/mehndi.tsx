@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 import PetalField from "../PetalField";
 
@@ -404,7 +404,7 @@ export function Curtain({
               animate={lifted ? { opacity: 1, y: 0, scale: 1 } : {}}
               transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.55 }}
             >
-              {COUPLE.groom}
+              {ORDERED_COUPLE[0].name}
             </motion.p>
             <motion.p
               className="my-1 font-display text-lg italic opacity-80 lg:text-2xl"
@@ -420,7 +420,7 @@ export function Curtain({
               animate={lifted ? { opacity: 1, y: 0, scale: 1 } : {}}
               transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1], delay: 0.88 }}
             >
-              {COUPLE.bride}
+              {ORDERED_COUPLE[1].name}
             </motion.p>
           </div>
           {/* gold underline flourish growing under the names */}

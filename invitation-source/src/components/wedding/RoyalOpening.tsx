@@ -10,7 +10,7 @@ import {copyText} from "../../../adapters/copy";
 import { useEffect, useMemo } from "react";
 import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
-import { COUPLE, VENUE, WEDDING_DATE_LABEL, SITE_TEXTS } from "@/content/wedding";
+import { ORDERED_COUPLE, VENUE, WEDDING_DATE_LABEL, SITE_TEXTS } from "@/content/wedding";
 import { useGuestName } from "@/lib/guest";
 
 import GaneshIdol from "../../../adapters/Ganesh";
@@ -235,7 +235,7 @@ export default function RoyalOpening({ onOpen }: { onOpen: () => void }) {
               className="mt-2 font-script leading-[1.08] lg:scale-90"
             >
               <span className="block text-6xl text-[#8d1730] drop-shadow-[0_2px_6px_rgba(255,250,235,0.85)] sm:text-7xl lg:text-8xl">
-                {COUPLE.groom}
+                {ORDERED_COUPLE[0].name}
               </span>
               {/* prominent golden weds with flourish lines — Hero card style */}
               <span className="my-2 flex items-center justify-center gap-3 sm:my-3">
@@ -246,7 +246,7 @@ export default function RoyalOpening({ onOpen }: { onOpen: () => void }) {
                 <span className="h-px w-12 bg-gradient-to-l from-transparent to-[#c9a227] sm:w-16" />
               </span>
               <span className="block text-6xl text-[#8d1730] drop-shadow-[0_2px_6px_rgba(255,250,235,0.85)] sm:text-7xl lg:text-8xl">
-                {COUPLE.bride}
+                {ORDERED_COUPLE[1].name}
               </span>
             </motion.h1>
 

@@ -6,7 +6,7 @@ import {copyText} from "../../../adapters/copy";
 import { SITE_TEXTS } from "@/content/wedding";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import PetalField from "./PetalField";
 import Reveal from "./Reveal";
 
@@ -112,7 +112,7 @@ export default function ThankYou({ onReplay }: { onReplay: () => void }) {
             {copyText(20,"With love")}
           </p>
           <p className="mt-2 font-script text-5xl text-ivory sm:text-6xl lg:text-7xl">
-            {COUPLE.groom} <span className="text-gold-light">&amp;</span> {COUPLE.bride}
+            {ORDERED_COUPLE[0].name} <span className="text-gold-light">&amp;</span> {ORDERED_COUPLE[1].name}
           </p>
           <p className="mt-4 font-display text-lg font-semibold tracking-[0.3em] text-gold-light">
             {(window as any).__easyWedding.config.date.split("-").reverse().join(" • ")}

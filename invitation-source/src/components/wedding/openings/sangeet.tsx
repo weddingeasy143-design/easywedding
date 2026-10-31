@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 import PetalField from "../PetalField";
 
@@ -309,7 +309,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
       {/* third beat — the field resolves and the names land, letter by letter */}
       {burst && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-          <KineticName name={COUPLE.groom} active={burst} delay={0.05} />
+          <KineticName name={ORDERED_COUPLE[0].name} active={burst} delay={0.05} />
           <motion.p
             className="my-1 font-display text-xl italic text-[#e9c979]"
             initial={{ opacity: 0, scale: 1.6 }}
@@ -318,7 +318,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
           >
             weds
           </motion.p>
-          <KineticName name={COUPLE.bride} active={burst} delay={0.42} />
+          <KineticName name={ORDERED_COUPLE[1].name} active={burst} delay={0.42} />
         </div>
       )}
 
@@ -441,7 +441,7 @@ export function Curtain({
               "0 0 18px rgba(233,201,121,0.45), 0 0 42px rgba(233,201,121,0.22)",
           }}
         >
-          <KineticName name={COUPLE.groom} active={risen} delay={0.55} />
+          <KineticName name={ORDERED_COUPLE[0].name} active={risen} delay={0.55} />
           <motion.p
             className="my-1 font-display text-xl italic text-[#cab4d8] lg:text-2xl"
             initial={{ opacity: 0, scale: 1.6 }}
@@ -450,7 +450,7 @@ export function Curtain({
           >
             weds
           </motion.p>
-          <KineticName name={COUPLE.bride} active={risen} delay={0.95} />
+          <KineticName name={ORDERED_COUPLE[1].name} active={risen} delay={0.95} />
           {/* a quiet echo of the light field under the names */}
           <div className="mt-7 flex h-8 items-end justify-center gap-[3px]" aria-hidden>
             {EQ_BARS.slice(0, 18).map((bar, i) => (

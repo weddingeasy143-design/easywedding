@@ -3,7 +3,7 @@ import {copyText} from "../../../adapters/copy";
 // Screen 04 — formal invitation message with framed couple photo + quote.
 "use client";
 import Image from "next/image";
-import { COUPLE } from "@/content/wedding";
+import { COUPLE, ORDERED_COUPLE } from "@/content/wedding";
 import FitImage from "./FitImage";
 import { GiftIcon, HeartIcon, UsersIcon } from "./icons";
 import Reveal from "./Reveal";
@@ -71,7 +71,7 @@ export default function InvitationMessage() {
                 {COUPLE.invitationPhotoFit === "contain" ? (
                   <FitImage
                     src={COUPLE.invitationPhoto}
-                    alt={`${COUPLE.groom} and ${COUPLE.bride}`}
+                    alt={`${ORDERED_COUPLE[0].name} and ${ORDERED_COUPLE[1].name}`}
                     width={600}
                     height={800}
                     className="aspect-[3/4] w-full"
@@ -79,7 +79,7 @@ export default function InvitationMessage() {
                 ) : (
                   <Image
                     src={COUPLE.invitationPhoto}
-                    alt={`${COUPLE.groom} and ${COUPLE.bride}`}
+                    alt={`${ORDERED_COUPLE[0].name} and ${ORDERED_COUPLE[1].name}`}
                     width={600}
                     height={760}
                     loading="lazy"

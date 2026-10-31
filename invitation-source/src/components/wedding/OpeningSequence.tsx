@@ -18,7 +18,7 @@ import {useMotionPreference} from "../../../adapters/motion-preference";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import PetalField from "./PetalField";
 import SurpriseAwaits from "./SurpriseAwaits";
 import RoyalOpening from "./RoyalOpening";
@@ -340,13 +340,13 @@ function BeatCurtain({ onDone, autoPlay = false }: { onDone: () => void; autoPla
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
         >
           <p className="font-script text-7xl leading-[1.12] text-[#8d1730] lg:text-9xl">
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </p>
           <p className="my-1 font-display text-lg italic text-[#5e2f21]/80 lg:text-2xl">
             weds
           </p>
           <p className="font-script text-7xl leading-[1.12] text-[#8d1730] lg:text-9xl">
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </p>
           {/* one-shot golden shimmer across names — premium, not infinite */}
           {open && (

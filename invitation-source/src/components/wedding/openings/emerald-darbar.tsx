@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { COUPLE } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import { copyText } from "../../../../adapters/copy";
 
 /* ── palette ─────────────────────────────────────────────── */
@@ -297,7 +297,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </p>
           <div className="my-2.5 flex items-center justify-center gap-3">
             <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${SAFFRON})` }} />
@@ -316,7 +316,7 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
               textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </p>
           {(dateLine || city) && (
             <p className="mt-4" style={{ color: "rgba(253,243,224,0.88)", fontSize: 13.5, letterSpacing: "0.05em" }}>
@@ -462,7 +462,7 @@ export function Curtain({
               textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
-            {COUPLE.groom}
+            {ORDERED_COUPLE[0].name}
           </p>
           <div className="my-2.5 flex items-center justify-center gap-3">
             <span className="h-px w-10" style={{ background: `linear-gradient(to right, transparent, ${SAFFRON})` }} />
@@ -481,7 +481,7 @@ export function Curtain({
               textShadow: "0 2px 22px rgba(10,10,30,0.65), 0 0 34px rgba(237,169,100,0.35)",
             }}
           >
-            {COUPLE.bride}
+            {ORDERED_COUPLE[1].name}
           </p>
           {(dateLine || cfg.venue) && (
             <p className="mt-4" style={{ color: "rgba(253,243,224,0.88)", fontSize: 13.5, letterSpacing: "0.05em" }}>

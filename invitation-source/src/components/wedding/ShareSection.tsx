@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { COUPLE, WEDDING_DATE_LABEL } from "@/content/wedding";
+import { COUPLE, ORDERED_COUPLE, WEDDING_DATE_LABEL } from "@/content/wedding";
 import { DEFAULT_SHARE, type ShareConfig } from "@/server/wedding/site-config";
 import { CheckIcon, CopyIcon, ShareIcon, WhatsAppIcon, ChevronRightIcon } from "./icons";
 import Reveal from "./Reveal";
@@ -123,7 +123,7 @@ export default function ShareSection() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${COUPLE.groom} weds ${COUPLE.bride} — Wedding Invitation`,
+          title: `${ORDERED_COUPLE[0].name} weds ${ORDERED_COUPLE[1].name} — Wedding Invitation`,
           text: message,
           url,
         });

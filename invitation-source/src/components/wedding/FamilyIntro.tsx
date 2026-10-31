@@ -7,7 +7,7 @@ import {copyText} from "../../../adapters/copy";
 import { SITE_TEXTS } from "@/content/wedding";
 import Image from "next/image";
 import FitImage from "./FitImage";
-import { COUPLE, FAMILY } from "@/content/wedding";
+import { ORDERED_COUPLE } from "@/content/wedding";
 import Reveal from "./Reveal";
 import { FloralCorners } from "./Ornaments";
 
@@ -155,13 +155,13 @@ export default function FamilyIntro() {
         {/* families */}
         <div className="mt-10 lg:mt-14 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-start lg:gap-8">
           <FamilyCard
-            photo={FAMILY.groomPhoto}
-            focus={FAMILY.groomPhotoFocus}
-            fit={FAMILY.groomPhotoFit}
-            name={COUPLE.groom}
-            relationLabel={FAMILY.groomRelationLabel}
-            parents={FAMILY.groomParents}
-            address={FAMILY.groomAddress}
+            photo={ORDERED_COUPLE[0].photo}
+            focus={ORDERED_COUPLE[0].photoFocus}
+            fit={ORDERED_COUPLE[0].photoFit}
+            name={ORDERED_COUPLE[0].name}
+            relationLabel={ORDERED_COUPLE[0].relationLabel}
+            parents={ORDERED_COUPLE[0].parents}
+            address={ORDERED_COUPLE[0].address}
             delay={0.15}
           />
 
@@ -189,13 +189,13 @@ export default function FamilyIntro() {
           </Reveal>
 
           <FamilyCard
-            photo={FAMILY.bridePhoto}
-            focus={FAMILY.bridePhotoFocus}
-            fit={FAMILY.bridePhotoFit}
-            name={COUPLE.bride}
-            relationLabel={FAMILY.brideRelationLabel}
-            parents={FAMILY.brideParents}
-            address={FAMILY.brideAddress}
+            photo={ORDERED_COUPLE[1].photo}
+            focus={ORDERED_COUPLE[1].photoFocus}
+            fit={ORDERED_COUPLE[1].photoFit}
+            name={ORDERED_COUPLE[1].name}
+            relationLabel={ORDERED_COUPLE[1].relationLabel}
+            parents={ORDERED_COUPLE[1].parents}
+            address={ORDERED_COUPLE[1].address}
             delay={0.3}
           />
         </div>
