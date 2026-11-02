@@ -2,6 +2,7 @@ import {normalizeConfig} from '../public/config.js';
 import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
 import {exportAccountZip,eraseAccountData} from './account-data.js';
 import {inviteProgress} from './invite-progress.js';
+import {catalogPayload,SUPPORT} from './catalog.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
 /* Sign-in lifetime, the owner's rule: 15 quiet minutes brings a warning
    with a 2-minute countdown on screen (auth.js), and no answer signs the
@@ -284,7 +285,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/site-info'&&request.method==='GET'){
   const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
-  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null},200,{'Cache-Control':'public, max-age=60'});
+  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null,support:SUPPORT},200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/api/coupon/check'&&request.method==='POST'){
   await rateHit(env,'coupon',request,30,600);
@@ -300,6 +301,11 @@ export default {async fetch(request,env){
   const ready=[];for(const g of GATEWAYS)if(usable(await gatewayRow(env,g).catch(()=>null)))ready.push(g);
   const mapped=(rows.results||[]).map(r=>({id:r.design_id,regular:r.regular_paise,launch:r.launch_paise,current:r.launch_active?r.launch_paise:r.regular_paise,launchActive:!!r.launch_active}));
   return json({designs:mapped.filter(x=>!x.id.startsWith('addon-')),addons:mapped.filter(x=>x.id.startsWith('addon-')),gateways:ready});
+ }
+ /* The catalogue itself — design/add-on names, styles and artwork (server/catalog.js
+    is the one source for web + app). Prices stay on /api/pricing. */
+ if(path==='/api/catalog'&&request.method==='GET'){
+  return json(catalogPayload(url.origin),200,{'Cache-Control':'public, max-age=300'});
  }
  if(path.startsWith('/api/payments/webhook/')&&request.method==='POST'){
   const g=path.slice('/api/payments/webhook/'.length);if(!GATEWAYS.includes(g)||g==='payu')fail('Not found.',404);
