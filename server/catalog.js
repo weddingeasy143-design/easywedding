@@ -45,7 +45,7 @@ export const CATALOG_ADDONS=[
 export const SUPPORT={
  phone:'8789991983',
  phoneDisplay:'+91 87899 91983',
- whatsapp:'https://wa.me/918789991983',
+ whatsapp:'https://wa.me/918789991983?text=Namaste%20Easy%20Wedding!%20%F0%9F%99%8F%20Meri%20shaadi%20ke%20liye%20mujhe%20ek%20sundar%20sa%20digital%20invitation%20banana%20hai.%20Kripya%20mujhe%20designs%20aur%20daam%20ki%20jaankari%20dijiye.%20Dhanyavaad!%20%F0%9F%92%90',
  email:'support@easywedding.in',
  hours:'10 AM – 8 PM',
  instagram:'https://www.instagram.com/easywedding.in/',
