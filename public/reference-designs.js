@@ -6,6 +6,12 @@ const design=(id,name,palette,floral,script,frame,motion,description)=>({
  scene:'/assets/wedding/'+id+'.webp',script,frame,motion,description
 });
 export const referenceDesigns={
+ 'mandir-darwaza':design('mandir-darwaza','Mandir Darwaza',
+  ['#3a0410','#4d0a1a','#ffe9b0','#f1e3c2','#caa26a','#d9a441','#f3d27a','#e8c876','#2a030b'],
+  'marigold','vibes','140px 140px 12px 12px','temple','Golden temple doors · magical reveal'),
+ 'ram-mandir':design('ram-mandir','Ram Mandir',
+  ['#fdf6e3','#f6ead0','#5a2d12','#6e4520','#9a743f','#c9962e','#e8c876','#a8742a','#fffaf0'],
+  'marigold','vibes','120px 120px 16px 16px','dawn','Golden Ram temple · lotus countdown'),
  'premium-original':{...design('premium-original','Premium Original',
   ['#fff7e8','#f7ecd4','#8d1730','#5e2f21','#755240','#c99a3d','#e8c876','#6d1025','#fff7e8'],
   'ivory','vibes','6px','original','Original royal artwork · cinematic curtain & doors'),
@@ -58,6 +64,8 @@ const profiles={
  original:{duration:2.8,floral:18000,turn:1,drift:6,enter:{y:28},door:left=>({x:left?'-104%':'104%'})},
  veil:{duration:2.6,floral:15000,turn:2,drift:10,enter:{y:34,scale:.98},door:left=>({x:left?'-108%':'108%',opacity:0,scale:1.04})},
  hinge:{duration:3.2,floral:18500,turn:1.5,drift:8,enter:{y:36,scale:.94},door:left=>({x:left?'-70%':'70%',rotateY:left?-88:88,opacity:0})},
+ temple:{duration:3.4,floral:17000,turn:1,drift:6,enter:{y:30,scale:.95},door:left=>({x:left?'-70%':'70%',rotateY:left?-88:88,opacity:0})},
+ dawn:{duration:3,floral:16000,turn:2,drift:8,enter:{y:26,scale:.97},door:left=>({x:left?'-106%':'106%',opacity:0,scale:1.03})},
  leaf:{duration:2.8,floral:12500,turn:4,drift:16,enter:{x:26,y:8,rotate:-1,scale:.98},door:left=>({x:left?'-108%':'108%',rotate:left?-5:5,opacity:0})},
  curtain:{duration:2.4,floral:10500,turn:3,drift:18,enter:{y:42,scale:.97},door:left=>({x:left?'-18%':'18%',y:'-108%',opacity:0})},
  fan:{duration:3,floral:17000,turn:5,drift:10,enter:{scale:.9,y:16},door:left=>({x:left?'-65%':'65%',rotate:left?-58:58,scale:.88,opacity:0})},

@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#75152e"><title>Vendor Dashboard · Easy Wedding</title><meta name="description" content="Manage your Easy Wedding vendor profile, portfolio, bookings and earnings."><meta name="robots" content="noindex,follow"><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="brand.css"><link rel="stylesheet" href="features.css"><script defer src="auth.js"></script><script type="module" src="vendor.js"></script><link rel="icon" href="/favicon.ico" sizes="any"><link rel="apple-touch-icon" href="/assets/seo/apple-touch-icon.png"></head>
+<body class="fx"><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div>
+<header class="fx-head"><a class="brand" href="/" aria-label="Easy Wedding home"><span class="brand-logo-crop"><img src="assets/brand/easy-wedding-logo.png" alt="Easy Wedding" width="2048" height="682"></span></a><nav aria-label="Sections"><a href="/vendors">Vendors</a><a href="/vendor" class="on">Vendor dashboard</a><a href="/studio">Invitation Studio</a><span data-auth-actions></span></nav></header>
+<main class="fx-main">
+ <section class="fx-hero"><p class="fx-kicker">Vendor Dashboard</p><h1 class="fx-h1" id="dash-title">My Business</h1><p class="fx-note" id="dash-code" style="margin:4px 0 0"></p></section>
+ <div id="login-box" hidden class="fx-card" style="text-align:center"><h2 class="fx-h2" style="margin-top:0">Please sign in</h2><p class="fx-note">Your vendor dashboard needs your Easy Wedding account.</p><div class="fx-btnrow" style="justify-content:center"><a class="fx-btn" href="/login?next=%2Fvendor">Sign in</a><a class="fx-btn ghost" href="/vendor-register">Register your business</a></div></div>
+ <div id="noreg" hidden class="fx-card" style="text-align:center"><h2 class="fx-h2" style="margin-top:0">No vendor profile yet</h2><p class="fx-note">Register your wedding business to appear in the directory and receive bookings.</p><div class="fx-btnrow" style="justify-content:center"><a class="fx-btn" href="/vendor-register">Register — free</a></div></div>
+ <div id="dash" hidden>
+  <div id="status-box"></div>
+  <div id="payout-alert"></div>
+  <section class="fx-card"><h2 class="fx-h2" style="margin-top:0">Earnings</h2><div class="fx-kpis" id="kpis"></div>
+   <div class="fx-tablewrap"><table class="fx-table"><thead><tr><th>Booking</th><th>Event</th><th>Gross</th><th>Commission</th><th>Your net</th><th>Status</th></tr></thead><tbody id="earn-body"></tbody></table></div>
+   <p class="fx-note" id="earn-note"></p><div id="payouts-list"></div></section>
+  <section class="fx-card"><h2 class="fx-h2" style="margin-top:0">Booking requests</h2><div id="inbox"></div></section>
+  <section class="fx-card"><h2 class="fx-h2" style="margin-top:0">Portfolio photos</h2>
+   <div class="fx-btnrow"><label class="fx-btn gold small" style="cursor:pointer">＋ Add photo<input id="photo-input" type="file" accept="image/*" hidden></label><span class="fx-note">Up to 12 photos. The first photo is your directory cover.</span></div>
+   <p class="fx-error" id="photo-error" role="alert"></p><div id="photo-grid" class="fx-photos"></div></section>
+  <section class="fx-card"><h2 class="fx-h2" style="margin-top:0">Profile &amp; payout details</h2>
+   <form id="profile-form" class="fx-form">
+    <div class="fx-row2"><label>Business name<input name="businessName" maxlength="90" required></label><label>Owner name<input name="ownerName" maxlength="70" required></label></div>
+    <div class="fx-row2"><label>Category<select name="category" id="p-category" required></select></label><label>City<input name="city" maxlength="60" required></label></div>
+    <div class="fx-row2"><label>Mobile number<input name="phone" inputmode="numeric" required></label><label>WhatsApp number<input name="whatsapp" inputmode="numeric" required></label></div>
+    <div class="fx-row2"><label>Business email<input name="email" type="email" maxlength="120" required></label><label>Starting price (₹)<input name="startingPrice" type="number" min="0" step="100" required></label></div>
+    <label>About<textarea name="about" rows="4" maxlength="1200"></textarea></label>
+    <h3 style="font:italic 700 19px Georgia,serif;color:var(--fx-maroon);margin:6px 0 0">Payout details <small style="font:500 13.5px system-ui,sans-serif;color:var(--fx-soft)">private — only you and the Easy Wedding owner can see these</small></h3>
+    <div class="fx-row2"><label>Account holder name<input name="payoutHolder" maxlength="80"></label><label>Bank account number<input name="payoutAccount" inputmode="numeric" maxlength="24"></label></div>
+    <div class="fx-row2"><label>IFSC<input name="payoutIfsc" maxlength="11" style="text-transform:uppercase"></label><label>UPI id<input name="payoutUpi" maxlength="60"></label></div>
+    <label>PAN<input name="payoutPan" maxlength="10" style="text-transform:uppercase"></label>
+    <p class="fx-error" id="profile-error" role="alert"></p>
+    <div class="fx-btnrow"><button class="fx-btn" type="submit">Save changes</button><span class="fx-ok" id="profile-ok"></span></div>
+   </form></section>
+ </div>
+</main>
+<footer class="fx-foot">Easy Wedding · <a href="/">Home</a> · <a href="/vendors">Vendors</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refund">Refunds &amp; Cancellations</a> · Support 10 AM – 8 PM on <a href="tel:+918789991983">+91 87899 91983</a></footer>
+</body></html>

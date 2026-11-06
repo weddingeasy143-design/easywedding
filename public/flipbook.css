@@ -1,0 +1,49 @@
+/* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
+/* 3D flipbook: a portrait album on a soft stage. Leaves turn around the left
+   spine with real depth (rotateY), a travelling shadow (.fb-shade) and a
+   stacked page edge, so the turn reads as paper, not a slide. */
+.fb-root{--fb-w:min(88vw,400px);outline:none}
+.fb-stage{perspective:1800px;display:flex;justify-content:center;padding:26px 0 8px}
+.fb-book{position:relative;width:var(--fb-w);aspect-ratio:3/4;transform-style:preserve-3d;filter:drop-shadow(0 24px 34px rgba(59,10,24,.35))}
+.fb-book::after{content:"";position:absolute;inset:0 auto 0 -7px;width:14px;border-radius:6px;background:linear-gradient(90deg,#4a0d1d,#75152e 55%,#93505f);z-index:0}
+.fb-leaf{position:absolute;inset:0;transform-origin:left center;transform-style:preserve-3d;transition:transform .68s cubic-bezier(.3,.6,.3,1)}
+.fb-leaf.turned{transform:rotateY(-180deg)}
+.fb-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:4px 12px 12px 4px;overflow:hidden;background:#fffaf0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.fb-face.fb-back{transform:rotateY(180deg);border-radius:12px 4px 4px 12px}
+.fb-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(59,10,24,.20),rgba(59,10,24,0) 26%,rgba(59,10,24,0) 82%,rgba(59,10,24,.13));opacity:.55}
+.fb-back .fb-shade{background:linear-gradient(270deg,rgba(59,10,24,.20),rgba(59,10,24,0) 26%,rgba(59,10,24,0) 82%,rgba(59,10,24,.13))}
+.fb-leaf.flipping .fb-front .fb-shade{animation:fbShadeF .68s ease}
+.fb-leaf.flipping .fb-back .fb-shade{animation:fbShadeB .68s ease}
+@keyframes fbShadeF{0%{opacity:.55}45%{opacity:1;background:linear-gradient(90deg,rgba(59,10,24,.42),rgba(59,10,24,.05) 55%,rgba(59,10,24,.28))}100%{opacity:.55}}
+@keyframes fbShadeB{0%{opacity:.55}55%{opacity:1}100%{opacity:.55}}
+/* Cover */
+.fb-cover{background:linear-gradient(155deg,#8a1f3c,#75152e 45%,#57102a);color:#f7e8d5;padding:26px 22px;border:1px solid #c9a24b;box-shadow:inset 0 0 0 5px rgba(201,162,75,.35)}
+.fb-badge{position:absolute;top:14px;right:14px;background:#c9a24b;color:#3d0a18;font:700 11px/1 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;padding:6px 9px;border-radius:999px}
+.fb-cover-photo{display:block;width:72%;aspect-ratio:1/1.08;border:3px solid #e9cf9a;border-radius:6px;overflow:hidden;margin-bottom:16px;background:#5c1229}
+.fb-cover-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.fb-cover-kicker{font:600 11px/1.5 system-ui,sans-serif;letter-spacing:.34em;text-transform:uppercase;color:#e9cf9a}
+.fb-cover-title{font:italic 700 clamp(25px,7.4vw,34px)/1.2 Georgia,serif;margin:6px 0 2px}
+.fb-cover-names{font:600 clamp(14px,4vw,17px)/1.4 Georgia,serif;color:#f3d9b0}
+.fb-cover-date{font:500 12.5px/1.5 system-ui,sans-serif;color:#e8cfa5;margin-top:4px}
+.fb-inside,.fb-paperback{background:linear-gradient(120deg,#f7ead2,#fffaf0 60%,#f3e3c6);color:#a3805a}
+.fb-inside-mark,.fb-paperback-mark{font-size:30px;color:#c9a24b}
+.fb-inside-text{font:italic 500 16px/1.6 Georgia,serif;color:#8a6a44;margin-top:8px;padding:0 26px}
+/* Photo pages */
+.fb-page{background:#fffdf7;padding:16px 16px 30px;justify-content:flex-start}
+.fb-photo{display:block;width:100%;flex:1;min-height:0;border:1px solid #eadfc8;border-radius:4px;overflow:hidden;background:#f6ecd9}
+.fb-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.fb-caption{font:italic 500 14.5px/1.45 Georgia,serif;color:#7a5a38;margin-top:10px;padding:0 8px}
+.fb-pageno{position:absolute;bottom:9px;right:14px;font:600 11px system-ui,sans-serif;color:#b99b6d;letter-spacing:.08em}
+.fb-endpage{background:linear-gradient(160deg,#fff7e8,#f7ead2);color:#75152e;padding:24px}
+.fb-end-mark{font-size:32px;color:#c9a24b}
+.fb-end-text{font:italic 700 23px/1.35 Georgia,serif;margin-top:10px}
+.fb-end-names{font:600 15px Georgia,serif;color:#9a7434;margin-top:6px}
+.fb-backcover{background:linear-gradient(155deg,#57102a,#75152e 55%,#8a1f3c);color:#e9cf9a;border:1px solid #c9a24b}
+.fb-backcover-brand{font:italic 700 24px Georgia,serif}
+.fb-backcover-sub{font:600 12px system-ui,sans-serif;letter-spacing:.22em;margin-top:4px}
+/* Controls */
+.fb-bar{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 0 4px}
+.fb-btn{background:#75152e;color:#fdf3e3;border:1px solid #75152e;border-radius:999px;padding:10px 20px;font:600 15px system-ui,sans-serif;cursor:pointer;min-height:44px}
+.fb-btn:disabled{opacity:.38;cursor:default}
+.fb-count{font:600 13px system-ui,sans-serif;color:#8a6a44;min-width:110px;text-align:center}
+@media (prefers-reduced-motion:reduce){.fb-leaf{transition:none}.fb-leaf.flipping .fb-shade{animation:none}}

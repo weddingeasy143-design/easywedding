@@ -1,6 +1,6 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
 const $=s=>document.querySelector(s);
-const DESIGN_NAMES={'premium-original':'Premium Original','royal-prestige':'Crimson Vows','ivory-arch':'Ivory Jasmine','garden':'Botanical Forever','haldi':'Golden Phere','mehndi':'Peacock Promise','sangeet':'Wisteria Vows','reception':'Champagne Forever','midnight-noor':'Starlit Vows','blush-mehraab':'Blush Lotus','emerald-darbar':'Sacred Courtyard','ALL':'All-Designs Pass','addon-personal':'Add-on · Personal Invitations','addon-language-hi':'Add-on · Extra Language (Hindi)','addon-pdf':'Add-on · Print-ready PDF','addon-gallery':'Add-on · Premium Gallery','addon-shortlink':'Add-on · Custom Short Link'};
+const DESIGN_NAMES={'mandir-darwaza':'Mandir Darwaza','ram-mandir':'Ram Mandir','premium-original':'Premium Original','royal-prestige':'Crimson Vows','ivory-arch':'Ivory Jasmine','garden':'Botanical Forever','haldi':'Golden Phere','mehndi':'Peacock Promise','sangeet':'Wisteria Vows','reception':'Champagne Forever','midnight-noor':'Starlit Vows','blush-mehraab':'Blush Lotus','emerald-darbar':'Sacred Courtyard','ALL':'All-Designs Pass','addon-personal':'Add-on · Personal Invitations','addon-language-hi':'Add-on · Extra Language (Hindi)','addon-pdf':'Add-on · Print-ready PDF','addon-gallery':'Add-on · Premium Gallery','addon-shortlink':'Add-on · Custom Short Link'};
 const DESIGN_ORDER=Object.keys(DESIGN_NAMES);
 const GUIDE={
  razorpay:{name:'Razorpay',key:'Key Id',secret:'Key Secret',steps:['Create a merchant account at razorpay.com.','Dashboard → Account & Settings → API Keys → Generate Key.','Paste the Key Id and Key Secret here, switch this gateway ON, and Save.','For real payments: complete KYC on Razorpay, then generate the Live-mode key and replace the test key here.'],hook:'Webhook (recommended): Razorpay Dashboard → Accounts & Settings → Webhooks → add the URL https://easywedding.in/api/payments/webhook/razorpay with events payment.captured and order.paid. Choose a secret there and paste the same secret in the Webhook Secret box here.'},
@@ -33,7 +33,7 @@ const inr=p=>'₹'+(Math.round(Number(p)||0)/100).toLocaleString('en-IN',{maximu
 const num=n=>(Number(n)||0).toLocaleString('en-IN');
 const when=iso=>{const t=new Date(iso);return isNaN(t)?'':t.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});};
 const SRC={google:'Google',facebook:'Facebook',instagram:'Instagram',whatsapp:'WhatsApp',chatgpt:'ChatGPT',ai_chat:'Other AI chats (Gemini, Claude…)',direct:'Direct / typed link',search_other:'Other search engines',youtube:'YouTube',twitter:'X / Twitter',referral:'Other websites',campaign:'Campaign links'};
-const PAGES={dashboard:'Dashboard',analytics:'Analytics',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',settings:'Website & banner',system:'System health',music:'Preview music'};
+const PAGES={dashboard:'Dashboard',analytics:'Analytics',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',vendors:'Vendors',vendorbookings:'Vendor bookings & payouts',albums:'Albums & storage',settings:'Website & banner',system:'System health',music:'Preview music'};
 const istDays=n=>Array.from({length:n},(_,k)=>new Date(Date.now()+19800000-(n-1-k)*86400000).toISOString().slice(0,10));
 const hourLabel=h=>(h%12||12)+(h<12?' am':' pm');
 async function api(path,opts){const r=await fetch(path,opts);const d=await r.json().catch(()=>({}));if(!r.ok){const e=Error(d.error||'Request failed.');e.status=r.status;throw e;}return d;}
@@ -90,7 +90,7 @@ $('#an-days').addEventListener('change',()=>loadAnalytics().catch(handleErr));
 // ---- Orders ----
 async function loadOrders(){
  const qs=new URLSearchParams({status:$('#ord-status').value,q:$('#ord-q').value.trim()}),d=await api('/api/admin/orders?'+qs);lastOrders=d.orders;
- clear($('#orders-table')).append(table(['Date','Customer','Design','Amount','Gateway','Status','Order'],d.orders.map(o=>[when(o.created_at),(o.name||'')+' · '+o.email,DESIGN_NAMES[o.design_id]||o.design_id,inr(o.amount_paise)+(o.coupon?' ('+o.coupon+' −'+inr(o.discount_paise)+')':''),o.gateway,badge(o.status==='created'?'pending':o.status,o.status),o.id.slice(0,8)]),'No orders match.'));
+ clear($('#orders-table')).append(table(['Date','Customer','Design','Amount','Gateway','Status','Order','Receipt'],d.orders.map(o=>{const rl=el('a',null,'Receipt');rl.href='/api/receipts/order/'+o.id;rl.target='_blank';rl.rel='noopener';return [when(o.created_at),(o.name||'')+' · '+o.email,DESIGN_NAMES[o.design_id]||o.design_id,inr(o.amount_paise)+(o.coupon?' ('+o.coupon+' −'+inr(o.discount_paise)+')':''),o.gateway,badge(o.status==='created'?'pending':o.status,o.status),o.id.slice(0,8),rl];}),'No orders match.'));
 }
 let ordTimer;$('#ord-q').addEventListener('input',()=>{clearTimeout(ordTimer);ordTimer=setTimeout(()=>loadOrders().catch(handleErr),300);});$('#ord-status').addEventListener('change',()=>loadOrders().catch(handleErr));
 $('#ord-csv').addEventListener('click',()=>{const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const lines=[['Date','Name','Email','Design','Amount (INR)','Discount (INR)','Coupon','Gateway','Status','Order id'].map(esc).join(',')];for(const o of lastOrders)lines.push([o.created_at,o.name,o.email,DESIGN_NAMES[o.design_id]||o.design_id,o.amount_paise/100,(o.discount_paise||0)/100,o.coupon||'',o.gateway,o.status,o.id].map(esc).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.download='easy-wedding-orders.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});
@@ -196,7 +196,9 @@ async function loadSystem(){
  list.append(row('Database (D1)',ok(d.db,'Connected','Not connected')),row('File storage (R2) for photos & songs',ok(d.r2,'Connected','Not connected')),row('Admin email secret (ADMIN_EMAIL)',ok(d.adminEmail,'Set','Not set — using database value')),row('Admin password secret (ADMIN_PASSWORD)',ok(d.adminPassword,'Set','Not set')),row('Razorpay secrets in Cloudflare',ok(d.razorpayEnv,'Set','Not set')),row('Cashfree secrets in Cloudflare',ok(d.cashfreeEnv,'Set','Not set')));
  const c=Object.entries(d.counts).map(([k,v])=>k+': '+(v==null?'—':num(v))).join(' · ');
  list.append(row('Records',el('span',null,c)),row('Server time',el('span',null,when(d.time))));
+ try{const a=await api('/api/admin/audit');clear($('#audit-table')).append(table(['When','Who','Action','Target','Detail'],(a.entries||[]).map(e=>[when(e.created_at),e.actor,e.action,e.target||'—',e.detail||'—']),'No admin activity recorded yet. Actions appear here as they happen.'));}catch{}
 }
+$('#export-btn').addEventListener('click',async()=>{const st=$('#export-status');st.textContent='Preparing your export…';try{const r=await fetch('/api/admin/export');if(!r.ok)throw Error('Export failed.');const blob=await r.blob();const a=el('a');a.href=URL.createObjectURL(blob);a.download='easy-wedding-export-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();st.textContent='Export downloaded.';}catch(err){st.textContent=err.message||'Export failed.';}});
 
 
 
@@ -221,14 +223,96 @@ $('#mu-remove').addEventListener('click',async()=>{if(!confirm('Remove the previ
  const set=open=>{side.classList.toggle('open',open);back.hidden=!open;btn.setAttribute('aria-expanded',String(open));btn.setAttribute('aria-label',open?'Close menu':'Open menu');document.body.classList.toggle('ad-noscroll',open);};
  btn.addEventListener('click',()=>set(!side.classList.contains('open')));back.addEventListener('click',()=>set(false));
  document.querySelectorAll('#ad-nav a').forEach(x=>x.addEventListener('click',()=>set(false)));addEventListener('keydown',e=>{if(e.key==='Escape')set(false);});})();
+// ---- Vendors, bookings, payouts, albums (features) ----
+async function loadVendors(){
+ const st=$('#vd-filter').value,qv=($('#vd-q').value||'').trim();
+ const qs=new URLSearchParams();if(st)qs.set('status',st);if(qv)qs.set('q',qv);
+ const d=await api('/api/admin/vendors'+(qs.toString()?'?'+qs:''));
+ $('#vd-count').textContent=d.vendors.length+' vendor'+(d.vendors.length===1?'':'s');
+ const rows=d.vendors.map(v=>{
+  const acts=el('div');
+  const mk=(label,cls,fn)=>{const b=el('button','ad-btn sm'+(cls?' '+cls:''),label);b.type='button';b.style.margin='0 6px 6px 0';b.addEventListener('click',fn);acts.append(b);return b;};
+  if(v.status!=='approved')mk('Approve','',async()=>{await send('/api/admin/vendors/'+v.id,{status:'approved'},'POST').catch(handleErr);loadVendors().catch(handleErr);});
+  if(v.status==='pending')mk('Reject','danger',async()=>{const reason=prompt('Reason for rejecting '+v.businessName+'? (shared with the vendor)')||'';await send('/api/admin/vendors/'+v.id,{status:'rejected',reason},'POST').catch(handleErr);loadVendors().catch(handleErr);});
+  if(v.status==='approved')mk('Suspend','danger',async()=>{const reason=prompt('Reason for suspending '+v.businessName+'?')||'';await send('/api/admin/vendors/'+v.id,{status:'suspended',reason},'POST').catch(handleErr);loadVendors().catch(handleErr);});
+  if(v.status==='rejected'||v.status==='suspended')mk('Back to pending','',async()=>{await send('/api/admin/vendors/'+v.id,{status:'pending'},'POST').catch(handleErr);loadVendors().catch(handleErr);});
+  mk(v.verified?'Remove verified':'Mark verified','',async()=>{await send('/api/admin/vendors/'+v.id,{verified:!v.verified},'POST').catch(handleErr);loadVendors().catch(handleErr);});
+  const info=el('div');info.append(el('b',null,v.businessName),el('div','ad-sub',(v.vendorCode?'Vendor ID: '+v.vendorCode+' · ':'')+(v.categoryLabel||v.category)+' · '+v.city+' · from '+inr(v.startingPricePaise)),el('div','ad-sub','Owner: '+v.ownerName+' · '+(v.accountEmail||v.email||'')),el('div','ad-sub','Phone '+v.phone+' · WhatsApp '+v.whatsapp+(v.statusReason?' · Note: '+v.statusReason:'')),el('div','ad-sub',v.agreement&&v.agreement.acceptedAt?'Agreement '+(v.agreement.version||'')+' accepted '+when(v.agreement.acceptedAt):'Agreement: not recorded'));
+  if(v.hasPayoutDetails)info.append(el('div','ad-sub','Payout: '+v.payout.holder+' · A/c '+v.payout.account+' · '+v.payout.ifsc+(v.payout.upi?' · UPI '+v.payout.upi:'')+(v.payout.pan?' · PAN '+v.payout.pan:'')));
+  else info.append(el('div','ad-sub','Payout details: not added yet'));
+  const statusCell=el('div');statusCell.append(badge(v.status,v.status),v.verified?badge('✓ Verified','on'):badge('Not verified','off'));
+  return [info,statusCell,acts];
+ });
+ clear($('#vendors-table')).append(table(['Vendor','Status','Actions'],rows,'No vendors yet. Vendors appear here the moment they register.'));
+ loadReviews().catch(()=>{});
+}
+async function loadReviews(){
+ const d=await api('/api/admin/reviews');
+ const rows=d.reviews.map(r=>{
+  const acts=el('div');const b=el('button','ad-btn sm',r.hidden?'Unhide review':'Hide review');b.type='button';b.addEventListener('click',async()=>{await send('/api/admin/reviews/'+r.id,{hidden:!r.hidden},'POST').catch(handleErr);loadReviews().catch(handleErr);loadVendors().catch(handleErr);});acts.append(b);
+  const info=el('div');info.append(el('b',null,'★'.repeat(r.stars)+' — '+r.vendorName),el('div','ad-sub',(r.vendorCode?r.vendorCode+' · ':'')+'by '+(r.customer||'Customer')+' · '+when(r.createdAt)+(r.hidden?' · HIDDEN':'')));
+  if(r.text)info.append(el('div',null,r.text));
+  return [info,acts];
+ });
+ clear($('#reviews-table')).append(table(['Review','Actions'],rows,'No reviews yet. Reviews appear after a completed booking is reviewed.'));
+}
+$('#vd-filter').addEventListener('change',()=>loadVendors().catch(handleErr));
+let vdQTimer=null;$('#vd-q').addEventListener('input',()=>{clearTimeout(vdQTimer);vdQTimer=setTimeout(()=>loadVendors().catch(handleErr),350);});
+async function loadVendorBookings(){
+ const [d,p]=await Promise.all([api('/api/admin/vendorbookings'),api('/api/admin/payouts')]);
+ const k=clear($('#vb-kpis'));
+ k.append(kpi('Total bookings',num(d.totals.bookings),num(d.totals.confirmed)+' confirmed'),kpi('Gross booked',inr(d.totals.grossPaise),'vendor finals'),kpi('Commission earned',inr(d.totals.commissionPaise),'at each booking’s %'),kpi('Commission due to you',inr(d.totals.commissionDuePaise),'manual bookings, unpaid'),kpi('Due to vendors',inr(d.totals.vendorDuePaise),'split bookings, unpaid'));
+ clear($('#vb-table')).append(table(['When','Vendor','Customer','Event','Gross','Commission','Net','Status','Receipt'],d.bookings.map(b=>{const vc=el('div');vc.append(el('div',null,b.vendorName),b.vendorCode?el('div','ad-sub',b.vendorCode):el('span'));const rl=el('a',null,'Receipt');rl.href='/api/receipts/booking/'+b.id;rl.target='_blank';rl.rel='noopener';return [when(b.createdAt),vc,b.customerName||'—',(b.eventType||'Event')+' · '+(b.eventDate||''),b.finalPaise!=null?inr(b.finalPaise):'—',b.commissionPaise!=null?inr(b.commissionPaise)+' ('+b.commissionPercent+'%)':'—',b.netPaise!=null?inr(b.netPaise):'—',badge(b.status+(b.payoutId?' · settled':''),b.status),rl];}),'No vendor bookings yet.'));
+ const sel=$('#po-vendor');const keep=sel.value;
+ const vendors=await api('/api/admin/vendors');
+ sel.replaceChildren();for(const v of vendors.vendors){const o=el('option',null,v.businessName+' ('+v.city+')');o.value=v.id;sel.append(o);}
+ if(keep)sel.value=keep;
+ clear($('#po-table')).append(table(['When','Type','Vendor','Amount','Reference','Bookings'],p.payouts.map(x=>[when(x.createdAt),x.kind==='commission_receipt'?'Commission receipt':'Vendor payout',x.vendorName,inr(x.amountPaise),x.reference||'—',num(x.bookingCount)]),'No settlements recorded yet.'));
+}
+$('#payout-form').addEventListener('submit',async e=>{
+ e.preventDefault();const st=$('#po-status');st.textContent='Recording…';
+ try{const d=await send('/api/admin/payouts',{vendorId:$('#po-vendor').value,kind:$('#po-kind').value,reference:$('#po-ref').value.trim()},'POST');
+  st.textContent='Recorded: '+inr(d.payout.amountPaise)+' across '+d.payout.bookingCount+' booking(s).';$('#po-ref').value='';loadVendorBookings().catch(handleErr);}
+ catch(err){st.textContent=err.message;}
+});
+async function loadAlbumsAdmin(){
+ const f=await api('/api/admin/features');
+ $('#fx-price').value=Math.round((f.album.price_paise||0)/100);
+ $('#fx-days').value=f.album.draft_days;
+ $('#fx-comm').value=f.commissionPercent;
+ if(f.vendorAgreement){$('#fx-agree-version').value=f.vendorAgreement.version||'v1';$('#fx-agree-text').value=f.vendorAgreement.text||'';}
+ $('#fx-2fa').checked=!!f.bossTwoFactor;
+ $('#fx-cats').value=(f.vendorCategories||[]).map(c=>c.id===c.label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')?c.label:c.id+' | '+c.label).join('\n');
+ const d=await api('/api/admin/albums');
+ const rows=d.albums.map(a=>{
+  const acts=el('div');
+  if(a.storage!=='permanent'){const b=el('button','ad-btn sm','Mark permanent');b.type='button';b.addEventListener('click',async()=>{if(!confirm('Mark “'+a.title+'” as saved forever, without a payment? Use only when the customer paid you directly.'))return;await send('/api/admin/albums/'+a.id+'/permanent',{},'POST').catch(handleErr);loadAlbumsAdmin().catch(handleErr);});acts.append(b);}
+  if(a.storageOrderId){const rl=el('a','ad-btn sm','Order receipt');rl.href='/api/receipts/order/'+a.storageOrderId;rl.target='_blank';rl.rel='noopener';rl.style.marginLeft='6px';acts.append(rl);}
+  const info=el('div');info.append(el('b',null,a.title),el('div','ad-sub',(a.ownerName||'')+' · '+(a.ownerEmail||'')+' · '+a.photoCount+' photos · made '+when(a.createdAt)));
+  const state=a.storage==='permanent'?badge('Saved forever','paid'):a.expired?badge('Draft expired','failed'):badge('Free draft','created');
+  const exp=a.storage==='permanent'?'—':(a.expiresAt?'till '+when(a.expiresAt):'—');
+  return [info,state,exp,acts];
+ });
+ clear($('#albums-table')).append(table(['Album','Storage','Draft ends','Actions'],rows,'No customer albums yet.'));
+}
+$('#fx-form').addEventListener('submit',async e=>{
+ e.preventDefault();const st=$('#fx-status');st.textContent='Saving…';
+ const cats=$('#fx-cats').value.split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{const parts=line.split('|').map(s=>s.trim());return parts.length>1?{id:parts[0],label:parts[1]}:{label:parts[0]};});
+ try{await send('/api/admin/features',{albumPrice:Number($('#fx-price').value),draftDays:Number($('#fx-days').value),commissionPercent:Number($('#fx-comm').value),vendorCategories:cats,vendorAgreement:{version:$('#fx-agree-version').value.trim(),text:$('#fx-agree-text').value},bossTwoFactor:$('#fx-2fa').checked});
+  st.textContent='Settings saved. New bookings and new Save Forever payments will use them.';loadAlbumsAdmin().catch(handleErr);}
+ catch(err){st.textContent=err.message;}
+});
+
 // ---- Routing, login, start-up ----
-const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
+const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),vendors:loadVendors,vendorbookings:loadVendorBookings,albums:loadAlbumsAdmin,settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
 function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);
 function deny(msg){$('#admin-loading').hidden=true;const d=$('#admin-denied');d.hidden=false;d.textContent=msg;}
 function showLogin(){$('#admin-loading').hidden=true;$('#admin-denied').hidden=true;$('#admin-login-wrap').hidden=false;}
-$('#admin-login').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-login-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Signing in…';try{const body={email:$('#admin-login-email').value.trim()};body['pass'+'word']=$('#admin-login-pass').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Sign in failed.');$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'Sign in failed. Please try again.';}finally{btn.disabled=false;}});
+let bossChallenge=null;
+$('#admin-login').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-login-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Signing in…';try{const body={email:$('#admin-login-email').value.trim()};body['pass'+'word']=$('#admin-login-pass').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Sign in failed.');if(d.twoFactor){bossChallenge=d.challengeId;$('#admin-login').hidden=true;$('#admin-2fa').hidden=false;$('#admin-2fa-status').textContent='Code sent — check the owner inbox.';$('#admin-2fa-code').focus();return;}$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'Sign in failed. Please try again.';}finally{btn.disabled=false;}});
+$('#admin-2fa').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-2fa-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Verifying…';try{const r=await fetch('/api/admin/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({challengeId:bossChallenge,code:$('#admin-2fa-code').value.trim()})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Verification failed.');bossChallenge=null;$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'That code did not work. Please try again.';}finally{btn.disabled=false;}});
 $('#ad-signout').addEventListener('click',async()=>{await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});location.reload();});
 async function init(){try{const r=await fetch('/api/admin/overview').catch(()=>null);
  if(!r){deny('Could not load the admin console. Please try again.');return;}

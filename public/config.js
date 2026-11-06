@@ -65,7 +65,9 @@ const DEMO_FLAT={
  'reception':{groom:'Vikram',bride:'Anjali',venue:'Deccan Pearl Convention',address:'Banjara Hills',city:'Hyderabad, Telangana',date:'2026-12-19',time:'19:00'},
  'midnight-noor':{groom:'Ayaan',bride:'Zara',venue:'Sea Princess Lawns',address:'Juhu Tara Road',city:'Mumbai, Maharashtra',date:'2027-01-16',time:'20:30'},
  'blush-mehraab':{groom:'Kabir',bride:'Simran',venue:'Heritage Haveli',address:'Queens Road',city:'Amritsar, Punjab',date:'2026-11-21',time:'18:00'},
- 'emerald-darbar':{groom:'Yash',bride:'Riya',venue:'Ganga Kinare Mahal',address:'Assi Ghat Road',city:'Varanasi, Uttar Pradesh',date:'2027-03-13',time:'18:30'}};
+ 'emerald-darbar':{groom:'Yash',bride:'Riya',venue:'Ganga Kinare Mahal',address:'Assi Ghat Road',city:'Varanasi, Uttar Pradesh',date:'2027-03-13',time:'18:30'},
+ 'mandir-darwaza':{groom:'Nikhil',bride:'Shreya',venue:'The Royal Crown Banquet & Resort',address:'Sindri Road, Baliapur',city:'Dhanbad, Jharkhand',date:'2027-02-18',time:'07:45'},
+ 'ram-mandir':{groom:'Kartik',bride:'Meera',venue:'Ramayanam Celebration Lawns',address:'Near Ram Janmbhoomi',city:'Ayodhya, Uttar Pradesh',date:'2026-12-12',time:'11:00'}};
 export const SAMPLE_PHOTOS=Object.freeze({photoUrl:'couple.webp',groomPhoto:'groom.webp',bridePhoto:'bride.webp',venuePhotoUrl:'venue.webp',gallery:['couple.webp','groom.webp','bride.webp','venue.webp']});
 export function sampleCouple(theme){const d=DEMO_FLAT[theme]||DEMO_FLAT['premium-original'];return {groom:d.groom,bride:d.bride};}
 export function isSamplePreview(location){const hash=new URLSearchParams(location.hash.slice(1)),p=new URLSearchParams(location.search);return !hash.has('card')&&!p.has('bride')&&!p.has('groom');}

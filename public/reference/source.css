@@ -275,6 +275,9 @@
   .relative {
     position: relative;
   }
+  .static {
+    position: static;
+  }
   .-inset-4 {
     inset: calc(var(--spacing) * -4);
   }
@@ -2258,6 +2261,9 @@
   .px-2 {
     padding-inline: calc(var(--spacing) * 2);
   }
+  .px-2\.5 {
+    padding-inline: calc(var(--spacing) * 2.5);
+  }
   .px-3 {
     padding-inline: calc(var(--spacing) * 3);
   }
@@ -2329,6 +2335,9 @@
   }
   .py-24 {
     padding-block: calc(var(--spacing) * 24);
+  }
+  .pt-2\.5 {
+    padding-top: calc(var(--spacing) * 2.5);
   }
   .pt-4 {
     padding-top: calc(var(--spacing) * 4);

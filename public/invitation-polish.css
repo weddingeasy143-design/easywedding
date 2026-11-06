@@ -89,6 +89,8 @@ body[data-theme="reception"]{--hero-tempo:22s;--light-tempo:19s;--motif-tempo:15
 body[data-theme="midnight-noor"]{--hero-tempo:25s;--light-tempo:23s;--motif-tempo:13s}
 body[data-theme="blush-mehraab"]{--hero-tempo:20s;--light-tempo:18s;--motif-tempo:17s}
 body[data-theme="emerald-darbar"]{--hero-tempo:23s;--light-tempo:21s;--motif-tempo:40s}
+body[data-theme="mandir-darwaza"]{--hero-tempo:21s;--light-tempo:19s;--motif-tempo:34s}
+body[data-theme="ram-mandir"]{--hero-tempo:22s;--light-tempo:20s;--motif-tempo:30s}
 .ceremonial-medallion{position:absolute;width:340px;height:340px;color:var(--gold);opacity:.18;pointer-events:none;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--gold) 45%,transparent));transform:translate3d(0,var(--depth-far,0px),0)}
 .medallion-0,.medallion-2{left:-90px}.medallion-1{right:-90px}
 .ceremonial-medallion .ceremony-symbol{width:100%;height:100%;max-width:none;stroke-width:.7;animation:lotus-unfurl var(--motif-tempo) ease-in-out infinite alternate;animation-play-state:paused}

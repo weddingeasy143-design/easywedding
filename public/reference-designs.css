@@ -104,6 +104,8 @@ body[data-invitation-design='reception'] .theme-opening-card{border-radius:3px}
 body[data-invitation-design='midnight-noor'] .theme-opening-card{border-radius:160px 160px 32px 32px}
 body[data-invitation-design='blush-mehraab'] .theme-opening-card{border-radius:120px 120px 36px 36px}
 body[data-invitation-design='emerald-darbar'] .theme-opening-card{border-radius:50px 50px 4px 4px}
+body[data-invitation-design='mandir-darwaza'] .theme-opening-card{border-radius:140px 140px 12px 12px}
+body[data-invitation-design='ram-mandir'] .theme-opening-card{border-radius:120px 120px 16px 16px}
 @media(max-width:600px){
  body[data-invitation-design] .theme-floral-bottom{width:180px;opacity:.14}
  body[data-invitation-design] .theme-opening-card{max-width:100%}

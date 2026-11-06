@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying or cloning of this website, its designs or its code is prohibited. --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#75152e"><title>My Albums · Easy Wedding</title><meta name="description" content="Create your 3D flipbook wedding album — free to build and preview, save it forever only when you love it."><meta name="robots" content="noindex,follow"><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="brand.css"><link rel="stylesheet" href="features.css"><link rel="stylesheet" href="flipbook.css"><script defer src="auth.js"></script><script defer src="flipbook.js"></script><script type="module" src="albums.js"></script><link rel="icon" href="/favicon.ico" sizes="any"><link rel="apple-touch-icon" href="/assets/seo/apple-touch-icon.png"></head>
+<body class="fx"><div id="ew-origin-marker" hidden data-origin="EW-ORIGIN-2026-369eafc22a98" aria-hidden="true">Easy Wedding · easywedding.in · Original creation of Chandan Kumar Mahato · © 2026 · EW-ORIGIN-2026-369eafc22a98</div>
+<header class="fx-head"><a class="brand" href="/" aria-label="Easy Wedding home"><span class="brand-logo-crop"><img src="assets/brand/easy-wedding-logo.png" alt="Easy Wedding" width="2048" height="682"></span></a><nav aria-label="Sections"><a href="/studio">Invitation Studio</a><a href="/album">Wedding Album</a><a href="/vendors">Vendors</a><a href="/albums" class="on">My Albums</a><span data-auth-actions></span></nav></header>
+<main class="fx-main">
+ <section class="fx-hero"><p class="fx-kicker">Wedding Album</p><h1 class="fx-h1">My Albums</h1><p>Build a flipbook of your wedding photographs. Albums start as free drafts — take your time, arrange every page, and Save Forever only when it feels perfect.</p></section>
+ <div id="login-box" hidden class="fx-card" style="text-align:center"><h2 class="fx-h2" style="margin-top:0">Please sign in</h2><p class="fx-note">Your albums live in your Easy Wedding account.</p><div class="fx-btnrow" style="justify-content:center"><a class="fx-btn" href="/login?next=%2Falbums">Sign in to continue</a><a class="fx-btn ghost" href="/album">See the demo album instead</a></div></div>
+ <div id="app" hidden>
+  <div id="pay-banner"></div>
+  <section class="fx-card"><h2 class="fx-h2" style="margin-top:0">Start a new album</h2>
+   <form id="create-form" class="fx-form">
+    <div class="fx-row2"><label>Album title<input name="title" maxlength="90" required placeholder="e.g. Our Wedding Album"></label><label>Wedding date <small>(optional)</small><input name="weddingDate" type="date"></label></div>
+    <div class="fx-row2"><label>Partner one name<input name="partner1" maxlength="70" placeholder="e.g. Aarav Sharma"></label><label>Partner two name<input name="partner2" maxlength="70" placeholder="e.g. Ananya Verma"></label></div>
+    <p class="fx-error" id="create-error" role="alert"></p>
+    <div><button class="fx-btn" type="submit">Create free draft</button> <span class="fx-note">Free drafts are kept for <b id="draft-days">7</b> days.</span></div>
+   </form></section>
+  <section><h2 class="fx-h2">Your albums</h2><div id="album-list" class="fx-grid"></div><p class="fx-note" id="album-empty" hidden>You have no albums yet — create your first one above.</p></section>
+  <section id="builder" hidden class="fx-card">
+   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h2 class="fx-h2" style="margin:0;flex:1" id="builder-title">Album</h2><span id="builder-badge"></span></div>
+   <p class="fx-note" id="builder-status"></p>
+   <form id="details-form" class="fx-form" style="margin-top:10px">
+    <div class="fx-row2"><label>Album title<input name="title" maxlength="90" required></label><label>Wedding date<input name="weddingDate" type="date"></label></div>
+    <div class="fx-row2"><label>Partner one name<input name="partner1" maxlength="70"></label><label>Partner two name<input name="partner2" maxlength="70"></label></div>
+    <label id="public-row" hidden style="display:flex;gap:10px;align-items:center;font-weight:600"><input type="checkbox" name="isPublic" style="width:auto;margin:0"> Anyone with my share link can view this album</label>
+    <p class="fx-error" id="details-error" role="alert"></p>
+    <div class="fx-btnrow"><button class="fx-btn small" type="submit">Save details</button><span class="fx-ok" id="details-ok"></span></div>
+   </form>
+   <h3 style="font:italic 700 20px Georgia,serif;color:var(--fx-maroon)">Photos — first photo becomes the cover</h3>
+   <div class="fx-btnrow"><label class="fx-btn gold small" style="cursor:pointer">＋ Add photos<input id="photo-input" type="file" accept="image/*" multiple hidden></label><span class="fx-note" id="upload-note">One tap per photo — we prepare it for your album automatically.</span></div>
+   <p class="fx-error" id="photo-error" role="alert"></p>
+   <div id="photo-grid" class="fx-photos"></div>
+   <div class="fx-btnrow" style="margin-top:18px">
+    <button class="fx-btn" id="preview-btn" type="button">▶ Preview flipbook</button>
+    <button class="fx-btn gold" id="forever-btn" type="button">Save Forever · <span id="forever-price"></span></button>
+    <span id="share-box" hidden style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="share-link" readonly style="padding:10px;border:1px solid var(--fx-line);border-radius:10px;min-width:230px" aria-label="Share link"><button class="fx-btn small ghost" id="copy-link" type="button">Copy link</button><a class="fx-btn small ghost" id="album-receipt" href="#" target="_blank" rel="noopener" hidden>Payment receipt</a></span>
+    <span id="pin-box" hidden style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><span class="fx-note" id="pin-state">Share PIN: off</span><input id="pin-input" inputmode="numeric" maxlength="4" placeholder="4-digit PIN" style="padding:10px;border:1px solid var(--fx-line);border-radius:10px;width:110px" aria-label="Share PIN"><button class="fx-btn small ghost" id="pin-set" type="button">Set PIN</button><button class="fx-btn small ghost" id="pin-remove" type="button">Remove PIN</button><span class="fx-note" id="pin-note"></span></span>
+    <button class="fx-btn small ghost" id="delete-album" type="button" style="margin-left:auto;color:var(--fx-bad);border-color:var(--fx-bad)">Delete album</button>
+   </div>
+  </section>
+ </div>
+</main>
+<dialog class="fx-viewer-dialog" id="viewer-dialog"><div class="fx-viewer-box"><button class="fx-viewer-close" id="viewer-close" type="button">✕ Close</button><div id="viewer-mount"></div></div></dialog>
+<dialog class="fx-dialog" id="pay-dialog"><form method="dialog" style="display:grid;gap:10px"><h2>Save Forever</h2><p class="fx-note" style="margin:0">One payment of <b id="pay-amount"></b> keeps this album permanently — for as long as you want — with your own shareable link.</p><div id="pay-ready"><label style="font-weight:600;font-size:14.5px">Mobile number<input id="pay-phone" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile number" style="display:block;width:100%;margin-top:5px;padding:12px;border:1px solid var(--fx-line);border-radius:10px;font:16px system-ui,sans-serif"></label><div class="fx-gateways" id="pay-gateways"></div></div><div id="pay-soon" hidden class="fx-alert">Online payment is being switched on for album storage. Your album stays safe as a free draft meanwhile — message us on WhatsApp and we will help you save it forever.<div class="fx-btnrow"><a class="fx-btn small" id="pay-wa" href="#" target="_blank" rel="noopener">WhatsApp us</a></div></div><p class="fx-error" id="pay-error" role="alert"></p><div class="fx-btnrow"><button class="fx-btn" id="pay-go" type="button">Pay &amp; save forever</button><button class="fx-btn ghost" id="pay-cancel" type="button">Not now</button></div><p class="fx-note" id="pay-note"></p></form></dialog>
+<footer class="fx-foot">Easy Wedding · <a href="/">Home</a> · <a href="/studio">Invitation Studio</a> · <a href="/vendors">Vendors</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refund">Refunds &amp; Cancellations</a> · Support 10 AM – 8 PM on <a href="tel:+918789991983">+91 87899 91983</a></footer>
+</body></html>

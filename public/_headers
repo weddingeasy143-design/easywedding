@@ -1,3 +1,14 @@
+# Security headers on every page and asset (security pass, 2026-11). The CSP
+# is fitted to what the site itself uses: its own scripts/styles/photos, the
+# Razorpay + Cashfree checkout widgets, YouTube-nocookie invitation videos,
+# blob: previews for photo uploads, and the PayU redirect form. Worker (API)
+# responses carry their own stricter set from server/worker.js.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://sdk.cashfree.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://api.cashfree.com https://*.cashfree.com; frame-src https://www.youtube-nocookie.com https://checkout.razorpay.com https://api.razorpay.com https://*.cashfree.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://secure.payu.in https://test.payu.in; frame-ancestors 'self'
 # Heavy static files rarely change: let browsers keep them for a week (revalidate quietly after that).
 /assets/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400

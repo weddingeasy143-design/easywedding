@@ -1,6 +1,8 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
 /* Scalable ceremonial ornaments: no baked-in text or low resolution cutouts. */
 export const ceremonyMotifs={
+ 'mandir-darwaza':{label:'Mandir Darwaza',invocation:'',symbol:'diya',ritual:'Two hearts. One sacred beginning.'},
+ 'ram-mandir':{label:'Ram Mandir',invocation:'',symbol:'lotus',ritual:'Two hearts. One sacred journey.'},
  'ivory-arch':{label:'Ivory Jasmine',invocation:'',symbol:'lotus',ritual:'Seven vows. One beautiful beginning.'},
  'royal-prestige':{label:'Crimson Vows',invocation:'',symbol:'diya',ritual:'A royal welcome. A sacred promise.'},
  garden:{label:'Botanical Forever',invocation:'',symbol:'lotus',ritual:'Together through seven sacred steps.'},

@@ -10,6 +10,8 @@ body[data-theme="reception"]{--paper:#faf3e8;--ink:#564232;--wine:#80603d;--gold
 body[data-theme="midnight-noor"]{--paper:#101e34;--ink:#f3ebdf;--wine:#d7bd86;--gold:#c4ab77;--frame-tint:#233955;--frame-radius:8px;--hero-name:#f9ead1;background:#091325}
 body[data-theme="blush-mehraab"]{--paper:#fff2ee;--ink:#5a343d;--wine:#9b4c66;--gold:#b18d64;--frame-tint:#e8c7c8;--frame-radius:240px}
 body[data-theme="emerald-darbar"]{--paper:#f3eddd;--ink:#2d493d;--wine:#315844;--gold:#a07e48;--frame-tint:#c0c6a7;--frame-radius:4px}
+body[data-theme="mandir-darwaza"]{--paper:#fff6e3;--ink:#4a0512;--wine:#6d0a1e;--gold:#a07e48;--frame-tint:#e3c98f;--frame-radius:140px}
+body[data-theme="ram-mandir"]{--paper:#fdf6e3;--ink:#5a2d12;--wine:#8a4b1d;--gold:#b8860b;--frame-tint:#ecd9a8;--frame-radius:120px}
 html{scroll-padding-top:86px}body .invitation{max-width:1180px;overflow:clip;box-shadow:0 25px 100px #37251c18;margin:0 auto;background:var(--paper)}
 .invitation-skip-link{position:fixed;left:16px;top:-120px;z-index:100;background:var(--paper);padding:12px 18px}.invitation-skip-link:focus{top:16px}
 .invitation-navigation{position:sticky;top:0;z-index:30;max-width:1180px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 38px;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 5px 20px #30201308;min-height:72px}
