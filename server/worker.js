@@ -2,7 +2,7 @@ import {normalizeConfig} from '../public/config.js';
 import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
 import {exportAccountZip,eraseAccountData} from './account-data.js';
 import {inviteProgress} from './invite-progress.js';
-import {catalogPayload,SUPPORT} from './catalog.js';
+import {catalogPayload,SUPPORT,CATALOG_DESIGNS} from './catalog.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
 /* Sign-in lifetime, the owner's rule: 15 quiet minutes brings a warning
    with a 2-minute countdown on screen (auth.js), and no answer signs the
@@ -20,7 +20,72 @@ async function ensureSessionColumns(env){
  try{await env.DB.prepare('ALTER TABLE sessions ADD COLUMN last_seen_at TEXT').run();}catch(e){/* column already there */}
  try{await env.DB.prepare('ALTER TABLE sessions ADD COLUMN kind TEXT').run();}catch(e){/* column already there */}
 }
-const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,...headers}});
+const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-EW-Origin':EW_ORIGIN,'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Strict-Transport-Security':'max-age=31536000; includeSubDomains',...headers}});
+/* Security-pass helpers (2026-11): HTML escaping for the worker-rendered
+   receipt pages, per-account login lockout, the boss audit log, outgoing
+   mail (used by boss two-step login), and the random vendor identity code. */
+const escHtml=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LOGIN_FAIL_WINDOW=900,LOGIN_FAIL_MAX=8;
+async function loginFailBucket(env,email){const now=Math.floor(Date.now()/1000),win=Math.floor(now/LOGIN_FAIL_WINDOW);return{bucket:'lf:'+(await sha256hex(String(email||'').toLowerCase())).slice(0,24)+':'+win,win};}
+async function loginLocked(env,email){try{const{bucket}=await loginFailBucket(env,email);const row=await db(env).prepare('SELECT count FROM rate_limits WHERE bucket=?').bind(bucket).first();return!!(row&&row.count>=LOGIN_FAIL_MAX);}catch{return false;}}
+async function noteLoginFail(env,email){try{const{bucket,win}=await loginFailBucket(env,email);await db(env).prepare('INSERT INTO rate_limits(bucket,count,expires_at) VALUES(?,?,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1').bind(bucket,1,(win+1)*LOGIN_FAIL_WINDOW).run();}catch{}}
+async function clearLoginFails(env,email){try{const h=(await sha256hex(String(email||'').toLowerCase())).slice(0,24);await db(env).prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind('lf:'+h+':%').run();}catch{}}
+/* Session rotation on sign-in: a fresh login ends the account's other
+   sessions of the same kind, so a stolen old cookie dies the moment the
+   real owner signs in again. */
+async function rotateSessions(env,userId,kind){if(!userId)return;try{await db(env).prepare('DELETE FROM sessions WHERE user_id=? AND kind=?').bind(userId,kind).run();}catch{}}
+let auditReady=false;
+async function audit(env,admin,action,target='',detail=''){
+ try{
+  if(!auditReady){auditReady=true;await db(env).prepare('CREATE TABLE IF NOT EXISTS admin_audit(id TEXT PRIMARY KEY,actor TEXT NOT NULL,action TEXT NOT NULL,target TEXT NOT NULL DEFAULT \'\',detail TEXT NOT NULL DEFAULT \'\',created_at TEXT NOT NULL)').run().catch(()=>{});}
+  await db(env).prepare('INSERT INTO admin_audit(id,actor,action,target,detail,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),String(admin?.email||'owner').slice(0,120),String(action).slice(0,60),String(target).slice(0,160),String(detail).slice(0,300),new Date().toISOString()).run();
+ }catch{}
+}
+/* Outgoing mail. Transports, in order: Resend (RESEND_API_KEY + MAIL_FROM),
+   else a generic JSON webhook (MAIL_WEBHOOK_URL). With neither configured
+   the function reports not-configured — callers must fail honestly rather
+   than pretend a code was sent. */
+async function sendMail(env,{to,subject,text}){
+ try{
+  if(env.RESEND_API_KEY){const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:env.MAIL_FROM||'Easy Wedding <no-reply@easywedding.in>',to:[to],subject,text})});if(r.ok)return{ok:true,via:'resend'};return{ok:false,reason:'provider-'+r.status};}
+  if(env.MAIL_WEBHOOK_URL){const r=await fetch(env.MAIL_WEBHOOK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,text})});if(r.ok)return{ok:true,via:'webhook'};return{ok:false,reason:'webhook-'+r.status};}
+  return{ok:false,reason:'not-configured'};
+ }catch(e){return{ok:false,reason:'send-failed'};}
+}
+async function siteSetting(env,key){try{const r=await db(env).prepare('SELECT value FROM site_settings WHERE key=?').bind(key).first();return r?.value??null;}catch{return null;}}
+async function setSiteSetting(env,key,value){await db(env).prepare('INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,String(value)).run();}
+/* Vendor identity: EW-VND- + a crypto-random 6-digit number. The column is
+   UNIQUE, and assignment retries on collision, so two vendors can never
+   share a code and a code, once given, never changes and is never reused. */
+function randomVendorCode(){return 'EW-VND-'+(100000+(crypto.getRandomValues(new Uint32Array(1))[0]%900000));}
+async function ensureVendorCode(env,row){
+ if(!row||!row.id)return null;
+ if(row.vendor_code)return row.vendor_code;
+ for(let i=0;i<15;i++){
+  const code=randomVendorCode();
+  try{
+   const r=await db(env).prepare("UPDATE vendors SET vendor_code=? WHERE id=? AND (vendor_code IS NULL OR vendor_code='')").bind(code,row.id).run();
+   if(r.meta&&r.meta.changes){row.vendor_code=code;return code;}
+   const fresh=await db(env).prepare('SELECT vendor_code FROM vendors WHERE id=?').bind(row.id).first();
+   if(fresh&&fresh.vendor_code){row.vendor_code=fresh.vendor_code;return fresh.vendor_code;}
+  }catch(e){/* UNIQUE collision with another vendor: draw a new number */}
+ }
+ return row.vendor_code||null;
+}
+/* Album share PIN: the owner may protect a shared album with a 4-digit PIN
+   (stored only as a hash). A correct entry earns a per-album cookie whose
+   value is derived from the share token + the current PIN hash, so changing
+   or removing the PIN immediately invalidates every earlier unlock. */
+const albumPinCookieName=id=>'ew_apin_'+String(id).slice(0,8);
+async function albumPinProof(album){return sha256hex(String(album.share_token)+':'+String(album.share_pin_hash));}
+async function albumPinOk(request,album){
+ if(!album||!album.share_pin_hash)return true;
+ const want=albumPinCookieName(album.id)+'='+await albumPinProof(album);
+ return (request.headers.get('Cookie')||'').split(';').some(c=>c.trim()===want);
+}
+function receiptPage(title,inner){return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escHtml(title)+' · Easy Wedding</title><style>body{font-family:Georgia,serif;background:#faf6ef;color:#33272b;margin:0;padding:24px}main{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e7d9c4;border-radius:16px;padding:28px}h1{font-size:22px;color:#75152e;margin:0 0 4px}p.sub{color:#8a6d3b;margin:0 0 18px}table{width:100%;border-collapse:collapse;font-size:15px}td{padding:8px 4px;border-bottom:1px solid #f0e7d8;vertical-align:top}td.k{color:#7a6a58;width:42%}td.v{text-align:right;font-weight:600}.total td{font-size:17px;color:#75152e;border-bottom:0}button{margin-top:20px;background:#75152e;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-size:15px;cursor:pointer}@media print{button{display:none}body{background:#fff}}</style><script defer src="/receipt.js"></script></head><body><main>'+inner+'</main></body></html>';}
+function receiptResponse(html){return new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'SAMEORIGIN','Referrer-Policy':'no-referrer','Strict-Transport-Security':'max-age=31536000; includeSubDomains','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; base-uri 'self'"}});}
+const inrHtml=p=>'₹'+(Math.round(Number(p)||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2});
 async function rateHit(env,name,request,limit,windowSec){
  const ip=(request.headers.get('CF-Connecting-IP')||'unknown').slice(0,64);
  const now=Math.floor(Date.now()/1000),win=Math.floor(now/windowSec),bucket=name+':'+ip+':'+win,expires=(win+1)*windowSec;
@@ -90,6 +155,9 @@ async function completeOrder(env,order,paymentId){
  await db(env).prepare("UPDATE orders SET status='paid',gateway_payment_id=?,updated_at=?,user_id=? WHERE id=?").bind(paymentId||null,now,userId,order.id).run();
  await db(env).prepare('INSERT OR IGNORE INTO entitlements(user_id,design_id,order_id,granted_at) VALUES(?,?,?,?)').bind(userId,order.design_id,order.id,now).run();
  if(order.coupon)await db(env).prepare('UPDATE coupons SET used=used+1 WHERE code=?').bind(order.coupon).run().catch(()=>{});
+ // Album "Save Forever" orders carry the album id in ref_id: a confirmed
+ // payment makes that album permanent at the price actually paid.
+ if(order.design_id==='album-storage'&&order.ref_id){try{await db(env).prepare("UPDATE albums SET storage='permanent',storage_order_id=?,storage_price_paise=?,updated_at=? WHERE id=? AND user_id=?").bind(order.id,order.amount_paise,new Date().toISOString(),order.ref_id,userId).run();}catch(e){}}
 }
 // ---- Analytics + coupons helpers ----
 const AI_HOSTS=[['chatgpt.com','chatgpt'],['chat.openai.com','chatgpt'],['openai.com','chatgpt'],['perplexity.ai','ai_chat'],['gemini.google.com','ai_chat'],['claude.ai','ai_chat'],['copilot.microsoft.com','ai_chat'],['you.com','ai_chat'],['deepseek.com','ai_chat'],['poe.com','ai_chat'],['grok.com','ai_chat']];
@@ -184,6 +252,65 @@ const GROUP_URL=/^https:\/\/groups\.google\.com\/(g\/[A-Za-z0-9_.-]+|forum\/[A-Z
 const TESTING_URL=/^https:\/\/play\.google\.com\/apps\/(testing|internaltest)\/[A-Za-z0-9_.\/-]+$/;
 const PLAY_URL=/^https:\/\/play\.google\.com\/store\/apps\/details\?id=[A-Za-z0-9_.]+(&[A-Za-z0-9_.=%&-]*)?$/;
 async function previewMusicRow(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='preview_music'").first();return row?JSON.parse(row.value):null;}catch{return null;}}
+/* Feature settings, all editable in /boss and stored in site_settings.
+   The defaults below are only fallbacks for a database that has not been
+   migrated yet — the live values always come from the settings rows. */
+const ALBUM_STORAGE_DEFAULT={price_paise:49900,draft_days:7};
+const COMMISSION_DEFAULT=10;
+const VENDOR_CATEGORY_DEFAULTS=[['photographer','Photographer'],['videographer','Videographer'],['makeup','Makeup Artist'],['mehndi','Mehndi Artist'],['decorator','Decorator'],['caterer','Caterer'],['dj','DJ & Music'],['venue','Wedding Venue'],['pandit','Pandit'],['car','Car Rental']].map(([id,label])=>({id,label}));
+async function settingJson(env,key){try{const row=await db(env).prepare('SELECT value FROM site_settings WHERE key=?').bind(key).first();return row?JSON.parse(row.value):null;}catch{return null;}}
+async function albumSettings(env){const v=await settingJson(env,'album_storage');return {price_paise:v&&Number.isFinite(v.price_paise)?Math.max(0,Math.round(v.price_paise)):ALBUM_STORAGE_DEFAULT.price_paise,draft_days:v&&Number.isFinite(v.draft_days)?Math.min(90,Math.max(1,Math.round(v.draft_days))):ALBUM_STORAGE_DEFAULT.draft_days};}
+async function commissionPercent(env){const v=await settingJson(env,'vendor_commission');const p=v&&Number.isFinite(v.percent)?Number(v.percent):COMMISSION_DEFAULT;return Math.min(50,Math.max(0,Math.round(p*100)/100));}
+async function vendorCategories(env){const v=await settingJson(env,'vendor_categories');if(Array.isArray(v)&&v.length){const list=v.filter(c=>c&&typeof c.id==='string'&&typeof c.label==='string').map(c=>({id:c.id.slice(0,40),label:c.label.slice(0,60)}));if(list.length)return list;}return VENDOR_CATEGORY_DEFAULTS;}
+const phone10=v=>{let p=String(v||'').replace(/\D/g,'');if(p.length===12&&p.startsWith('91'))p=p.slice(2);else if(p.length===11&&p.startsWith('0'))p=p.slice(1);return /^[6-9]\d{9}$/.test(p)?p:null;};
+/* Platform commission on a confirmed vendor booking: round-half-up on exact
+   paise math, at the percentage snapshotted when the booking was confirmed.
+   Basis points keep the arithmetic integer-exact even for a percent like 2.5. */
+const commissionOf=(finalPaise,percent)=>{const num=finalPaise*Math.round(percent*100);return Math.floor(num/10000)+(num%10000>=5000?1:0);};
+async function albumShape(env,row,full=true){
+ if(row.storage==='permanent'&&!row.share_token){row.share_token=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,'0')).join('');await db(env).prepare('UPDATE albums SET share_token=? WHERE id=?').bind(row.share_token,row.id).run().catch(()=>{});}
+ const photos=full?(await db(env).prepare('SELECT id,position,caption FROM album_photos WHERE album_id=? ORDER BY position,id').bind(row.id).all()).results||[]:[];
+ const expired=row.storage!=='permanent'&&row.expires_at&&row.expires_at<new Date().toISOString();
+ return {id:row.id,title:row.title,partner1:row.partner1||'',partner2:row.partner2||'',weddingDate:row.wedding_date||'',storage:row.storage,expired:!!expired,expiresAt:row.expires_at||null,isPublic:!!row.is_public,shareToken:row.storage==='permanent'&&row.is_public?row.share_token:null,shareUrl:row.storage==='permanent'&&row.is_public&&row.share_token?'/album?s='+row.share_token:null,storagePricePaise:row.storage_price_paise,storageOrderId:row.storage_order_id||null,hasSharePin:!!row.share_pin_hash,createdAt:row.created_at,photos:photos.map(p=>({id:p.id,position:p.position,caption:p.caption||'',url:'/api/album-photo/'+p.id}))};
+}
+async function vendorShape(env,row,cats,withPrivate=false){
+ const photos=(await db(env).prepare('SELECT id,position FROM vendor_photos WHERE vendor_id=? ORDER BY position,id').bind(row.id).all()).results||[];
+ const cat=(cats||[]).find(c=>c.id===row.category);
+ const out={id:row.id,vendorCode:row.vendor_code||null,businessName:row.business_name,ownerName:row.owner_name,category:row.category,categoryLabel:cat?cat.label:row.category,city:row.city,startingPricePaise:row.starting_price_paise,about:row.about||'',status:row.status,verified:row.verified===1,rating:row.rating_count?{average:Number(row.rating_avg)||0,count:row.rating_count}:null,coverUrl:photos.length?'/api/vendor-photo/'+photos[0].id:null,photos:photos.map(p=>({id:p.id,position:p.position,url:'/api/vendor-photo/'+p.id})),createdAt:row.created_at};
+ if(withPrivate){out.phone=row.phone;out.whatsapp=row.whatsapp;out.email=row.email;out.statusReason=row.status_reason||'';
+  out.agreement={acceptedAt:row.agreement_accepted_at||null,version:row.agreement_version||null,text:row.agreement_text||null};
+  /* Payout details are private: only the vendor themselves and /boss ever
+     receive them (this branch), never the public directory or profile. */
+  out.payout={holder:row.payout_holder||'',account:row.payout_account||'',ifsc:row.payout_ifsc||'',upi:row.payout_upi||'',pan:row.payout_pan||''};
+  out.hasPayoutDetails=!!(row.payout_holder&&row.payout_account&&row.payout_ifsc);}
+ return out;
+}
+function vendorBookingShape(r){return {id:r.id,vendorId:r.vendor_id,vendorCode:r.vendor_code||null,vendorName:r.business_name||'',customerId:r.customer_id,customerName:r.customer_name||'',eventDate:r.event_date||'',eventType:r.event_type||'',city:r.city||'',phone:r.phone,message:r.message||'',budgetPaise:r.budget_paise,status:r.status,settlementMode:r.settlement_mode||'manual',finalPaise:r.final_paise,commissionPercent:r.commission_percent,commissionPaise:r.commission_paise,netPaise:r.net_paise,payoutId:r.payout_id||null,reviewed:!!r.reviewed,createdAt:r.created_at,updatedAt:r.updated_at};}
+/* Vendor agreement: the platform terms a vendor accepts at registration.
+   Version + text are editable in /boss; {commission} in the text is filled
+   with the commission % in force when it is shown or accepted, and the
+   exact text shown is snapshotted onto the vendor record at acceptance. */
+const AGREEMENT_DEFAULT={version:'v1',text:'Easy Wedding Vendor Agreement\n\n1. Listing is free. Easy Wedding charges a platform commission of {commission}% only on bookings that are confirmed and completed through Easy Wedding, calculated on the final amount you confirm with the customer.\n2. No commission is charged on enquiries, cancelled bookings, or bookings refunded to the customer.\n3. If you cancel a confirmed booking, or do not deliver the service you confirmed, the customer is entitled to a full refund of any amount collected for that booking, and no commission is earned on it.\n4. If a customer does not show up for a confirmed booking, tell Easy Wedding within 48 hours so the booking can be closed fairly for both sides.\n5. Payments collected by Easy Wedding stay protected and are released to you after the event, minus the commission above, through the payout details you provide. Keep your payout details correct and private.\n6. Your prices, photos and description must be your own and must be honest. Easy Wedding may remove a listing that misleads customers.\n7. The "Easy Wedding Verified" badge is given only after our own checks; it is not for sale.\n8. Either side may end this agreement at any time; bookings already confirmed stay governed by the terms above.'};
+async function vendorAgreement(env){const v=await settingJson(env,'vendor_agreement');const version=v&&typeof v.version==='string'&&v.version.trim()?v.version.trim().slice(0,20):AGREEMENT_DEFAULT.version;const raw=v&&typeof v.text==='string'&&v.text.trim()?v.text.slice(0,8000):AGREEMENT_DEFAULT.text;const pct=await commissionPercent(env);return {version,text:raw.replaceAll('{commission}',String(pct))};}
+/* Boss sign-in completion: with two-step login ON (a /boss setting, default
+   off) the password only earns an emailed 6-digit code; the session is
+   issued by /api/admin/verify-code. If the code cannot be emailed, sign-in
+   stops with honest instructions instead of silently skipping the step. */
+async function finishAdminLogin(env,owner){
+ await clearLoginFails(env,owner.email);
+ if((await siteSetting(env,'boss_2fa'))==='on'){
+  const code=String(100000+(crypto.getRandomValues(new Uint32Array(1))[0]%900000));
+  const id=crypto.randomUUID(),nowS=Math.floor(Date.now()/1000);
+  await db(env).prepare('CREATE TABLE IF NOT EXISTS admin_login_codes(id TEXT PRIMARY KEY,email TEXT NOT NULL,code_hash TEXT NOT NULL,expires_at INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL)').run().catch(()=>{});
+  await db(env).prepare('DELETE FROM admin_login_codes WHERE email=?').bind(owner.email).run();
+  await db(env).prepare('INSERT INTO admin_login_codes(id,email,code_hash,expires_at,attempts,created_at) VALUES(?,?,?,?,0,?)').bind(id,owner.email,await sha256hex(code+':'+owner.email),nowS+600,nowS).run();
+  const sent=await sendMail(env,{to:owner.email,subject:'Your Easy Wedding boss sign-in code',text:'Your one-time Easy Wedding boss sign-in code is '+code+'.\n\nIt expires in 10 minutes. If you did not try to sign in just now, ignore this email and consider changing your boss password.'});
+  if(!sent.ok){await db(env).prepare('DELETE FROM admin_login_codes WHERE id=?').bind(id).run().catch(()=>{});fail('Two-step sign-in is switched on, but the code email could not be sent ('+sent.reason+'). Email delivery is not configured on the server yet. To get back in: open Cloudflare → D1 → the Easy Wedding database → site_settings and delete the boss_2fa row (or set it to off), then sign in and set up email before switching it on again.',503);}
+  return json({ok:true,twoFactor:true,challengeId:id});
+ }
+ await rotateSessions(env,owner.id,'admin');
+ return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,owner.id,'admin'),SESSION_COOKIE_AGE)});
+}
 export default {async fetch(request,env){
  const url=new URL(request.url),path=url.pathname;
  const maint=await maintenanceState(env);
@@ -347,6 +474,139 @@ export default {async fetch(request,env){
   }
   return new Response(null,{status:302,headers:{'Location':'/register?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
  }
+ /* PayU return for album "Save Forever" orders: same signed-hash check as the
+    design flow, then back to My Albums (completeOrder makes the album permanent). */
+ if(path==='/api/albums/pay-return'&&(request.method==='POST'||request.method==='GET')){
+  const cfg=await gatewayRow(env,'payu').catch(()=>null);
+  const form=request.method==='POST'?await request.formData().catch(()=>null):null;
+  const get=k=>form?String(form.get(k)||''):(url.searchParams.get(k)||'');
+  let ok=false,oid='';
+  if(cfg){const udfs=[];for(let i=10;i>=1;i--)udfs.push(get('udf'+i));
+   const calc=await sha512hex([cfg.key_secret,get('status'),...udfs,get('email'),get('firstname'),get('productinfo'),get('amount'),get('txnid'),cfg.key_id].join('|'));
+   if(safeEq(calc,get('hash'))&&get('status')==='success'){const order=await db(env).prepare('SELECT * FROM orders WHERE id=? AND design_id=?').bind(get('txnid'),'album-storage').first();if(order){await completeOrder(env,order,get('mihpayid'));ok=true;oid=order.id;}}
+  }
+  return new Response(null,{status:302,headers:{'Location':'/albums?payment='+(ok?'success':'failed')+(oid?'&order_id='+oid:'')}});
+ }
+ /* Public feature settings: what the album + vendor pages need to show
+    (Save Forever price, free-draft length, commission %, categories). */
+ if(path==='/api/features'&&request.method==='GET'){
+  const [st,cats,pct,agr]=await Promise.all([albumSettings(env),vendorCategories(env),commissionPercent(env),vendorAgreement(env)]);
+  return json({album:{pricePaise:st.price_paise,draftDays:st.draft_days},commissionPercent:pct,vendorCategories:cats,vendorAgreement:agr},200,{'Cache-Control':'public, max-age=60'});
+ }
+ /* Public vendor directory: approved vendors only. Ratings come only from
+    real, completed-booking reviews; a vendor with none shows no rating. */
+ if(path==='/api/vendors'&&request.method==='GET'){
+  const cats=await vendorCategories(env),cat=String(url.searchParams.get('category')||''),city=String(url.searchParams.get('city')||'').trim().toLowerCase().slice(0,60);
+  const cols="*,(SELECT ROUND(AVG(stars),1) FROM vendor_reviews WHERE vendor_id=vendors.id AND hidden=0) AS rating_avg,(SELECT COUNT(*) FROM vendor_reviews WHERE vendor_id=vendors.id AND hidden=0) AS rating_count";
+  let sql="SELECT "+cols+" FROM vendors WHERE status='approved'",bind=[];
+  if(cat){sql+=' AND category=?';bind.push(cat);}
+  if(city){sql+=' AND lower(city) LIKE ?';bind.push('%'+city+'%');}
+  let rows;
+  try{rows=(await db(env).prepare(sql+' ORDER BY created_at DESC LIMIT 300').bind(...bind).all()).results||[];}
+  catch{rows=(await db(env).prepare(sql.replace(cols,'*')+' ORDER BY created_at DESC LIMIT 300').bind(...bind).all()).results||[];}
+  const out=[];for(const r of rows){await ensureVendorCode(env,r);out.push(await vendorShape(env,r,cats));}
+  return json({vendors:out});
+ }
+ if(path.startsWith('/api/vendors/')&&request.method==='GET'){
+  const id=path.slice('/api/vendors/'.length);if(!/^[0-9a-f-]{36}$/.test(id))fail('Vendor not found.',404);
+  let row=null;
+  try{row=await db(env).prepare("SELECT *,(SELECT ROUND(AVG(stars),1) FROM vendor_reviews WHERE vendor_id=vendors.id AND hidden=0) AS rating_avg,(SELECT COUNT(*) FROM vendor_reviews WHERE vendor_id=vendors.id AND hidden=0) AS rating_count FROM vendors WHERE id=? AND status='approved'").bind(id).first();}
+  catch{row=await db(env).prepare("SELECT * FROM vendors WHERE id=? AND status='approved'").bind(id).first();}
+  if(!row)fail('Vendor not found.',404);
+  await ensureVendorCode(env,row);
+  let reviews=[];
+  try{reviews=(await db(env).prepare('SELECT r.stars,r.body,r.created_at,u.name AS cname FROM vendor_reviews r LEFT JOIN users u ON u.id=r.customer_id WHERE r.vendor_id=? AND r.hidden=0 ORDER BY r.created_at DESC LIMIT 20').bind(id).all()).results||[];}catch{}
+  return json({vendor:await vendorShape(env,row,await vendorCategories(env)),reviews:reviews.map(r=>({stars:r.stars,text:r.body||'',customer:String(r.cname||'Customer').split(' ')[0],createdAt:r.created_at}))});
+ }
+ /* A shared album: permanent + public only, reached by its unguessable token.
+    With a share PIN set, the album's photos stay locked until the PIN is
+    entered on the share page (see the unlock route below). */
+ if(path.startsWith('/api/albums/shared/')&&request.method==='GET'){
+  const token=path.slice('/api/albums/shared/'.length);if(!/^[a-f0-9]{32,64}$/.test(token))fail('Album not found.',404);
+  const row=await db(env).prepare("SELECT * FROM albums WHERE share_token=? AND storage='permanent' AND is_public=1").bind(token).first();
+  if(!row)fail('Album not found.',404);
+  if(row.share_pin_hash&&!(await albumPinOk(request,row)))return json({pinRequired:true,album:{title:row.title,partner1:row.partner1||'',partner2:row.partner2||''}});
+  return json({album:await albumShape(env,row)});
+ }
+ if(path.startsWith('/api/albums/shared/')&&path.endsWith('/unlock')&&request.method==='POST'){
+  const token=path.slice('/api/albums/shared/'.length,path.length-'/unlock'.length);if(!/^[a-f0-9]{32,64}$/.test(token))fail('Album not found.',404);
+  await rateHit(env,'albumpin',request,10,600);
+  const row=await db(env).prepare("SELECT * FROM albums WHERE share_token=? AND storage='permanent' AND is_public=1").bind(token).first();
+  if(!row||!row.share_pin_hash)fail('Album not found.',404);
+  await rateHit(env,'albumpin-'+row.id.slice(0,8),request,5,600);
+  const input=await body(request,2000);
+  const pin=typeof input?.pin==='string'?input.pin.trim():'';
+  if(!/^\d{4}$/.test(pin)||!safeEq(await sha256hex(pin+':'+row.id),row.share_pin_hash))fail('That PIN did not work. Please check the 4 digits and try again.',401);
+  return json({ok:true,album:await albumShape(env,row)},200,{'Set-Cookie':albumPinCookieName(row.id)+'='+await albumPinProof(row)+'; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Lax'});
+ }
+ /* Album photos: public only for a public permanent album; otherwise the
+    album's owner (or the admin) with a session. */
+ if(path.startsWith('/api/album-photo/')&&request.method==='GET'){
+  const id=path.slice('/api/album-photo/'.length);if(!/^[0-9a-f-]{36}$/.test(id))fail('Photo not found.',404);
+  const photo=await db(env).prepare('SELECT p.r2_key AS k,a.id AS aid,a.user_id AS uid,a.storage AS st,a.is_public AS pub,a.share_token AS stok,a.share_pin_hash AS pin FROM album_photos p JOIN albums a ON a.id=p.album_id WHERE p.id=?').bind(id).first();
+  if(!photo)fail('Photo not found.',404);
+  const isPublic=photo.st==='permanent'&&photo.pub===1;
+  let open=isPublic&&!photo.pin;
+  if(isPublic&&photo.pin)open=await albumPinOk(request,{id:photo.aid,share_token:photo.stok,share_pin_hash:photo.pin});
+  if(!open){
+   const u=await currentUser(request,env);const adm=u?null:await currentAdmin(request,env);
+   if(!u&&!adm)fail('Photo not found.',404);
+   if(u&&u.id!==photo.uid&&!(await isAdminUser(env,u)))fail('Photo not found.',404);
+  }
+  const object=await env.BUCKET?.get(photo.k);if(!object)fail('Photo not found.',404);
+  return new Response(object.body,{headers:{'Content-Type':object.httpMetadata?.contentType||'image/webp','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','X-EW-Origin':EW_ORIGIN}});
+ }
+ /* Vendor portfolio photos: public for approved vendors; the vendor or the
+    admin can also see photos of a not-yet-approved profile. */
+ if(path.startsWith('/api/vendor-photo/')&&request.method==='GET'){
+  const id=path.slice('/api/vendor-photo/'.length);if(!/^[0-9a-f-]{36}$/.test(id))fail('Photo not found.',404);
+  const photo=await db(env).prepare('SELECT p.r2_key AS k,v.user_id AS uid,v.status AS st FROM vendor_photos p JOIN vendors v ON v.id=p.vendor_id WHERE p.id=?').bind(id).first();
+  if(!photo)fail('Photo not found.',404);
+  if(photo.st!=='approved'){
+   const u=await currentUser(request,env);const adm=u?null:await currentAdmin(request,env);
+   if(!u&&!adm)fail('Photo not found.',404);
+   if(u&&u.id!==photo.uid&&!(await isAdminUser(env,u)))fail('Photo not found.',404);
+  }
+  const object=await env.BUCKET?.get(photo.k);if(!object)fail('Photo not found.',404);
+  return new Response(object.body,{headers:{'Content-Type':object.httpMetadata?.contentType||'image/webp','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','X-EW-Origin':EW_ORIGIN}});
+ }
+ /* Printable receipts — one for an order (design unlock or album storage),
+    one for a vendor booking. Visible only to the customer who owns it, the
+    vendor it belongs to, or the boss; every amount is read from the stored
+    server rows, never from the request. */
+ if(path.startsWith('/api/receipts/order/')&&request.method==='GET'){
+  const id=path.slice('/api/receipts/order/'.length);
+  const u=await currentUser(request,env);const adm=u?null:await currentAdmin(request,env);
+  const o=await db(env).prepare('SELECT * FROM orders WHERE id=?').bind(id).first();
+  if(!o||(!adm&&(!u||o.user_id!==u.id)))fail('Receipt not found.',404);
+  const orderUser=o.user_id?await db(env).prepare('SELECT name,email FROM users WHERE id=?').bind(o.user_id).first():null;
+  let item='Easy Wedding design';
+  if(o.design_id==='album-storage'){const al=await db(env).prepare('SELECT title FROM albums WHERE storage_order_id=?').bind(o.id).first();item='Wedding Album — Save Forever storage'+(al&&al.title?' — '+al.title:'');}
+  else{const d=CATALOG_DESIGNS.find(x=>x.id===o.design_id);item=(d?d.name:String(o.design_id))+' — invitation design unlock';}
+  const paid=o.status==='paid';
+  const rows=[['Receipt for',item],['Order reference',o.id],['Date',new Date(o.created_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})],['Customer',o.signup_name||(orderUser?orderUser.name:'')||''],['Email',o.signup_email||(orderUser?orderUser.email:'')||''],['Amount',inrHtml(o.amount_paise+o.discount_paise)]];
+  if(o.discount_paise)rows.push(['Discount','− '+inrHtml(o.discount_paise)]);
+  rows.push(['Status',paid?'Paid':'Pending / not completed']);
+  if(o.gateway)rows.push(['Payment via',o.gateway]);
+  if(o.gateway_payment_id)rows.push(['Payment ID',o.gateway_payment_id]);
+  const inner='<h1>Easy Wedding</h1><p class="sub">Payment receipt · easywedding.in</p><table>'+rows.map(r=>'<tr><td class="k">'+escHtml(r[0])+'</td><td class="v">'+escHtml(r[1])+'</td></tr>').join('')+'<tr class="total"><td class="k">Total '+(paid?'paid':'payable')+'</td><td class="v">'+escHtml(inrHtml(o.amount_paise))+'</td></tr></table><p style="font-size:13px;color:#7a6a58">Keep this receipt for your records. For help, message us on WhatsApp +91 87899 91983 (support 10 AM – 8 PM).</p><button type="button" data-print>Print / Save as PDF</button>';
+  return receiptResponse(receiptPage('Order receipt',inner));
+ }
+ if(path.startsWith('/api/receipts/booking/')&&request.method==='GET'){
+  const id=path.slice('/api/receipts/booking/'.length);
+  const u=await currentUser(request,env);const adm=u?null:await currentAdmin(request,env);
+  const b=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=?').bind(id).first();
+  if(!b)fail('Receipt not found.',404);
+  const v=await db(env).prepare('SELECT * FROM vendors WHERE id=?').bind(b.vendor_id).first();
+  const mine=!!u&&(b.customer_id===u.id||(v&&v.user_id===u.id));
+  if(!adm&&!mine)fail('Receipt not found.',404);
+  if(v)await ensureVendorCode(env,v);
+  const rows=[['Booking reference',b.id],['Vendor',v?v.business_name:''],['Vendor ID',v&&v.vendor_code?v.vendor_code:'—'],['Customer',b.customer_name||''],['Event',(b.event_type||'Wedding')+(b.event_date?' · '+b.event_date:'')],['City',b.city||''],['Status',b.status],['Booked on',new Date(b.created_at).toLocaleDateString('en-IN',{dateStyle:'medium'})]];
+  if(b.final_paise!=null){rows.push(['Final amount',inrHtml(b.final_paise)]);if(b.commission_percent!=null){rows.push(['Easy Wedding commission ('+b.commission_percent+'%)',inrHtml(b.commission_paise)]);rows.push(['Vendor receives',inrHtml(b.net_paise)]);}rows.push(['Payment handling',b.settlement_mode==='platform_split'?'Collected by Easy Wedding (Protected Booking)':'Settled directly with the vendor']);}
+  else rows.push(['Amount','To be confirmed by the vendor']);
+  const inner='<h1>Easy Wedding</h1><p class="sub">Vendor booking receipt · easywedding.in</p><table>'+rows.map(r=>'<tr><td class="k">'+escHtml(r[0])+'</td><td class="v">'+escHtml(r[1])+'</td></tr>').join('')+'</table><p style="font-size:13px;color:#7a6a58">Protected Booking: when payment is collected by Easy Wedding, it stays safe with us and is released to the vendor only after your event. For help, message us on WhatsApp +91 87899 91983 (support 10 AM – 8 PM).</p><button type="button" data-print>Print / Save as PDF</button>';
+  return receiptResponse(receiptPage('Booking receipt',inner));
+ }
  let authUser=await currentUser(request,env);
  const adminUser=await currentAdmin(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
@@ -371,17 +631,20 @@ export default {async fetch(request,env){
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
   const input=await body(request,20000);
   const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  if(email&&await loginLocked(env,email))fail('Too many failed sign-in attempts for this account. Please wait 15 minutes and try again.',429);
   // Owner account from Worker secrets: ADMIN_EMAIL + ADMIN_PASSWORD always sign in.
   // The account is created on first use and its stored password follows the secret.
   if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase()&&safeEq(password,String(env.ADMIN_PASSWORD))){
    let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
    if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
    else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
+   await clearLoginFails(env,email);await rotateSessions(env,owner.id,'user');
    return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':sessionCookie(await startSession(env,owner.id),SESSION_COOKIE_AGE)});
   }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
-  if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
-  if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
+  if(!row){await noteLoginFail(env,email);await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
+  if(!await verifyPassword(password,row.password_hash)){await noteLoginFail(env,email);fail('Email or password is incorrect.',401);}
+  await clearLoginFails(env,email);await rotateSessions(env,row.id,'user');
   return json({user:{id:row.id,email:row.email,name:row.name,admin:row.email.toLowerCase()===(await adminEmail(env))}},200,{'Set-Cookie':sessionCookie(await startSession(env,row.id),SESSION_COOKIE_AGE)});
  }
  // Admin-only sign-in used by /boss: a normal registered customer can never get a session here.
@@ -390,18 +653,38 @@ export default {async fetch(request,env){
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
   const input=await body(request,20000);
   const email=typeof input?.email==='string'?input.email.trim().toLowerCase():'',password=typeof input?.password==='string'?input.password:'';
+  if(email&&await loginLocked(env,email))fail('Too many failed sign-in attempts for this account. Please wait 15 minutes and try again.',429);
   if(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD&&email===String(env.ADMIN_EMAIL).trim().toLowerCase()&&safeEq(password,String(env.ADMIN_PASSWORD))){
    let owner=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
    if(!owner){const id=crypto.randomUUID();await db(env).prepare('INSERT INTO users(id,email,name,password_hash,created_at) VALUES(?,?,?,?,?)').bind(id,email,'Admin',await makePasswordRecord(password),new Date().toISOString()).run();owner={id,email,name:'Admin'};}
    else if(!await verifyPassword(password,owner.password_hash))await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(password),owner.id).run();
-   return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,owner.id,'admin'),SESSION_COOKIE_AGE)});
+   return await finishAdminLogin(env,owner);
   }
   const row=await db(env).prepare('SELECT id,email,name,password_hash FROM users WHERE email=?').bind(email).first();
-  if(!row){await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
-  if(!await verifyPassword(password,row.password_hash))fail('Email or password is incorrect.',401);
+  if(!row){await noteLoginFail(env,email);await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
+  if(!await verifyPassword(password,row.password_hash)){await noteLoginFail(env,email);fail('Email or password is incorrect.',401);}
   const ownerEmail=await adminEmail(env);
   if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
-  return json({user:{id:row.id,email:row.email,name:row.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,row.id,'admin'),SESSION_COOKIE_AGE)});
+  return await finishAdminLogin(env,row);
+ }
+ // Boss two-step login, step 2: the emailed 6-digit code. Challenges live
+ // 10 minutes, allow 5 attempts, and are deleted on use or expiry.
+ if(path==='/api/admin/verify-code'&&request.method==='POST'){
+  await rateHit(env,'boss2fa',request,10,600);
+  if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
+  const input=await body(request,4000);
+  const challengeId=typeof input?.challengeId==='string'?input.challengeId:'',code=typeof input?.code==='string'?input.code.trim():'';
+  const bad=()=>fail('That code did not work. Please check the code and try again.',401);
+  if(!challengeId||!/^\d{6}$/.test(code))bad();
+  const row=await db(env).prepare('SELECT * FROM admin_login_codes WHERE id=?').bind(challengeId).first().catch(()=>null);
+  if(!row)bad();
+  if(row.expires_at<Math.floor(Date.now()/1000)||row.attempts>=5){await db(env).prepare('DELETE FROM admin_login_codes WHERE id=?').bind(challengeId).run().catch(()=>{});fail('That code has expired. Please sign in again to get a fresh code.',401);}
+  if(!safeEq(await sha256hex(code+':'+row.email),row.code_hash)){await db(env).prepare('UPDATE admin_login_codes SET attempts=attempts+1 WHERE id=?').bind(challengeId).run();bad();}
+  await db(env).prepare('DELETE FROM admin_login_codes WHERE id=?').bind(challengeId).run();
+  const owner=await db(env).prepare('SELECT id,email,name FROM users WHERE email=?').bind(row.email).first();
+  if(!owner)bad();
+  await rotateSessions(env,owner.id,'admin');
+  return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,owner.id,'admin'),SESSION_COOKIE_AGE)});
  }
 
  // Forgot password: the email AND the mobile number used when paying must match; then the customer sets a new password.
@@ -507,6 +790,7 @@ export default {async fetch(request,env){
   if(parts.length===2){
    if(request.method==='GET'){const rows=(await db(env).prepare('SELECT * FROM bookings WHERE user_id=? ORDER BY created_at DESC LIMIT 200').bind(owner).all()).results||[];return json({bookings:await shape(rows)});}
    if(request.method==='POST'){
+    await rateHit(env,'pbook',request,60,600);
     const input=await body(request,20000);const f=readFields(input),items=readItems(input);
     const count=await db(env).prepare('SELECT COUNT(*) AS n FROM bookings WHERE user_id=?').bind(owner).first();if((count?.n||0)>=200)fail('You have reached the limit of 200 bookings.');
     const id=crypto.randomUUID(),now=new Date().toISOString(),category=items.length>1&&f.category==='other'?'bulk':f.category;
@@ -536,6 +820,333 @@ export default {async fetch(request,env){
     return json({booking:(await shape([booking]))[0]},201);
    }
    if(parts.length===5&&request.method==='DELETE'){await db(env).prepare('DELETE FROM booking_payments WHERE id=? AND booking_id=?').bind(parts[4],booking.id).run();return json({booking:(await shape([booking]))[0]});}
+  }
+  fail('Not found.',404);
+ }
+ // ---- Wedding albums: free drafts, "Save Forever" permanent storage ----
+ /* Real reviews: only the customer of a COMPLETED booking with this vendor
+    may review it, once per booking. Averages exist only when real reviews
+    do — nothing is ever seeded or invented. */
+ if(path.startsWith('/api/vendors/')&&path.endsWith('/reviews')&&request.method==='POST'){
+  const vid=path.split('/').filter(Boolean)[2]||'';
+  await rateHit(env,'review',request,10,3600);
+  const input=await body(request,4000);
+  const booking=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=? AND customer_id=? AND vendor_id=?').bind(String(input?.bookingId||''),owner,vid).first();
+  if(!booking)fail('Booking not found.',404);
+  if(booking.status!=='completed')fail('You can review this vendor after the booking is completed.');
+  const existing=await db(env).prepare('SELECT id FROM vendor_reviews WHERE booking_id=?').bind(booking.id).first().catch(()=>null);
+  if(existing)fail('You have already reviewed this booking.',409);
+  const stars=Math.round(Number(input?.stars));if(!Number.isFinite(stars)||stars<1||stars>5)fail('Please choose a rating between 1 and 5 stars.');
+  const text=String(input?.text==null?'':input.text).trim().slice(0,1000);
+  const id=crypto.randomUUID();
+  try{await db(env).prepare('INSERT INTO vendor_reviews(id,booking_id,vendor_id,customer_id,stars,body,hidden,created_at) VALUES(?,?,?,?,?,?,0,?)').bind(id,booking.id,vid,owner,stars,text,new Date().toISOString()).run();}
+  catch{fail('You have already reviewed this booking.',409);}
+  return json({review:{id,stars,text,createdAt:new Date().toISOString()}},201);
+ }
+ if(path==='/api/albums'||path.startsWith('/api/albums/')){
+  const parts=path.split('/').filter(Boolean);
+  const cleanA=(v,n)=>String(v==null?'':v).trim().slice(0,n);
+  const ownAlbum=async id=>{const a=await db(env).prepare('SELECT * FROM albums WHERE id=? AND user_id=?').bind(id,owner).first();if(!a)fail('Album not found.',404);return a;};
+  const albumExpired=a=>a.storage!=='permanent'&&a.expires_at&&a.expires_at<new Date().toISOString();
+  if(parts.length===4&&parts[2]==='save-forever'&&parts[3]==='verify'&&request.method==='POST'){
+   const input=await body(request,20000);
+   const order=await db(env).prepare("SELECT * FROM orders WHERE id=? AND user_id=? AND design_id='album-storage'").bind(typeof input?.orderId==='string'?input.orderId:'',owner).first();
+   if(!order)fail('Order not found.',404);
+   if(order.status==='paid'){const alb=await db(env).prepare('SELECT * FROM albums WHERE id=? AND user_id=?').bind(order.ref_id||'',owner).first();return json({ok:true,album:alb?await albumShape(env,alb):null});}
+   const cfg=await gatewayRow(env,order.gateway);if(!usable(cfg))fail('This payment option is not available right now.',400);
+   let paid=false,paymentId=null;
+   if(order.gateway==='razorpay'){
+    const paymentIdIn=typeof input?.paymentId==='string'?input.paymentId:'',sig=typeof input?.signature==='string'?input.signature:'';
+    const expected=await hmacHex(cfg.key_secret,(order.gateway_order_id||'')+'|'+paymentIdIn);
+    if(paymentIdIn&&safeEq(expected,sig)){paid=true;paymentId=paymentIdIn;}
+   }else if(order.gateway==='cashfree'){
+    const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
+    const res=await fetch(base+'/orders/'+order.id,{headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01'}});
+    const data=await res.json().catch(()=>null);
+    if(res.ok&&data?.order_status==='PAID')paid=true;
+   }else if(order.gateway==='phonepe'){
+    const {host,token}=await phonepeToken(cfg);
+    const res=await fetch(host+'/apis/hermes/checkout/v2/order/'+order.id+'/status',{headers:{'Authorization':'O-Bearer '+token}});
+    const data=await res.json().catch(()=>null);
+    if(res.ok&&data?.state==='COMPLETED'){paid=true;paymentId=data?.paymentDetails?.[0]?.transactionId||null;}
+   }
+   if(!paid)fail('Payment is not confirmed yet. If money was deducted, it will reflect shortly.',402);
+   await completeOrder(env,order,paymentId);
+   const alb=await db(env).prepare('SELECT * FROM albums WHERE id=? AND user_id=?').bind(order.ref_id||'',owner).first();
+   return json({ok:true,album:alb?await albumShape(env,alb):null});
+  }
+  if(parts.length===2){
+   if(request.method==='GET'){const rows=(await db(env).prepare('SELECT * FROM albums WHERE user_id=? ORDER BY created_at DESC LIMIT 100').bind(owner).all()).results||[];const out=[];for(const r of rows)out.push(await albumShape(env,r));return json({albums:out});}
+   if(request.method==='POST'){
+    await rateHit(env,'albumnew',request,20,600);
+    const input=await body(request,4000);
+    const title=cleanA(input?.title,90);if(!title)fail('Give your album a title.');
+    const count=await db(env).prepare('SELECT COUNT(*) AS n FROM albums WHERE user_id=?').bind(owner).first();if((count?.n||0)>=20)fail('You can keep up to 20 albums.');
+    const st=await albumSettings(env),now=new Date(),id=crypto.randomUUID();
+    await db(env).prepare('INSERT INTO albums(id,user_id,title,partner1,partner2,wedding_date,storage,expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,owner,title,cleanA(input?.partner1,70),cleanA(input?.partner2,70),cleanA(input?.weddingDate,10), 'draft',new Date(now.getTime()+st.draft_days*86400000).toISOString(),now.toISOString(),now.toISOString()).run();
+    const row=await db(env).prepare('SELECT * FROM albums WHERE id=?').bind(id).first();return json({album:await albumShape(env,row)},201);
+   }
+   fail('Not found.',404);
+  }
+  const album=await ownAlbum(parts[2]);
+  if(parts.length===3){
+   if(request.method==='GET')return json({album:await albumShape(env,album)});
+   if(request.method==='PUT'){
+    const input=await body(request,4000);
+    const title=cleanA(input?.title,90);if(!title)fail('Give your album a title.');
+    await db(env).prepare('UPDATE albums SET title=?,partner1=?,partner2=?,wedding_date=?,is_public=?,updated_at=? WHERE id=?').bind(title,cleanA(input?.partner1,70),cleanA(input?.partner2,70),cleanA(input?.weddingDate,10),input?.isPublic?1:0,new Date().toISOString(),album.id).run();
+    /* Optional share PIN: exactly 4 digits to set, null/empty to remove.
+       Only its hash is stored; changing it invalidates earlier unlocks. */
+    if(input&&Object.prototype.hasOwnProperty.call(input,'sharePin')){
+     const pin=input.sharePin;
+     if(pin===null||pin==='')await db(env).prepare('UPDATE albums SET share_pin_hash=NULL WHERE id=?').bind(album.id).run();
+     else if(typeof pin==='string'&&/^\d{4}$/.test(pin.trim()))await db(env).prepare('UPDATE albums SET share_pin_hash=? WHERE id=?').bind(await sha256hex(pin.trim()+':'+album.id),album.id).run();
+     else fail('The share PIN must be exactly 4 digits.');
+    }
+    const row=await db(env).prepare('SELECT * FROM albums WHERE id=?').bind(album.id).first();return json({album:await albumShape(env,row)});
+   }
+   if(request.method==='DELETE'){
+    const keys=(await db(env).prepare('SELECT r2_key FROM album_photos WHERE album_id=?').bind(album.id).all()).results||[];
+    for(const k of keys)await env.BUCKET?.delete(k.r2_key).catch(()=>{});
+    await db(env).prepare('DELETE FROM album_photos WHERE album_id=?').bind(album.id).run();
+    await db(env).prepare('DELETE FROM albums WHERE id=?').bind(album.id).run();
+    return json({ok:true});
+   }
+   fail('Not found.',404);
+  }
+  if(parts.length===4&&parts[3]==='photos'&&request.method==='POST'){
+   await rateHit(env,'upload',request,180,600);
+   if(albumExpired(album))fail('This free draft has expired. Create a new album to add photos.',410);
+   if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
+   if(Number(request.headers.get('Content-Length'))>8*1024*1024+1024*1024)fail('Choose an image smaller than 8 MB.',413);
+   const count=await db(env).prepare('SELECT COUNT(*) AS n FROM album_photos WHERE album_id=?').bind(album.id).first();if((count?.n||0)>=100)fail('An album can hold up to 100 photos.');
+   const data=await request.formData(),file=data.get('file');
+   if(!file||typeof file==='string'||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024||file.size<12)fail('Choose a JPG, PNG or WebP image under 8 MB.');
+   const bytes=new Uint8Array(await file.arrayBuffer());
+   const valid=file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes[0]===137&&bytes[1]===80&&bytes[2]===78:bytes[0]===82&&bytes[1]===73&&bytes[8]===87&&bytes[9]===69;
+   if(!valid)fail('That file is not a valid image.');
+   const pid=crypto.randomUUID(),key='albums/'+album.id+'/'+pid;
+   await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});
+   const pos=((await db(env).prepare('SELECT COALESCE(MAX(position),-1) AS m FROM album_photos WHERE album_id=?').bind(album.id).first())?.m??-1)+1;
+   await db(env).prepare('INSERT INTO album_photos(id,album_id,r2_key,position,caption,created_at) VALUES(?,?,?,?,?,?)').bind(pid,album.id,key,pos,cleanA(data.get('caption'),120),new Date().toISOString()).run();
+   await db(env).prepare('UPDATE albums SET updated_at=? WHERE id=?').bind(new Date().toISOString(),album.id).run();
+   return json({photo:{id:pid,position:pos,caption:'',url:'/api/album-photo/'+pid}},201);
+  }
+  if(parts.length===5&&parts[3]==='photos'&&request.method==='DELETE'){
+   const photo=await db(env).prepare('SELECT * FROM album_photos WHERE id=? AND album_id=?').bind(parts[4],album.id).first();
+   if(!photo)fail('Photo not found.',404);
+   await env.BUCKET?.delete(photo.r2_key).catch(()=>{});
+   await db(env).prepare('DELETE FROM album_photos WHERE id=?').bind(photo.id).run();
+   const rest=(await db(env).prepare('SELECT id FROM album_photos WHERE album_id=? ORDER BY position,id').bind(album.id).all()).results||[];
+   for(let i=0;i<rest.length;i++)await db(env).prepare('UPDATE album_photos SET position=? WHERE id=?').bind(i,rest[i].id).run();
+   const row=await db(env).prepare('SELECT * FROM albums WHERE id=?').bind(album.id).first();return json({album:await albumShape(env,row)});
+  }
+  if(parts.length===4&&parts[3]==='reorder'&&request.method==='POST'){
+   const input=await body(request,20000);
+   const order=Array.isArray(input?.order)?input.order.map(x=>String(x)).slice(0,100):[];
+   const existing=(await db(env).prepare('SELECT id FROM album_photos WHERE album_id=?').bind(album.id).all()).results||[];
+   const valid=new Set(existing.map(r=>r.id));
+   if(order.length!==valid.size||order.some(id=>!valid.has(id)))fail('The photo order did not match this album. Please reload and try again.');
+   for(let i=0;i<order.length;i++)await db(env).prepare('UPDATE album_photos SET position=? WHERE id=? AND album_id=?').bind(i,order[i],album.id).run();
+   const row=await db(env).prepare('SELECT * FROM albums WHERE id=?').bind(album.id).first();return json({album:await albumShape(env,row)});
+  }
+  if(parts.length===4&&parts[3]==='save-forever'&&request.method==='POST'){
+   if(album.storage==='permanent')fail('This album is already saved forever.',409);
+   if(albumExpired(album))fail('This free draft has expired, so it can no longer be saved forever. Please create a new album.',410);
+   const input=await body(request,4000);
+   const phone=phone10(input?.phone);if(!phone)fail('Please enter a valid 10-digit mobile number.');
+   const gateway=typeof input?.gateway==='string'?input.gateway:'';
+   const cfg=await gatewayRow(env,gateway);if(!GATEWAYS.includes(gateway)||!usable(cfg))fail('This payment option is not available right now. Please try another.',400);
+   await rateHit(env,'checkout',request,20,600);
+   const st=await albumSettings(env),now=new Date().toISOString();
+   const order={id:crypto.randomUUID(),user_id:owner,design_id:'album-storage',amount_paise:st.price_paise,gateway,status:'created'};
+   await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,ref_id) VALUES(?,?,?,?,?,?,?,?,?)').bind(order.id,owner,'album-storage',st.price_paise,gateway,'created',now,now,album.id).run();
+   try{
+    let made;
+    if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
+    else if(gateway==='cashfree'){
+     const base=cfg.mode==='live'?'https://api.cashfree.com/pg':'https://sandbox.cashfree.com/pg';
+     const res=await fetch(base+'/orders',{method:'POST',headers:{'x-client-id':cfg.key_id,'x-client-secret':cfg.key_secret,'x-api-version':'2023-08-01','Content-Type':'application/json'},body:JSON.stringify({order_id:order.id,order_amount:order.amount_paise/100,order_currency:'INR',customer_details:{customer_id:owner,customer_name:authUser.name||'Customer',customer_email:authUser.email,customer_phone:phone},order_meta:{return_url:url.origin+'/albums?order_id='+order.id}})});
+     const data=await res.json().catch(()=>null);
+     if(!res.ok||!data?.payment_session_id)fail('Payment could not be started. Please try another option.',502);
+     made={gateway_order_id:order.id,payload:{gateway:'cashfree',payment_session_id:data.payment_session_id,mode:cfg.mode}};
+    }
+    else if(gateway==='phonepe'){
+     const {host,token}=await phonepeToken(cfg);
+     const res=await fetch(host+'/apis/hermes/checkout/v2/pay',{method:'POST',headers:{'Authorization':'O-Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({merchantOrderId:order.id,amount:order.amount_paise,paymentFlow:{type:'PG_CHECKOUT',merchantUrls:{redirectUrl:url.origin+'/albums?order_id='+order.id}}})});
+     const data=await res.json().catch(()=>null);
+     if(!res.ok||!data?.redirectUrl)fail('Payment could not be started. Please try another option.',502);
+     made={gateway_order_id:order.id,payload:{gateway:'phonepe',redirect_url:data.redirectUrl}};
+    }
+    else{
+     const amount=(order.amount_paise/100).toFixed(2),productinfo='Easy Wedding album storage — keep forever';
+     const firstname=(authUser.name||'Customer').split(' ')[0].slice(0,60);
+     const hash=await sha512hex([cfg.key_id,order.id,amount,productinfo,firstname,authUser.email,'','','','','','','','','','',cfg.key_secret].join('|'));
+     const back=url.origin+'/api/albums/pay-return';
+     made={gateway_order_id:order.id,payload:{gateway:'payu',action:cfg.mode==='live'?'https://secure.payu.in/_payment':'https://test.payu.in/_payment',fields:{key:cfg.key_id,txnid:order.id,amount,productinfo,firstname,email:authUser.email,phone:phone||'',surl:back,furl:back,hash}}};
+    }
+    await db(env).prepare('UPDATE orders SET gateway_order_id=?,updated_at=? WHERE id=?').bind(made.gateway_order_id,new Date().toISOString(),order.id).run();
+    return json({orderId:order.id,...made.payload},201);
+   }catch(e){await db(env).prepare("UPDATE orders SET status='failed',updated_at=? WHERE id=?").bind(new Date().toISOString(),order.id).run();throw e;}
+  }
+  fail('Not found.',404);
+ }
+ // ---- Vendors: profile, portfolio, booking inbox and earnings ----
+ if(path==='/api/vendor/me'||path.startsWith('/api/vendor/')||path==='/api/vendors/register'||path==='/api/vendor-bookings'||path.startsWith('/api/vendor-bookings')){
+  const cleanV=(v,n)=>String(v==null?'':v).trim().slice(0,n);
+  const cats=await vendorCategories(env);
+  const myVendor=async()=>db(env).prepare('SELECT * FROM vendors WHERE user_id=?').bind(owner).first();
+  const readVendorFields=input=>{
+   const businessName=cleanV(input?.businessName,90);if(!businessName)fail('Please enter your business name.');
+   const ownerName=cleanV(input?.ownerName,70);if(!ownerName)fail('Please enter the owner’s name.');
+   const category=cats.some(c=>c.id===input?.category)?input.category:null;if(!category)fail('Please choose a category.');
+   const city=cleanV(input?.city,60);if(!city)fail('Please enter your city.');
+   const phone=phone10(input?.phone);if(!phone)fail('Please enter a valid 10-digit mobile number.');
+   const whatsapp=phone10(input?.whatsapp);if(!whatsapp)fail('Please enter a valid 10-digit WhatsApp number.');
+   const email=cleanV(input?.email,120).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))fail('Please enter a valid email address.');
+   const price=Math.round(Number(input?.startingPrice)*100);if(!Number.isFinite(price)||price<0||price>10000000000)fail('Please enter your starting price in ₹.');
+   /* Payout details: optional while registering, required before the first
+      payout or split settlement. Validated only when provided. */
+   const payout={holder:cleanV(input?.payoutHolder,80),account:cleanV(input?.payoutAccount,24).replace(/\s/g,''),ifsc:cleanV(input?.payoutIfsc,11).toUpperCase(),upi:cleanV(input?.payoutUpi,60).toLowerCase(),pan:cleanV(input?.payoutPan,10).toUpperCase()};
+   if(payout.account&&!/^\d{6,24}$/.test(payout.account))fail('Please check the bank account number.');
+   if(payout.ifsc&&!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(payout.ifsc))fail('Please check the IFSC (for example SBIN0123456).');
+   if(payout.pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(payout.pan))fail('Please check the PAN (for example ABCDE1234F).');
+   if(payout.upi&&!/^[\w.\-]{2,}@[a-z]{2,}$/i.test(payout.upi))fail('Please check the UPI id (for example name@okhdfcbank).');
+   return {businessName,ownerName,category,city,phone,whatsapp,email,startingPricePaise:price,about:cleanV(input?.about,1200),payout};
+  };
+  if(path==='/api/vendors/register'&&request.method==='POST'){
+   await rateHit(env,'vendorreg',request,5,3600);
+   const input=await body(request,20000),f=readVendorFields(input);
+   /* The platform agreement is a hard gate: no acceptance, no registration.
+      The exact text shown (with the live commission %) is stored on the
+      vendor record as the snapshot they agreed to. */
+   const agreement=await vendorAgreement(env);
+   if(input?.agreementAccepted!==true)fail('Please read and accept the vendor agreement to continue.');
+   if(await myVendor())fail('This account already has a vendor profile. Open your vendor dashboard to edit it.',409);
+   const id=crypto.randomUUID(),now=new Date().toISOString();
+   await db(env).prepare('INSERT INTO vendors(id,user_id,business_name,owner_name,category,city,phone,whatsapp,email,starting_price_paise,about,payout_holder,payout_account,payout_ifsc,payout_upi,payout_pan,status,agreement_accepted_at,agreement_version,agreement_text,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,owner,f.businessName,f.ownerName,f.category,f.city,f.phone,f.whatsapp,f.email,f.startingPricePaise,f.about,f.payout.holder||null,f.payout.account||null,f.payout.ifsc||null,f.payout.upi||null,f.payout.pan||null,'pending',now,agreement.version,agreement.text,now,now).run();
+   const row=await db(env).prepare('SELECT * FROM vendors WHERE id=?').bind(id).first();
+   await ensureVendorCode(env,row);
+   return json({vendor:await vendorShape(env,row,cats,true)},201);
+  }
+  if(path==='/api/vendor/me'&&request.method==='GET'){
+   const v=await myVendor();if(!v)return json({vendor:null});
+   await ensureVendorCode(env,v);
+   const rows=(await db(env).prepare('SELECT * FROM vendor_bookings WHERE vendor_id=? ORDER BY created_at DESC LIMIT 200').bind(v.id).all()).results||[];
+   rows.forEach(r=>{r.vendor_code=v.vendor_code;r.business_name=v.business_name;});
+   const payouts=(await db(env).prepare('SELECT * FROM vendor_payouts WHERE vendor_id=? ORDER BY created_at DESC').bind(v.id).all()).results||[];
+   const done=rows.filter(r=>r.status==='confirmed'||r.status==='completed');
+   const split=done.filter(r=>r.settlement_mode==='platform_split'),manual=done.filter(r=>r.settlement_mode!=='platform_split');
+   const totals={grossPaise:done.reduce((s,r)=>s+(r.final_paise||0),0),commissionPaise:done.reduce((s,r)=>s+(r.commission_paise||0),0),netPaise:done.reduce((s,r)=>s+(r.net_paise||0),0),
+    /* Split mode: the platform collected, so the vendor's share is payable to them.
+       Manual mode: the vendor collected, so the commission is owed to the platform. */
+    payableToVendorPaise:split.filter(r=>!r.payout_id).reduce((s,r)=>s+(r.net_paise||0),0),
+    commissionOwedPaise:manual.filter(r=>!r.payout_id).reduce((s,r)=>s+(r.commission_paise||0),0),
+    paidOutPaise:payouts.filter(p=>p.kind!=='commission_receipt').reduce((s,p)=>s+p.amount_paise,0),
+    commissionReceivedPaise:payouts.filter(p=>p.kind==='commission_receipt').reduce((s,p)=>s+p.amount_paise,0)};
+   totals.duePaise=totals.payableToVendorPaise;
+   return json({vendor:await vendorShape(env,v,cats,true),bookings:rows.map(vendorBookingShape),totals,payouts:payouts.map(p=>({id:p.id,kind:p.kind||'vendor_payout',amountPaise:p.amount_paise,reference:p.reference||'',bookingCount:p.booking_count,createdAt:p.created_at}))});
+  }
+  if(path==='/api/vendor/me'&&request.method==='PUT'){
+   const v=await myVendor();if(!v)fail('Register your business first.',404);
+   const input=await body(request,20000),f=readVendorFields(input);
+   await db(env).prepare('UPDATE vendors SET business_name=?,owner_name=?,category=?,city=?,phone=?,whatsapp=?,email=?,starting_price_paise=?,about=?,payout_holder=?,payout_account=?,payout_ifsc=?,payout_upi=?,payout_pan=?,updated_at=? WHERE id=?').bind(f.businessName,f.ownerName,f.category,f.city,f.phone,f.whatsapp,f.email,f.startingPricePaise,f.about,f.payout.holder||null,f.payout.account||null,f.payout.ifsc||null,f.payout.upi||null,f.payout.pan||null,new Date().toISOString(),v.id).run();
+   const row=await db(env).prepare('SELECT * FROM vendors WHERE id=?').bind(v.id).first();
+   return json({vendor:await vendorShape(env,row,cats,true)});
+  }
+  if(path==='/api/vendor/photos'&&request.method==='POST'){
+   await rateHit(env,'upload',request,180,600);
+   const v=await myVendor();if(!v)fail('Register your business first.',404);
+   if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
+   if(Number(request.headers.get('Content-Length'))>8*1024*1024+1024*1024)fail('Choose an image smaller than 8 MB.',413);
+   const count=await db(env).prepare('SELECT COUNT(*) AS n FROM vendor_photos WHERE vendor_id=?').bind(v.id).first();if((count?.n||0)>=12)fail('A portfolio can hold up to 12 photos.');
+   const data=await request.formData(),file=data.get('file');
+   if(!file||typeof file==='string'||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024||file.size<12)fail('Choose a JPG, PNG or WebP image under 8 MB.');
+   const bytes=new Uint8Array(await file.arrayBuffer());
+   const valid=file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes[0]===137&&bytes[1]===80&&bytes[2]===78:bytes[0]===82&&bytes[1]===73&&bytes[8]===87&&bytes[9]===69;
+   if(!valid)fail('That file is not a valid image.');
+   const pid=crypto.randomUUID(),key='vendors/'+v.id+'/'+pid;
+   await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});
+   const pos=((await db(env).prepare('SELECT COALESCE(MAX(position),-1) AS m FROM vendor_photos WHERE vendor_id=?').bind(v.id).first())?.m??-1)+1;
+   await db(env).prepare('INSERT INTO vendor_photos(id,vendor_id,r2_key,position,created_at) VALUES(?,?,?,?,?)').bind(pid,v.id,key,pos,new Date().toISOString()).run();
+   return json({photo:{id:pid,position:pos,url:'/api/vendor-photo/'+pid}},201);
+  }
+  if(path.startsWith('/api/vendor/photos/')&&request.method==='DELETE'){
+   const v=await myVendor();if(!v)fail('Register your business first.',404);
+   const photo=await db(env).prepare('SELECT * FROM vendor_photos WHERE id=? AND vendor_id=?').bind(path.slice('/api/vendor/photos/'.length),v.id).first();
+   if(!photo)fail('Photo not found.',404);
+   await env.BUCKET?.delete(photo.r2_key).catch(()=>{});
+   await db(env).prepare('DELETE FROM vendor_photos WHERE id=?').bind(photo.id).run();
+   return json({ok:true});
+  }
+  if(path==='/api/vendor-bookings'){
+   if(request.method==='GET'){
+    const rows=(await db(env).prepare('SELECT b.*,v.business_name AS business_name,v.vendor_code AS vendor_code FROM vendor_bookings b JOIN vendors v ON v.id=b.vendor_id WHERE b.customer_id=? ORDER BY b.created_at DESC LIMIT 200').bind(owner).all()).results||[];
+    for(const r of rows){if(!r.vendor_code){const pseudo={id:r.vendor_id,vendor_code:null};r.vendor_code=await ensureVendorCode(env,pseudo);}r.reviewed=false;}
+    try{const rev=(await db(env).prepare('SELECT booking_id FROM vendor_reviews WHERE customer_id=?').bind(owner).all()).results||[];const set=new Set(rev.map(x=>x.booking_id));rows.forEach(r=>{r.reviewed=set.has(r.id);});}catch{}
+    return json({bookings:rows.map(vendorBookingShape)});
+   }
+   if(request.method==='POST'){
+    await rateHit(env,'vbooking',request,30,600);
+    const input=await body(request,8000);
+    const vendor=await db(env).prepare("SELECT * FROM vendors WHERE id=? AND status='approved'").bind(String(input?.vendorId||'')).first();
+    if(!vendor)fail('This vendor is not available for booking right now.',404);
+    await ensureVendorCode(env,vendor);
+    if(vendor.user_id===owner)fail('You cannot book your own business.');
+    const phone=phone10(input?.phone);if(!phone)fail('Please enter a valid 10-digit mobile number.');
+    const eventDate=cleanV(input?.eventDate,10);if(eventDate&&!/^\d{4}-\d{2}-\d{2}$/.test(eventDate))fail('Please choose a valid event date.');
+    const budget=Math.round(Number(input?.budget)*100);
+    const id=crypto.randomUUID(),now=new Date().toISOString();
+    await db(env).prepare('INSERT INTO vendor_bookings(id,vendor_id,customer_id,customer_name,event_date,event_type,city,phone,message,budget_paise,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,vendor.id,owner,authUser.name||'',eventDate,cleanV(input?.eventType,60),cleanV(input?.city,60),phone,cleanV(input?.message,800),Number.isFinite(budget)&&budget>0?budget:null,'requested',now,now).run();
+    const row=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=?').bind(id).first();
+    row.vendor_code=vendor.vendor_code;row.business_name=vendor.business_name;
+    return json({booking:vendorBookingShape(row)},201);
+   }
+   fail('Not found.',404);
+  }
+  if(path.startsWith('/api/vendor-bookings/')&&request.method==='POST'){
+   const id=path.slice('/api/vendor-bookings/'.length);
+   const b=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=? AND customer_id=?').bind(id,owner).first();
+   if(!b)fail('Booking not found.',404);
+   const input=await body(request,2000);
+   if(input?.action!=='cancel')fail('Not found.',404);
+   if(!['requested','confirmed'].includes(b.status))fail('This booking can no longer be cancelled.');
+   await db(env).prepare("UPDATE vendor_bookings SET status='cancelled',updated_at=? WHERE id=?").bind(new Date().toISOString(),id).run();
+   const row=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=?').bind(id).first();
+   return json({booking:vendorBookingShape(row)});
+  }
+  if(path.startsWith('/api/vendor/bookings/')){
+   const v=await myVendor();if(!v)fail('Register your business first.',404);
+   const seg=path.split('/').filter(Boolean),id=seg[3],action=seg[4];
+   const b=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=? AND vendor_id=?').bind(id,v.id).first();
+   if(!b)fail('Booking not found.',404);
+   const input=await body(request,4000);
+   if(action==='accept'&&request.method==='POST'){
+    if(b.status!=='requested')fail('Only a requested booking can be confirmed.');
+    const finalPaise=Math.round(Number(input?.finalAmount)*100);
+    if(!Number.isFinite(finalPaise)||finalPaise<=0||finalPaise>10000000000)fail('Enter the final amount in ₹.');
+    /* The commission percentage in force right now is snapshotted onto the
+       booking; later setting changes never rewrite this booking's math. */
+    const pct=await commissionPercent(env),commission=commissionOf(finalPaise,pct);
+    /* Settlement stays 'manual' (the vendor collects from the customer and the
+       commission is owed to the platform) until a split-payment gateway flow
+       is switched on; the column already supports 'platform_split'. */
+    await db(env).prepare("UPDATE vendor_bookings SET status='confirmed',settlement_mode='manual',final_paise=?,commission_percent=?,commission_paise=?,net_paise=?,updated_at=? WHERE id=?").bind(finalPaise,pct,commission,finalPaise-commission,new Date().toISOString(),id).run();
+    const row=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=?').bind(id).first();
+    row.vendor_code=v.vendor_code;row.business_name=v.business_name;
+    return json({booking:vendorBookingShape(row)});
+   }
+   if(action==='status'&&request.method==='POST'){
+    const next=String(input?.status||'');
+    if(next==='completed'){if(b.status!=='confirmed')fail('Only a confirmed booking can be marked completed.');}
+    else if(next==='cancelled'){if(!['requested','confirmed'].includes(b.status))fail('This booking can no longer be cancelled.');}
+    else fail('Not found.',404);
+    await db(env).prepare('UPDATE vendor_bookings SET status=?,updated_at=? WHERE id=?').bind(next,new Date().toISOString(),id).run();
+    const row=await db(env).prepare('SELECT * FROM vendor_bookings WHERE id=?').bind(id).first();
+    row.vendor_code=v.vendor_code;row.business_name=v.business_name;
+    return json({booking:vendorBookingShape(row)});
+   }
+   fail('Not found.',404);
   }
   fail('Not found.',404);
  }
@@ -580,7 +1191,7 @@ export default {async fetch(request,env){
    if(!(mineS.includes('addon-shortlink')||await isAdminUser(env,authUser)))fail('Custom short link add-on is not unlocked for your account.',402);
    const input=await body(request,5000);
    const slug=String(input?.slug||'').trim().toLowerCase();
-   const RESERVED=['forgot-password','register','boss','workspace','dashboard','bookings','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation'];
+   const RESERVED=['forgot-password','register','boss','workspace','dashboard','bookings','refund','sitemap','robots','admin','studio','index','landing','invite','rsvps','guests','pdf','api','assets','reference','demo','login','signup','pricing','faq','about','contact','privacy','copyright','terms','support','help','blog','new','www','mail','home','wedding','invitation','album','albums','vendors','vendor','vendor-register'];
    if(!/^[a-z0-9][a-z0-9-]{2,40}$/.test(slug)||RESERVED.includes(slug))fail('Please choose a short link using only small letters, numbers and hyphens (3-41 characters), and not a reserved word.');
    const invitationId=String(input?.invitationId||'');
    const own=await db(env).prepare('SELECT invitation_id FROM invitation_owners WHERE invitation_id=? AND owner=?').bind(invitationId,owner).first();
@@ -656,7 +1267,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -735,7 +1346,9 @@ export default {async fetch(request,env){
    const u=cid?await one('SELECT id,email FROM users WHERE id=?',cid):null;
    if(!u)fail('That customer was not found. They may already be deleted.',404);
    if(String(u.email).toLowerCase()===await adminEmail(env))fail('The admin account cannot be deleted.',409);
-   return json(await eraseAccountData(env,u.id,{eraseOrders:q.get('erase_orders')==='1'}));
+   const erased=await eraseAccountData(env,u.id,{eraseOrders:q.get('erase_orders')==='1'});
+   await audit(env,adminUser,'customer_deleted',u.email,q.get('erase_orders')==='1'?'orders erased too':'orders anonymised');
+   return json(erased);
   }
   if(name==='customers'){
    const term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
@@ -790,17 +1403,174 @@ export default {async fetch(request,env){
     const exp=input?.expires_on?String(input.expires_on):null;if(exp&&!/^\d{4}-\d{2}-\d{2}$/.test(exp))fail('Choose a valid expiry date.');
     if(await one('SELECT code FROM coupons WHERE code=?',code))fail('That coupon code already exists.',409);
     await d.prepare('INSERT INTO coupons(code,kind,value,max_uses,used,expires_on,active,created_at) VALUES(?,?,?,?,0,?,1,?)').bind(code,kind,value,maxUses,exp,new Date().toISOString()).run();
+    await audit(env,adminUser,'coupon_created',code,kind+' '+value);
     return json({saved:true,code},201);
    }
    const code=decodeURIComponent(seg[3]||'').toUpperCase();
-   if(request.method==='PUT'){const input=await body(request,500);const r=await d.prepare('UPDATE coupons SET active=? WHERE code=?').bind(input?.active?1:0,code).run();if(!r.meta?.changes)fail('Coupon not found.',404);return json({saved:true});}
-   if(request.method==='DELETE'){await d.prepare('DELETE FROM coupons WHERE code=?').bind(code).run();return json({deleted:true});}
+   if(request.method==='PUT'){const input=await body(request,500);const r=await d.prepare('UPDATE coupons SET active=? WHERE code=?').bind(input?.active?1:0,code).run();if(!r.meta?.changes)fail('Coupon not found.',404);await audit(env,adminUser,input?.active?'coupon_activated':'coupon_deactivated',code,'');return json({saved:true});}
+   if(request.method==='DELETE'){await d.prepare('DELETE FROM coupons WHERE code=?').bind(code).run();await audit(env,adminUser,'coupon_deleted',code,'');return json({deleted:true});}
    fail('Not found.',404);
   }
   if(name==='banner'){
    if(request.method==='GET'){const row=await one("SELECT value FROM site_settings WHERE key='banner'");let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}return json({on:!!b?.on,text:b?.text||''});}
    if(request.method==='PUT'){const input=await body(request,2000),text=String(input?.text||'').trim().slice(0,160),on=!!input?.on&&!!text;await d.prepare("INSERT INTO site_settings(key,value) VALUES('banner',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({on,text})).run();return json({on,text});}
    fail('Not found.',404);
+  }
+  if(name==='features'){
+   if(request.method==='GET'){const st=await albumSettings(env);return json({album:{price_paise:st.price_paise,draft_days:st.draft_days},commissionPercent:await commissionPercent(env),vendorCategories:await vendorCategories(env),vendorAgreement:await vendorAgreement(env),bossTwoFactor:(await siteSetting(env,'boss_2fa'))==='on'});}
+   if(request.method==='PUT'){
+    const input=await body(request,30000);
+    const price=Math.round(Number(input?.albumPrice)*100),days=Math.round(Number(input?.draftDays));
+    if(!Number.isFinite(price)||price<0||price>100000000)fail('Enter the Save Forever price in ₹.');
+    if(!Number.isFinite(days)||days<1||days>90)fail('Free drafts can last between 1 and 90 days.');
+    const pct=Number(input?.commissionPercent);if(!Number.isFinite(pct)||pct<0||pct>50)fail('Commission must be between 0% and 50%.');
+    const catsIn=Array.isArray(input?.vendorCategories)?input.vendorCategories:[];
+    const cats=[],seen=new Set();
+    for(const c of catsIn){const label=String(c?.label||'').trim().slice(0,60);if(!label)continue;let id=String(c?.id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);if(!id||seen.has(id))continue;seen.add(id);cats.push({id,label});}
+    if(!cats.length)fail('Keep at least one vendor category.');
+    /* Two-step boss login may only be switched ON after a test email has
+       actually been delivered — the owner can never lock himself out by
+       enabling it on a server that cannot send mail. */
+    let twoFactor=(await siteSetting(env,'boss_2fa'))==='on';
+    if(typeof input?.bossTwoFactor==='boolean'&&input.bossTwoFactor!==twoFactor){
+     if(input.bossTwoFactor){
+      const sent=await sendMail(env,{to:adminUser.email,subject:'Easy Wedding two-step login — test email',text:'Email delivery works. Boss two-step login can now be switched on in /boss: after your password, a 6-digit code will be emailed to this address.'});
+      if(!sent.ok)fail('Two-step login was NOT switched on: the test email could not be sent ('+sent.reason+'). Set up email delivery first (RESEND_API_KEY + MAIL_FROM, or MAIL_WEBHOOK_URL), then try again.',400);
+      twoFactor=true;
+     }else twoFactor=false;
+    }
+    await d.prepare("INSERT INTO site_settings(key,value) VALUES('album_storage',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({price_paise:price,draft_days:days})).run();
+    await d.prepare("INSERT INTO site_settings(key,value) VALUES('vendor_commission',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({percent:Math.round(pct*100)/100})).run();
+    await d.prepare("INSERT INTO site_settings(key,value) VALUES('vendor_categories',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(cats)).run();
+    let agreement=await vendorAgreement(env);
+    if(input?.vendorAgreement&&(typeof input.vendorAgreement.text==='string'||typeof input.vendorAgreement.version==='string')){
+     const ver=String(input.vendorAgreement.version||agreement.version).trim().slice(0,20)||agreement.version;
+     const txt=String(input.vendorAgreement.text||'').trim().slice(0,8000);
+     if(!txt)fail('The vendor agreement text cannot be empty.');
+     await d.prepare("INSERT INTO site_settings(key,value) VALUES('vendor_agreement',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({version:ver,text:txt})).run();
+     agreement=await vendorAgreement(env);
+    }
+    await setSiteSetting(env,'boss_2fa',twoFactor?'on':'off');
+    await audit(env,adminUser,'features_update','settings','album ₹'+(price/100)+' · draft '+days+'d · commission '+(Math.round(pct*100)/100)+'% · agreement '+agreement.version+' · boss2fa '+(twoFactor?'on':'off'));
+    return json({album:{price_paise:price,draft_days:days},commissionPercent:Math.round(pct*100)/100,vendorCategories:cats,vendorAgreement:agreement,bossTwoFactor:twoFactor});
+   }
+   fail('Not found.',404);
+  }
+  if(name==='vendors'){
+   if(seg.length===3&&request.method==='GET'){
+    const st=['pending','approved','rejected','suspended'].includes(q.get('status')||'')?q.get('status'):'';
+    const term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
+    let sql='SELECT v.*,u.email AS account_email FROM vendors v LEFT JOIN users u ON u.id=v.user_id WHERE 1=1';const bind=[];
+    if(st){sql+=' AND v.status=?';bind.push(st);}
+    if(term){sql+=' AND (lower(v.business_name) LIKE ? OR lower(v.owner_name) LIKE ? OR lower(v.city) LIKE ? OR lower(v.vendor_code) LIKE ? OR lower(u.email) LIKE ?)';const t='%'+term+'%';bind.push(t,t,t,t,t);}
+    const rows=await all(sql+' ORDER BY v.created_at DESC LIMIT 500',...bind);
+    const cats=await vendorCategories(env),out=[];
+    for(const r of rows){await ensureVendorCode(env,r);const s=await vendorShape(env,r,cats,true);s.accountEmail=r.account_email||'';out.push(s);}
+    return json({vendors:out});
+   }
+   if(seg.length===4&&request.method==='POST'){
+    let vid='';try{vid=decodeURIComponent(seg[3]||'');}catch{fail('Not found.',404);}
+    const v=await one('SELECT * FROM vendors WHERE id=?',vid);if(!v)fail('Vendor not found.',404);
+    const input=await body(request,2000);
+    if(Object.prototype.hasOwnProperty.call(input||{},'verified')){
+     /* Owner-controlled trust flag: set only after the vendor's ID and
+        address have been checked by the owner personally. */
+     await d.prepare('UPDATE vendors SET verified=?,updated_at=? WHERE id=?').bind(input.verified?1:0,new Date().toISOString(),vid).run();
+     await audit(env,adminUser,input.verified?'vendor_verified':'vendor_unverified',v.business_name,v.vendor_code||'');
+     return json({ok:true,verified:!!input.verified});
+    }
+    const next=String(input?.status||'');
+    if(!['approved','rejected','suspended','pending'].includes(next))fail('Not found.',404);
+    await d.prepare('UPDATE vendors SET status=?,status_reason=?,updated_at=? WHERE id=?').bind(next,String(input?.reason||'').trim().slice(0,300)||null,new Date().toISOString(),vid).run();
+    await audit(env,adminUser,'vendor_'+next,v.business_name,(v.vendor_code||'')+(input?.reason?' · '+String(input.reason).slice(0,120):''));
+    return json({ok:true,status:next});
+   }
+   fail('Not found.',404);
+  }
+  if(name==='albums'){
+   if(seg.length===3&&request.method==='GET'){
+    const rows=await all('SELECT a.*,u.email AS account_email,u.name AS account_name FROM albums a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC LIMIT 500');
+    const out=[];for(const r of rows){const s=await albumShape(env,r,false);s.ownerEmail=r.account_email||'';s.ownerName=r.account_name||'';s.photoCount=(await one('SELECT COUNT(*) AS n FROM album_photos WHERE album_id=?',r.id))?.n||0;out.push(s);}
+    return json({albums:out});
+   }
+   if(seg.length===5&&seg[4]==='permanent'&&request.method==='POST'){
+    let aid='';try{aid=decodeURIComponent(seg[3]||'');}catch{fail('Not found.',404);}
+    const r=await d.prepare("UPDATE albums SET storage='permanent',updated_at=? WHERE id=?").bind(new Date().toISOString(),aid).run();
+    if(!r.meta?.changes)fail('Album not found.',404);
+    await audit(env,adminUser,'album_marked_permanent',aid,'manual /boss action');
+    return json({ok:true});
+   }
+   fail('Not found.',404);
+  }
+  if(name==='vendorbookings'){
+   if(request.method!=='GET')fail('Not found.',404);
+   const rows=await all('SELECT b.*,v.business_name AS business_name,v.vendor_code AS vendor_code FROM vendor_bookings b JOIN vendors v ON v.id=b.vendor_id ORDER BY b.created_at DESC LIMIT 500');
+   for(const r of rows){if(!r.vendor_code)r.vendor_code=await ensureVendorCode(env,{id:r.vendor_id,vendor_code:null});}
+   const done=rows.filter(r=>r.status==='confirmed'||r.status==='completed');
+   const unpaid=done.filter(r=>!r.payout_id);
+   const totals={bookings:rows.length,confirmed:done.length,grossPaise:done.reduce((s,r)=>s+(r.final_paise||0),0),commissionPaise:done.reduce((s,r)=>s+(r.commission_paise||0),0),netPaise:done.reduce((s,r)=>s+(r.net_paise||0),0),vendorDuePaise:unpaid.filter(r=>r.settlement_mode==='platform_split').reduce((s,r)=>s+(r.net_paise||0),0),commissionDuePaise:unpaid.filter(r=>r.settlement_mode!=='platform_split').reduce((s,r)=>s+(r.commission_paise||0),0)};
+   return json({bookings:rows.map(vendorBookingShape),totals});
+  }
+  if(name==='payouts'){
+   if(request.method==='GET'){
+    const rows=await all('SELECT p.*,v.business_name AS bname FROM vendor_payouts p JOIN vendors v ON v.id=p.vendor_id ORDER BY p.created_at DESC LIMIT 300');
+    return json({payouts:rows.map(p=>({id:p.id,kind:p.kind||'vendor_payout',vendorId:p.vendor_id,vendorName:p.bname,amountPaise:p.amount_paise,reference:p.reference||'',bookingCount:p.booking_count,createdAt:p.created_at}))});
+   }
+   if(request.method==='POST'){
+    const input=await body(request,2000),vid=String(input?.vendorId||''),reference=String(input?.reference||'').trim().slice(0,120);
+    const kind=input?.kind==='commission_receipt'?'commission_receipt':'vendor_payout';
+    const v=await one('SELECT id FROM vendors WHERE id=?',vid);if(!v)fail('Vendor not found.',404);
+    /* Vendor payout settles platform_split bookings at the vendor's net share;
+       a commission receipt settles manual bookings at the commission owed. */
+    const mode=kind==='commission_receipt'?'manual':'platform_split';
+    const due=await all("SELECT id,net_paise,commission_paise FROM vendor_bookings WHERE vendor_id=? AND status IN ('confirmed','completed') AND payout_id IS NULL AND settlement_mode=? ORDER BY created_at",vid,mode);
+    if(!due.length)fail(kind==='commission_receipt'?'No commission is outstanding from this vendor right now.':'Nothing is due to this vendor right now.');
+    const total=due.reduce((s,r)=>s+((kind==='commission_receipt'?r.commission_paise:r.net_paise)||0),0),pid=crypto.randomUUID(),now=new Date().toISOString();
+    await d.prepare('INSERT INTO vendor_payouts(id,vendor_id,kind,amount_paise,reference,booking_count,created_at) VALUES(?,?,?,?,?,?,?)').bind(pid,vid,kind,total,reference||null,due.length,now).run();
+    for(const b of due)await d.prepare('UPDATE vendor_bookings SET payout_id=? WHERE id=?').bind(pid,b.id).run();
+    const vrow=await one('SELECT business_name,vendor_code FROM vendors WHERE id=?',vid);
+    await audit(env,adminUser,kind==='commission_receipt'?'commission_received':'vendor_paid',vrow?vrow.business_name:vid,(vrow?.vendor_code||'')+' · ₹'+(total/100)+' · '+due.length+' booking(s)'+(reference?' · ref '+reference:''));
+    return json({payout:{id:pid,kind,vendorId:vid,amountPaise:total,reference,bookingCount:due.length,createdAt:now}});
+   }
+   fail('Not found.',404);
+  }
+  if(name==='reviews'){
+   if(request.method==='GET'){
+    const rows=await all('SELECT r.*,v.business_name AS bname,v.vendor_code AS vcode,u.name AS cname,u.email AS cemail FROM vendor_reviews r JOIN vendors v ON v.id=r.vendor_id LEFT JOIN users u ON u.id=r.customer_id ORDER BY r.created_at DESC LIMIT 300').catch(()=>[]);
+    return json({reviews:rows.map(r=>({id:r.id,bookingId:r.booking_id,vendorId:r.vendor_id,vendorName:r.bname,vendorCode:r.vcode||null,customer:r.cname||'',customerEmail:r.cemail||'',stars:r.stars,text:r.body||'',hidden:!!r.hidden,createdAt:r.created_at}))});
+   }
+   if(seg.length===4&&request.method==='POST'){
+    let rid='';try{rid=decodeURIComponent(seg[3]||'');}catch{fail('Not found.',404);}
+    const input=await body(request,1000);
+    const r=await d.prepare('UPDATE vendor_reviews SET hidden=? WHERE id=?').bind(input?.hidden?1:0,rid).run().catch(()=>null);
+    if(!r||!r.meta?.changes)fail('Review not found.',404);
+    await audit(env,adminUser,input?.hidden?'review_hidden':'review_unhidden',rid,'');
+    return json({ok:true,hidden:!!input?.hidden});
+   }
+   fail('Not found.',404);
+  }
+  if(name==='audit'){
+   if(request.method!=='GET')fail('Not found.',404);
+   const rows=await all('SELECT actor,action,target,detail,created_at FROM admin_audit ORDER BY created_at DESC LIMIT 200').catch(()=>[]);
+   return json({entries:rows});
+  }
+  if(name==='export'){
+   if(request.method!=='GET')fail('Not found.',404);
+   /* One-click business export: vendors (with their IDs and payout details),
+      bookings with the commission math, albums and orders — as one JSON
+      file, following the account-data export pattern. Boss-only and
+      audit-logged like every other sensitive action. */
+   const cats=await vendorCategories(env);
+   const vrows=await all('SELECT * FROM vendors ORDER BY created_at');
+   const vendors=[];for(const r of vrows){await ensureVendorCode(env,r);vendors.push(await vendorShape(env,r,cats,true));}
+   const brows=await all('SELECT b.*,v.business_name AS business_name,v.vendor_code AS vendor_code FROM vendor_bookings b JOIN vendors v ON v.id=b.vendor_id ORDER BY b.created_at');
+   for(const r of brows){if(!r.vendor_code)r.vendor_code=await ensureVendorCode(env,{id:r.vendor_id,vendor_code:null});}
+   const arows=await all('SELECT a.*,u.email AS account_email FROM albums a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at');
+   const albums=[];for(const r of arows){const s=await albumShape(env,r,false);s.ownerEmail=r.account_email||'';albums.push(s);}
+   const orders=await all('SELECT o.id,o.design_id,o.amount_paise,o.discount_paise,o.coupon,o.gateway,o.gateway_payment_id,o.status,o.created_at,u.email AS customer_email,u.name AS customer_name FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at');
+   await audit(env,adminUser,'data_export','vendors+bookings+albums+orders',vendors.length+' vendors · '+brows.length+' bookings · '+albums.length+' albums · '+orders.length+' orders');
+   const payload={exportedAt:new Date().toISOString(),exportedBy:adminUser.email,vendors,bookings:brows.map(vendorBookingShape),albums,orders};
+   return new Response(JSON.stringify(payload,null,2),{headers:{'Content-Type':'application/json; charset=utf-8','Content-Disposition':'attachment; filename="easy-wedding-export-'+new Date().toISOString().slice(0,10)+'.json"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Strict-Transport-Security':'max-age=31536000; includeSubDomains','X-EW-Origin':EW_ORIGIN}});
   }
   if(name==='system'){
    const counts={};for(const t of ['users','orders','entitlements','visits','coupons','bookings'])counts[t]=(await one('SELECT COUNT(*) AS n FROM '+t).catch(()=>null))?.n??null;
@@ -811,7 +1581,7 @@ export default {async fetch(request,env){
  if(path==='/api/admin/site'){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   if(request.method==='GET'){const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='maintenance'").first();return json({open:!row||row.value!=='1'});}
-  if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();return json({open});}
+  if(request.method==='PUT'){const input=await body(request,2000);const open=!!input?.open;await db(env).prepare("INSERT INTO site_settings(key,value) VALUES('maintenance',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(open?'0':'1').run();await audit(env,adminUser,open?'site_opened':'site_closed','maintenance','');return json({open});}
   fail('Not found.',404);
  }
  // Master switch for the Grand Opening offer: one flip moves every design
@@ -820,7 +1590,7 @@ export default {async fetch(request,env){
  if(path==='/api/admin/launch'){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   if(request.method==='GET'){const rows=await db(env).prepare('SELECT launch_active FROM prices').all();const list=rows.results||[];const on=list.filter(r=>r.launch_active).length;return json({active:on>0,on,total:list.length});}
-  if(request.method==='PUT'){const input=await body(request,2000);const active=!!input?.active;const total=(await db(env).prepare('SELECT COUNT(*) AS n FROM prices').first())?.n||0;await db(env).prepare('UPDATE prices SET launch_active=?').bind(active?1:0).run();return json({active,on:active?total:0,total});}
+  if(request.method==='PUT'){const input=await body(request,2000);const active=!!input?.active;const total=(await db(env).prepare('SELECT COUNT(*) AS n FROM prices').first())?.n||0;await db(env).prepare('UPDATE prices SET launch_active=?').bind(active?1:0).run();await audit(env,adminUser,active?'grand_opening_on':'grand_opening_off','prices',total+' price rows');return json({active,on:active?total:0,total});}
   fail('Not found.',404);
  }
  // Owner unlocks a design for a couple who paid outside the site (UPI/WhatsApp).
@@ -837,6 +1607,7 @@ export default {async fetch(request,env){
   const now=new Date().toISOString(),order={id:crypto.randomUUID(),user_id:user.id,design_id:designId,status:'created'};
   await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(order.id,user.id,designId,amount,'manual','created',now,now).run();
   await completeOrder(env,order,'manual-'+(adminUser?adminUser.email:authUser.email));
+  await audit(env,adminUser,'manual_grant',email,designId+' · ₹'+(amount/100));
   return json({ok:true,designs:await entitledDesigns(env,user.id)});
  }
  // Owner-assisted password reset (no email provider yet): issues a one-off
@@ -851,6 +1622,7 @@ export default {async fetch(request,env){
   const temporary=[...bytes].map(b=>alphabet[b%alphabet.length]).join('');
   await db(env).prepare('UPDATE users SET password_hash=? WHERE id=?').bind(await makePasswordRecord(temporary),user.id).run();
   await db(env).prepare('DELETE FROM sessions WHERE user_id=?').bind(user.id).run();
+  await audit(env,adminUser,'password_reset_for_customer',email,'temporary password issued; all sessions ended');
   return json({temporaryPassword:temporary});
  }
  if(path==='/api/admin/payments'){
@@ -883,6 +1655,7 @@ export default {async fetch(request,env){
     if(!Number.isFinite(reg)||!Number.isFinite(launch)||reg<0||launch<0||reg>100000000||launch>100000000)continue;
     await db(env).prepare('UPDATE prices SET regular_paise=?,launch_paise=?,launch_active=? WHERE design_id=?').bind(reg,launch,p.launch_active?1:0,p.design_id).run();
    }
+   await audit(env,adminUser,'payments_or_prices_update','payments',(input?.gateways||[]).length+' gateway row(s) · '+(input?.prices||[]).length+' price row(s)');
    return json({saved:true});
   }
  }
@@ -907,6 +1680,7 @@ export default {async fetch(request,env){
   return json({ok:true});
  }
  if(path==='/api/invitations'&&request.method==='POST'){
+  await rateHit(env,'invnew',request,60,600);
   if(!env.BUCKET)fail('Invitation storage is unavailable.',503);const input=await body(request,250000);if(!input||!bounded(input.partner1,70)||!bounded(input.partner2,70))fail('Invalid invitation.');const c=normalizeConfig(input);if(c.audioUrl.startsWith('local-audio:')||JSON.stringify(c).includes('data:image/'))fail('Sign in and upload your photos and song before creating a short guest link.');
   if(!await isAdminUser(env,authUser)&&!await hasEntitlement(env,owner,c.theme))fail('Unlock this design to create your shareable invitation link.',402);
   if(c.gallery.length>4){const mineP=await entitledDesigns(env,owner);if(!mineP.includes('addon-gallery')&&!await isAdminUser(env,authUser))fail('More than 4 gallery photos needs the Premium Gallery add-on.',402);}
@@ -926,6 +1700,7 @@ export default {async fetch(request,env){
   if(!env.BUCKET)fail('Song storage is unavailable.',503);const max=20*1024*1024;if(Number(request.headers.get('Content-Length'))>max+1024*1024)fail('Choose a song under 20 MB.',413);const data=await request.formData(),file=data.get('file');const types=['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','audio/mp4','audio/x-m4a'];if(!file||typeof file==='string'||!types.includes(file.type)||file.size<12||file.size>max)fail('Choose an MP3, WAV, OGG or M4A song under 20 MB.');const bytes=new Uint8Array(await file.arrayBuffer()),header=new TextDecoder().decode(bytes.slice(0,16));if(!validAudioHeader(bytes.slice(0,16),file.type))fail('That file is not a supported audio recording.');const id=crypto.randomUUID(),key='invitation-audio/'+id;await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});try{await db(env).prepare('INSERT INTO assets(id,owner,filename,mime,size,created_at) VALUES(?,?,?,?,?,?)').bind(id,owner,file.name.slice(0,150),file.type,file.size,new Date().toISOString()).run();}catch(e){await env.BUCKET.delete(key);throw e;}return json({id,url:'/api/invitation-audio/'+id,name:file.name},201);
  }
  if((path==='/api/assets'||path==='/api/exports'||path==='/api/invitation-photos'||path==='/api/videos')&&request.method==='POST'){
+  if(path==='/api/assets')await rateHit(env,'upload',request,180,600);
   const isPDF=path==='/api/exports',isInvitation=path==='/api/invitation-photos',isVideo=path==='/api/videos',maxBytes=(isVideo?20:8)*1024*1024;
   if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
   if(Number(request.headers.get('Content-Length'))>maxBytes+1024*1024)fail(isVideo?'Choose a video smaller than 20 MB.':'Choose an image smaller than 8 MB.',413);

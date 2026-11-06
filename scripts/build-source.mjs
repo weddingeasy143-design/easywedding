@@ -36,12 +36,12 @@ function add(path,name,kind='text',group='Family & invitation',options){
  const value=path.split('.').reduce((o,k)=>o?.[k],defaults)??'';
  fields.push({path,label:name,kind,group,value,...(options?{options}:{} )});
 }
-for(const key of ['groomPhoto','bridePhoto','heroPhoto'])add('content.'+key,label(key),'image');
+for(const key of ['groomPhoto','bridePhoto','heroPhoto','invitationPhoto','venuePhoto'])add('content.'+key,label(key),'image');
 for(const key of ['groomRelationLabel','groomParents','groomAddress','brideRelationLabel','brideParents','brideAddress','headline','quote','invitationMessage','venuePin','venueMapUrl'])add('content.'+key,label(key));
-for(const key of ['groomPhotoFit','bridePhotoFit','heroPhotoFit','invitationPhotoFit'])add('content.'+key,label(key),'select','Photo framing',['cover','contain']);
+for(const key of ['groomPhotoFit','bridePhotoFit','heroPhotoFit','invitationPhotoFit','venuePhotoFit'])add('content.'+key,label(key),'select','Photo framing',['cover','contain']);
 for(const key of ['groomPhotoFocus','bridePhotoFocus'])add('content.'+key,label(key)+' · horizontal, vertical %','text','Photo framing');
 defaults.story.forEach((row,i)=>{for(const key of ['title','dateLabel','description','photo'])add(`story.${i}.${key}`,`Story ${i+1} · ${key}`,key==='photo'?'image':'text','Our story · 3 chapters');});
-defaults.events.forEach((row,i)=>{for(const key of ['name','tagline','dateISO','description','dressCode','image'])add(`events.${i}.${key}`,`Event ${i+1} · ${key}`,key==='image'?'image':key==='dateISO'?'datetime':'text','Festivities · 4 events');add(`events.${i}.enabled`,`Event ${i+1} · show on invitation`,'bool','Festivities · 4 events');add(`events.${i}.sortOrder`,`Event ${i+1} · order`,'int','Festivities · 4 events');});
+defaults.events.forEach((row,i)=>{for(const key of ['name','tagline','dateISO','description','dressCode','image','photo'])add(`events.${i}.${key}`,`Event ${i+1} · ${key}`,['image','photo'].includes(key)?'image':key==='dateISO'?'datetime':'text','Festivities · 4 events');add(`events.${i}.enabled`,`Event ${i+1} · show on invitation`,'bool','Festivities · 4 events');add(`events.${i}.sortOrder`,`Event ${i+1} · order`,'int','Festivities · 4 events');});
 defaults.gallery.forEach((row,i)=>{for(const key of ['src','caption'])add(`gallery.${i}.${key}`,`Gallery ${i+1} · ${key==='src'?'photo':key}`,key==='src'?'image':'text','Our moments · 11 photos');add(`gallery.${i}.fit`,`Gallery ${i+1} · framing`,'select','Our moments · 11 photos',['contain','cover']);add(`gallery.${i}.focus`,`Gallery ${i+1} · focus · horizontal, vertical %`,'text','Our moments · 11 photos');add(`gallery.${i}.isCover`,`Gallery ${i+1} · cover photo (shown first)`,'bool','Our moments · 11 photos');});
 for(const key of Object.keys(defaults.sagun))if(!['qr1IconsImage','qr2IconsImage'].includes(key))add('sagun.'+key,label(key),['qr1Image','qr2Image'].includes(key)?'image':'text','Blessings & your UPI QR codes');
 add('contactPhone','Venue contact number','text','Venue & sharing');

@@ -499,13 +499,18 @@ function BeatCurtain({ onDone, autoPlay = false }: { onDone: () => void; autoPla
 export default function OpeningSequence({ onOpen }: { onOpen: () => void }) {
   const reduce = useMotionPreference() ?? false;
   const [beat, setBeat] = useState<Beat>(0);
-  const showGanesh=(window as any).__easyWedding.config.ganeshIcon!=="none";
   /* Per-design opening act (beats 0 and 2 only). Premium Original has no
      entry in OPENING_ACTS and keeps the shared beats untouched; beat 3
      (the Open Invitation cover) is shared by every design. */
   const ewGlobal=(window as any).__easyWedding||{};
   const designId:string=ewGlobal.design?.id||ewGlobal.config?.theme||"";
   const act=OPENING_ACTS[designId];
+  /* A design may opt out of the shared Ganesh beat (beat 1) through a
+     flag in its own opening registration — ram-mandir does, on the
+     owner's explicit order: its video opening runs hero → names →
+     cover card with nothing in between. Designs without the flag
+     (every other design) keep the beat exactly as before. */
+  const showGanesh=(window as any).__easyWedding.config.ganeshIcon!=="none"&&!act?.skipGaneshBeat;
 
   // Ganesh aarti from the very start (plays on first tap if autoplay blocks)
   useEffect(() => {

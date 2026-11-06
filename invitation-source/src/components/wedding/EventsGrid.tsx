@@ -16,6 +16,14 @@ import SectionHeading from "./SectionHeading";
 import EventDetails from "./EventDetails";
 import FloralCorners from "./decor/FloralCorners";
 
+/** The design currently being rendered (the same read OpeningSequence
+    uses to pick the per-design opening act). */
+function currentDesignId(): string {
+  if (typeof window === "undefined") return "";
+  const ew = (window as any).__easyWedding || {};
+  return ew.design?.id || ew.config?.theme || "";
+}
+
 function EventCard({
   event,
   onDetails,
@@ -24,6 +32,11 @@ function EventCard({
   onDetails: (e: WeddingEvent) => void;
 }) {
   const theme = THEME_STYLES[event.theme];
+  /* ram-mandir only (owner's order, 2026-11-05): its event cards carry a
+     real photograph (events[].photo), so the illustrated motif band is
+     not rendered — the photo is the card's visual. Every other design
+     renders the motif band exactly as before. */
+  const hideMotif = currentDesignId() === "ram-mandir";
   return (
     <article
       className="group flex h-full flex-col overflow-hidden rounded-3xl border-2 bg-white/80 shadow-[0_20px_50px_-24px_rgba(109,16,37,0.35)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_30px_60px_-20px_rgba(109,16,37,0.5)] active:scale-[0.98]"
@@ -38,29 +51,48 @@ function EventCard({
         e.currentTarget.style.boxShadow = "";
       }}
     >
-      <div className={`bg-gradient-to-br ${theme.gradient} p-2.5 pb-0`}>
-        <div className="overflow-hidden rounded-t-[1.15rem] rounded-b-lg">
-          {event.imageFit === "cover" ? (
-            <Image
-              src={event.image}
-              alt={event.name}
-              width={640}
-              height={420}
-              loading="lazy"
-              className="aspect-[16/10] w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
-            />
-          ) : (
+      {!hideMotif && (
+        <div className={`bg-gradient-to-br ${theme.gradient} p-2.5 pb-0`}>
+          <div className="overflow-hidden rounded-t-[1.15rem] rounded-b-lg">
+            {event.imageFit === "cover" ? (
+              <Image
+                src={event.image}
+                alt={event.name}
+                width={640}
+                height={420}
+                loading="lazy"
+                className="aspect-[16/10] w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
+              />
+            ) : (
+              <FitImage
+                src={event.image}
+                alt={event.name}
+                width={640}
+                height={400}
+                lockFrame
+                className="aspect-[16/10] w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
+      {/* real-photograph band — renders only when the event carries a
+          photo (events[].photo, settable in the studio like every other
+          photo field); designs whose events have no photo are unchanged */}
+      {event.photo ? (
+        <div className="px-2.5 pt-2.5">
+          <div className="overflow-hidden rounded-lg">
             <FitImage
-              src={event.image}
-              alt={event.name}
+              src={event.photo}
+              alt={`${event.name} — photograph`}
               width={640}
               height={400}
               lockFrame
               className="aspect-[16/10] w-full"
             />
-          )}
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="flex flex-1 flex-col px-5 pb-5 pt-4 text-center">
         <h3
           className="font-display text-xl font-bold uppercase tracking-[0.1em]"

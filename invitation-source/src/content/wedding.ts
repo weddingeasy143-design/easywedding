@@ -18,6 +18,8 @@ export interface WeddingEvent {
   theme: "haldi" | "mehendi" | "wedding" | "reception";
   image: string;
   imageFit?: "cover" | "contain";
+  /** Optional real photograph shown as a band on the event card. */
+  photo?: string;
   mapUrl: string;
   enabled: boolean;
   sortOrder: number;

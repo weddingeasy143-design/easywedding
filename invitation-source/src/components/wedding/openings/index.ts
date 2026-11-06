@@ -8,6 +8,7 @@ import * as reception from "./reception";
 import * as midnightNoor from "./midnight-noor";
 import * as blushMehraab from "./blush-mehraab";
 import * as emeraldDarbar from "./emerald-darbar";
+import * as ramMandir from "./ram-mandir";
 
 /* Per-design opening acts (owner's rule): every design except Premium
    Original opens with its OWN Tap-to-Reveal screen (beat 0) and its OWN
@@ -15,7 +16,10 @@ import * as emeraldDarbar from "./emerald-darbar";
    it keeps the shared SurpriseAwaits + BeatCurtain exactly as they are.
    From the Open Invitation cover (beat 3) onward every design, these
    included, uses the one shared RoyalOpening. */
-export const OPENING_ACTS: Record<string, { Reveal: any; Curtain: any }> = {
+export const OPENING_ACTS: Record<
+  string,
+  { Reveal: any; Curtain: any; skipGaneshBeat?: boolean }
+> = {
   "ivory-arch": ivoryArch,
   "royal-prestige": royalPrestige,
   garden: garden,
@@ -26,4 +30,5 @@ export const OPENING_ACTS: Record<string, { Reveal: any; Curtain: any }> = {
   "midnight-noor": midnightNoor,
   "blush-mehraab": blushMehraab,
   "emerald-darbar": emeraldDarbar,
+  "ram-mandir": ramMandir,
 };

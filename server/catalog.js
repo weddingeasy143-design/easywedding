@@ -16,6 +16,8 @@
    one premium design, whose full artwork is the ornaments opener; every other
    design's artwork is assets/wedding/<id>.webp with the 480px catalogue thumb. */
 export const CATALOG_DESIGNS=[
+ {id:'mandir-darwaza',name:'Mandir Darwaza',style:'Golden temple doors · magical reveal',premium:false,badge:'New',artwork:'/assets/wedding/mandir-darwaza.webp',thumbnail:'/assets/catalog/mandir-darwaza-480.webp'},
+ {id:'ram-mandir',name:'Ram Mandir',style:'Golden Ram temple · lotus countdown',premium:false,badge:'New',artwork:'/assets/wedding/ram-mandir.webp',thumbnail:'/assets/catalog/ram-mandir-480.webp'},
  {id:'premium-original',name:'Premium Original',style:'Cinematic curtain & doors · 23 photos',premium:true,artwork:'/ornaments/opening-realistic.webp',thumbnail:'/assets/catalog/premium-original-480.webp'},
  {id:'royal-prestige',name:'Crimson Vows',style:'Rose drift · royal gates',premium:false,artwork:'/assets/wedding/royal-prestige.webp',thumbnail:'/assets/catalog/royal-prestige-480.webp'},
  {id:'mehndi',name:'Peacock Promise',style:'Feather sway · peacock fan',premium:false,artwork:'/assets/wedding/mehndi.webp',thumbnail:'/assets/catalog/mehndi-480.webp'},
@@ -56,7 +58,7 @@ export const SUPPORT={
 export function catalogPayload(origin){
  const abs=p=>p.startsWith('http')?p:origin+p;
  return {
-  designs:CATALOG_DESIGNS.map(d=>({id:d.id,name:d.name,style:d.style,premium:d.premium,artwork:abs(d.artwork),thumbnail:abs(d.thumbnail)})),
+  designs:CATALOG_DESIGNS.map(d=>({id:d.id,name:d.name,style:d.style,premium:d.premium,artwork:abs(d.artwork),thumbnail:abs(d.thumbnail),...(d.badge?{badge:d.badge}:{})})),
   addons:CATALOG_ADDONS.map(a=>({id:a.id,name:a.name,description:a.description})),
  };
 }
