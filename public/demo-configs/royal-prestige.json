@@ -7,24 +7,24 @@
    "quote": "Two families, one celebration, a lifetime of love.",
    "invitationMessage": "With the blessings of our families,\nwe cordially invite you to be a part\nof our special day.",
    "weddingDateISO": "2026-11-29T20:00:00+05:30",
-   "heroPhoto": "/reference/assets/current-49b574202f26.jpg",
-   "invitationPhoto": "/reference/assets/current-6def8ed83b4f.jpg",
+   "heroPhoto": "/reference/assets/demo-royal-prestige-couple.webp",
+   "invitationPhoto": "/reference/assets/demo-royal-prestige-couple2.webp",
    "venueName": "Umaid Heritage Lawns",
    "venueAddressLines": [
     "Circuit House Road",
     "Jodhpur, Rajasthan"
    ],
    "venuePin": "",
-   "venuePhoto": "/reference/assets/ai-venue2.jpg",
+   "venuePhoto": "/reference/assets/demo-royal-prestige-venue.webp",
    "venuePhotoFit": "contain",
    "venueMapUrl": "",
-   "groomPhoto": "/reference/assets/current-234c8f91fdc1.jpg",
+   "groomPhoto": "/reference/assets/demo-royal-prestige-groom.webp",
    "groomPhotoFocus": "62,22",
    "groomPhotoFit": "contain",
    "groomRelationLabel": "Son of",
    "groomParents": "Shri Devendra Rathore & Shrimati Meena Rathore",
    "groomAddress": "Ratanada, Jodhpur,\nRajasthan – 342001",
-   "bridePhoto": "/reference/assets/ai-bride2.jpg",
+   "bridePhoto": "/reference/assets/demo-royal-prestige-bride.webp",
    "bridePhotoFocus": "38,60",
    "bridePhotoFit": "contain",
    "brideRelationLabel": "Daughter of",
@@ -51,21 +51,21 @@
     "title": "At a Wedding",
     "dateLabel": "",
     "description": "We first met at a cousin’s wedding — a exchanged glance across the mandap, and fate did the rest.",
-    "photo": "/reference/assets/current-453f66ec8adf.jpg",
+    "photo": "/reference/assets/demo-royal-prestige-story1.webp",
     "sortOrder": 1
    },
    {
     "title": "Growing Together",
     "dateLabel": "",
     "description": "Distance tested us, traditions grounded us, and love quietly won every single time.",
-    "photo": "/reference/assets/current-f2081c44f71c.jpg",
+    "photo": "/reference/assets/demo-royal-prestige-story2.webp",
     "sortOrder": 2
    },
    {
     "title": "Forever Begins",
     "dateLabel": "",
     "description": "In the blue city, beneath a palace sky, we take our vows — royally, joyfully, together.",
-    "photo": "/reference/assets/current-6def8ed83b4f.jpg",
+    "photo": "/reference/assets/demo-royal-prestige-story3.webp",
     "sortOrder": 3
    }
   ],
@@ -82,7 +82,7 @@
     "description": "A little turmeric, a lot of love. Join us for a beautiful Haldi ceremony filled with love, laughter and vibrant colours as we begin our wedding celebrations.",
     "dressCode": "Yellow / Traditional",
     "theme": "haldi",
-    "image": "/reference/assets/current-6d739b6d29e5.png",
+    "image": "/reference/assets/demo-royal-prestige-event-haldi.webp",
     "mapUrl": "https://www.google.com/maps/search/?api=1&query=Umaid%20Heritage%20Lawns%20Circuit%20House%20Road%20Jodhpur%2C%20Rajasthan",
     "enabled": true,
     "sortOrder": 1
@@ -99,7 +99,7 @@
     "description": "An evening of intricate henna, music and joy. Come adorned in greens as we celebrate love painted in the most beautiful patterns.",
     "dressCode": "Green / Festive",
     "theme": "mehendi",
-    "image": "/reference/assets/current-cd4d616c71ec.jpg",
+    "image": "/reference/assets/demo-royal-prestige-event-mehndi.webp",
     "mapUrl": "https://www.google.com/maps/search/?api=1&query=Umaid%20Heritage%20Lawns%20Circuit%20House%20Road%20Jodhpur%2C%20Rajasthan",
     "enabled": true,
     "sortOrder": 2
@@ -116,7 +116,7 @@
     "description": "The moment we've been waiting for. Witness us exchange vows and begin our forever, surrounded by everyone we love.",
     "dressCode": "Traditional / Festive",
     "theme": "wedding",
-    "image": "/reference/assets/ai-wedland2.jpg",
+    "image": "/reference/assets/demo-royal-prestige-wedding.webp",
     "mapUrl": "https://www.google.com/maps/search/?api=1&query=Umaid%20Heritage%20Lawns%20Circuit%20House%20Road%20Jodhpur%2C%20Rajasthan",
     "enabled": true,
     "sortOrder": 3
@@ -133,7 +133,7 @@
     "description": "Good people make good moments better. Join us for an evening of celebration, dinner and dance as we begin our new journey together.",
     "dressCode": "Formal / Indo-Western",
     "theme": "reception",
-    "image": "/reference/assets/current-62d344ffd89e.jpg",
+    "image": "/reference/assets/demo-royal-prestige-event-reception.webp",
     "mapUrl": "https://www.google.com/maps/search/?api=1&query=Umaid%20Heritage%20Lawns%20Circuit%20House%20Road%20Jodhpur%2C%20Rajasthan",
     "enabled": true,
     "sortOrder": 4
@@ -141,7 +141,7 @@
   ],
   "gallery": [
    {
-    "src": "/reference/assets/current-234c8f91fdc1.jpg",
+    "src": "/reference/assets/demo-royal-prestige-groom.webp",
     "caption": "Arjun",
     "id": "gallery-0",
     "isCover": true,
@@ -150,7 +150,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/ai-bride2.jpg",
+    "src": "/reference/assets/demo-royal-prestige-bride.webp",
     "caption": "Kavya",
     "id": "gallery-1",
     "isCover": false,
@@ -159,7 +159,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-49b574202f26.jpg",
+    "src": "/reference/assets/demo-royal-prestige-couple.webp",
     "caption": "Together",
     "id": "gallery-2",
     "isCover": false,
@@ -168,7 +168,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-0de6b0878e02.jpg",
+    "src": "/reference/assets/demo-royal-prestige-couple2.webp",
     "caption": "Blessed moments",
     "id": "gallery-3",
     "isCover": false,
@@ -177,7 +177,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-6def8ed83b4f.jpg",
+    "src": "/reference/assets/demo-royal-prestige-story1.webp",
     "caption": "Us",
     "id": "gallery-4",
     "isCover": false,
@@ -186,7 +186,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-234c8f91fdc1.jpg",
+    "src": "/reference/assets/demo-royal-prestige-story2.webp",
     "caption": "The Groom",
     "id": "gallery-5",
     "isCover": false,
@@ -195,7 +195,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/ai-venue2.jpg",
+    "src": "/reference/assets/demo-royal-prestige-venue.webp",
     "caption": "The Venue",
     "id": "gallery-6",
     "isCover": false,
@@ -204,7 +204,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-f2081c44f71c.jpg",
+    "src": "/reference/assets/demo-royal-prestige-story3.webp",
     "caption": "On the road",
     "id": "gallery-7",
     "isCover": false,
@@ -213,7 +213,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/ai-bride2.jpg",
+    "src": "/reference/assets/demo-royal-prestige-extra1.webp",
     "caption": "The Bride",
     "id": "gallery-8",
     "isCover": false,
@@ -222,7 +222,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-823d1cc4ff47.jpg",
+    "src": "/reference/assets/demo-royal-prestige-extra2.webp",
     "caption": "Getting Ready",
     "id": "gallery-9",
     "isCover": false,
@@ -231,7 +231,7 @@
     "fit": "contain"
    },
    {
-    "src": "/reference/assets/current-6def8ed83b4f.jpg",
+    "src": "/reference/assets/demo-royal-prestige-extra3.webp",
     "caption": "Memories",
     "id": "gallery-10",
     "isCover": false,
