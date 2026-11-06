@@ -1,5 +1,5 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
-import {syncReferenceWedding,validReferenceDate} from './reference-config.js';
+import {syncReferenceWedding,validReferenceDate,getReferencePath} from './reference-config.js';
 import {renderReferenceEditor,readReferenceEditor} from './reference-editor.js';
 import {validateSong,prepareLocalSong} from './audio-upload.js';
 import {prepareLocalPhoto,compressPhoto,browserOnlySession} from './photo-upload.js';
@@ -10,6 +10,25 @@ import {referenceDesignFor} from './reference-designs.js';
 import {DEFAULTS,normalizeConfig,readConfig,encodeConfig,invitationUrl,rsvpDestination,safeImageUrl,validDate,validTime} from './config.js';
 import {videoEmbedUrl} from './video-embed.js';
 import {createWizard,priceRow,fillPriceChips,REVIEW_STEP,DONE_STEP} from './wizard.js';
+/* Built-in song library: Bollywood-style original themes composed for Easy
+   Wedding, shipped in public/music/. They are our own compositions in a
+   Bollywood wedding style — never film songs or copied recordings. Choosing
+   one writes the same audioUrl/audioName fields an upload writes, so saving,
+   preview and publishing treat a built-in song exactly like an uploaded one.
+   The first entry is the house default. */
+const BUILTIN_SONGS=[
+ {url:'/music/ew-bolly-band-baaja.mp3',name:'Band Baaja Celebration',desc:'Big baraat energy — a dhol-led wedding celebration'},
+ {url:'/music/ew-bolly-dulhan-entry.mp3',name:'Dulhan Ki Entry',desc:'A grand, romantic entry theme — shehnai and strings'},
+];
+const isBuiltinSong=url=>typeof url==='string'&&BUILTIN_SONGS.some(s=>s.url===url);
+/* Story-chapter and gallery ("Our Moments") photo fields. Step 3 carries
+   friendly upload cards for these exact reference paths; the cards write
+   through to the matching fine-tune inputs, so there is only ever one
+   value per photo (see buildRefPhotoCards further down). */
+const REF_STORY_PATHS=['story.0.photo','story.1.photo','story.2.photo'];
+const REF_GALLERY_PATHS=Array.from({length:11},(_,i)=>'gallery.'+i+'.src');
+const REF_PHOTO_CARDS=new Map();
+let builtinAudio=null,builtinPlayingUrl='';
 /* Save-preview gate state (declared at the very top: refresh() runs during
    module boot, long before the gate helpers further down). */
 let savedPreviewHash='';try{savedPreviewHash=sessionStorage.getItem('ew_preview_saved')||'';}catch{}
@@ -31,6 +50,13 @@ const selectedTheme=new URLSearchParams(location.search).get('template');if(Obje
 {const q=new URLSearchParams(location.search);
 if(selectedTheme&&Object.hasOwn(eventThemes,selectedTheme)&&!location.hash.includes('card=')&&!q.has('demo')&&!q.has('order_id')&&!q.has('payment')){
 try{const r=await fetch('demo-configs/'+encodeURIComponent(selectedTheme)+'.json');if(r.ok){const demo=normalizeConfig(await r.json());if(demo.theme===selectedTheme){let keepDraft=false;try{const raw=localStorage.getItem(STORAGE);if(raw){const draft=normalizeConfig(JSON.parse(raw));const ownWork=(draft.groomName||'').trim()!==''||(draft.brideName||'').trim()!=='';keepDraft=draft.theme===selectedTheme&&ownWork&&JSON.stringify(draft)!==JSON.stringify(demo)&&JSON.stringify(draft)!==JSON.stringify(normalizeConfig(DEFAULTS));}}catch{}if(!keepDraft)config=demo;}}}catch{}}}
+/* A brand-new invitation starts with the house Band Baaja theme already
+   chosen and music on — the customer can switch songs or remove it in one tap.
+   Anything carrying the visitor's own work (an opened invitation link, or a
+   saved draft with their own names in it) keeps exactly the song state it
+   already had: existing invitations are never given a song they did not pick. */
+{const freshStart=(()=>{if(location.hash.includes('card='))return false;try{const raw=localStorage.getItem(STORAGE);if(!raw)return true;const draft=normalizeConfig(JSON.parse(raw));const ownNames=(draft.groomName||'').trim()!==''||(draft.brideName||'').trim()!=='';return !(ownNames&&JSON.stringify(draft)===JSON.stringify(config));}catch{return true;}})();
+if(freshStart&&!config.audioUrl)config=normalizeConfig({...config,audioUrl:BUILTIN_SONGS[0].url,audioName:BUILTIN_SONGS[0].name,music:true});}
 $('#theme-options').innerHTML=Object.entries(eventThemes).map(([key,t],index)=>{const d=referenceDesignFor(key);return `<label class="theme-card ${d.premium?'theme-card-premium':''}" style="--card-ink:${d.palette[2]};--card-paper:${d.palette[0]};--card-gold:${d.palette[5]}"><input type="radio" name="theme" value="${key}"><span class="theme-art"><img src="${d.scene}" alt="${t.name} wedding artwork"><span class="theme-number">${String(index+1).padStart(2,'0')}</span></span><span class="theme-caption"><strong>${t.name}${d.premium?'<span class="premium-badge">PREMIUM</span>':''}</strong><small>${d.description}</small><span class="theme-capacity">${invitationCapacity.photos} photos · full invitation</span></span><i aria-hidden="true">✓</i></label>`}).join('');
 /* "Start with this design" on the homepage opens the studio on that design only; the other designs are not shown. */
 function lockDesign(){
@@ -43,7 +69,7 @@ if(!$('#change-design')){const a=document.createElement('a');a.id='change-design
 const fieldset=document.querySelector('.theme-fieldset');if(fieldset)fieldset.hidden=true;
 }
 lockDesign();
-function refreshPhotos(){if($('#song-status'))$('#song-status').textContent=config.audioName?(config.audioName+(config.audioUrl.startsWith('local-audio:')?' · Available on this device':' · Uploaded song selected')):'Upload your favourite wedding song.';for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const img=$('#'+key+'-preview');img.hidden=!config[key];if(config[key])img.src=config[key];else img.removeAttribute('src');}}
+function refreshPhotos(){if($('#song-status'))$('#song-status').textContent=config.audioName?(config.audioName+(config.audioUrl.startsWith('local-audio:')?' · Available on this device':isBuiltinSong(config.audioUrl)?' · Built-in song selected':' · Uploaded song selected')):'Upload your favourite wedding song.';for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const img=$('#'+key+'-preview');img.hidden=!config[key];if(config[key])img.src=config[key];else img.removeAttribute('src');}syncBuiltinSongs();syncRefPhotoCards();}
 const names=Object.keys(DEFAULTS).filter(k=>!['events','version','reference'].includes(k));
 /* The wizard fields and the invitation's own texts are mirrors of each
    other. fillForm shows the invitation's current words in the wizard;
@@ -104,7 +130,7 @@ async function openShare(){clearTimeout(updateTimer);refresh();if(!isOwner()&&!p
 async function publishShare(){let url=invitationUrl(config,location.href);if(!browserOnlySession()){try{const response=await fetch('/api/invitations'+(latestInvitationId?'?replace='+latestInvitationId:''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const result=await response.json();if(!response.ok)throw Error(result.error);latestInvitationId=result.id;url=new URL(result.url,location.href).href}catch(error){$('#save-status').textContent=error.message||'Using a complete invitation link.'}}$('#share-url').value=url;$('#share-open').href=url;$('#copy-status').textContent='';const warnings=[];if(config.audioUrl.startsWith('local-audio:'))warnings.push('The uploaded song is stored on this device. Sign in and upload it before sharing with guests on other devices.');if(!rsvpDestination(config))warnings.push('Add an RSVP contact if you want guests to send replies.');if(config.address===DEFAULTS.address)warnings.push('The sample venue address is still present. Add your actual address before sharing.');$('#share-alerts').textContent=warnings.join(' ');$('#share-workspace').hidden=false;$('#share-dialog').showModal();}
 const signOutBtn=$('#signout-top');if(signOutBtn){const su=window.EWAuth?.session();if(su&&!su.fake){signOutBtn.hidden=false;signOutBtn.addEventListener('click',()=>window.EWAuth.signOut());}}
 $('#share-top').addEventListener('click',primaryAction);$('#share-bottom').addEventListener('click',payAction);$('#share-close').addEventListener('click',()=>$('#share-dialog').close());$('#signin-close').addEventListener('click',()=>$('#signin-dialog').close());$('#copy-link').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#share-url').value);$('#copy-status').textContent='Invitation link copied.';}catch{$('#share-url').focus();$('#share-url').select();$('#copy-status').textContent='Select and copy the highlighted link manually.';}});
-$('#reset-draft').addEventListener('click',()=>$('#reset-dialog').showModal());$('#reset-cancel').addEventListener('click',()=>$('#reset-dialog').close());$('#reset-confirm').addEventListener('click',()=>{songUploadVersion++;const songInput=$('[data-song-upload]');songInput.disabled=false;songInput.value='';config=normalizeConfig(DEFAULTS);fillForm();refresh();preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin);$('#reset-dialog').close();});
+$('#reset-draft').addEventListener('click',()=>$('#reset-dialog').showModal());$('#reset-cancel').addEventListener('click',()=>$('#reset-dialog').close());$('#reset-confirm').addEventListener('click',()=>{songUploadVersion++;const songInput=$('[data-song-upload]');songInput.disabled=false;songInput.value='';config=normalizeConfig({...DEFAULTS,audioUrl:BUILTIN_SONGS[0].url,audioName:BUILTIN_SONGS[0].name});fillForm();refresh();preview.contentWindow?.postMessage({type:'wedcanvas:replay'},location.origin);$('#reset-dialog').close();});
 fillForm();refresh(false);
 
 // Cloud drafts are owned by the signed-in visitor. Legacy device drafts remain recoverable.
@@ -135,7 +161,94 @@ form.addEventListener('change',async event=>{
 form.addEventListener('click',event=>{const button=event.target.closest('[data-clear-image]');if(!button)return;const key=button.dataset.clearImage;form.elements[key].value='';$('#'+key+'-status').textContent='Photo removed from this invitation.';refresh();});
 
 form.addEventListener('change',async event=>{const input=event.target;if(!input.matches('[data-song-upload]')||!input.files?.[0])return;input.disabled=true;const uploadVersion=++songUploadVersion,file=input.files[0],status=$('#song-status');status.textContent='Uploading song…';try{await validateSong(file);if(uploadVersion!==songUploadVersion)return;let url;if(browserOnlySession())url=await prepareLocalSong(file);else{const data=new FormData();data.set('file',file);status.textContent='Uploading song… 0%';const result=await uploadWithProgress('/api/invitation-audio',data,pct=>{if(uploadVersion===songUploadVersion)status.textContent='Uploading song… '+pct+'%';},'Song upload failed.');url=result.url;}if(uploadVersion!==songUploadVersion)return;form.elements.audioUrl.value=url;form.elements.audioName.value=file.name;form.elements.music.checked=true;refresh();status.textContent=file.name+(url.startsWith('local-audio:')?' · Saved on this device. Sign in and upload to share across devices.':' · Guests will hear this song.');}catch(error){if(uploadVersion===songUploadVersion)status.textContent=error.message;}finally{if(uploadVersion===songUploadVersion){input.disabled=false;input.value='';}}});
-$('#remove-song').addEventListener('click',()=>{songUploadVersion++;const input=$('[data-song-upload]');input.disabled=false;input.value='';form.elements.audioUrl.value='';form.elements.audioName.value='';refresh();$('#song-status').textContent='Song removed. Upload a song to add invitation music.';});
+$('#remove-song').addEventListener('click',()=>{stopBuiltinPreview();songUploadVersion++;const input=$('[data-song-upload]');input.disabled=false;input.value='';form.elements.audioUrl.value='';form.elements.audioName.value='';refresh();$('#song-status').textContent='Song removed. Upload a song to add invitation music.';});
+/* Built-in song picker (step 4): hear each library song, then use one. Using
+   a song fills the same hidden audioUrl/audioName fields an upload fills and
+   flows through the same refresh/save path, so it saves, previews and
+   publishes exactly like an uploaded song. */
+function stopBuiltinPreview(){if(builtinAudio)builtinAudio.pause();builtinPlayingUrl='';syncBuiltinSongs();}
+function syncBuiltinSongs(){const host=$('#builtin-songs');if(!host)return;host.querySelectorAll('[data-builtin-row]').forEach(row=>{const url=row.dataset.builtinRow,selected=config.audioUrl===url;row.classList.toggle('is-selected',selected);const use=row.querySelector('[data-builtin-use]');if(use){use.disabled=selected;use.textContent=selected?'Selected ✓':'Use this song';}const play=row.querySelector('[data-builtin-play]');if(play){const playing=builtinPlayingUrl===url;play.textContent=playing?'❚❚':'▶';play.setAttribute('aria-label',(playing?'Pause ':'Play ')+row.dataset.builtinName);}});}
+{const host=$('#builtin-songs');
+if(host){
+ const head=document.createElement('p');head.className='builtin-head';const hb=document.createElement('b');hb.textContent='Built-in songs';const hs=document.createElement('small');hs.textContent='Free with every design — no upload needed. Bollywood-style original themes by Easy Wedding. Keep one, or replace it with your own song below.';head.append(hb,hs);host.append(head);
+ for(const song of BUILTIN_SONGS){
+  const row=document.createElement('div');row.className='builtin-row';row.dataset.builtinRow=song.url;row.dataset.builtinName=song.name;
+  const play=document.createElement('button');play.type='button';play.className='builtin-play';play.dataset.builtinPlay='';play.textContent='▶';play.setAttribute('aria-label','Play '+song.name);
+  play.addEventListener('click',()=>{if(builtinPlayingUrl===song.url){stopBuiltinPreview();return;}if(!builtinAudio){builtinAudio=new Audio();builtinAudio.preload='auto';builtinAudio.addEventListener('ended',stopBuiltinPreview);}builtinPlayingUrl=song.url;builtinAudio.src=song.url;const p=builtinAudio.play();syncBuiltinSongs();if(p&&p.catch)p.catch(()=>{builtinPlayingUrl='';syncBuiltinSongs();});});
+  const meta=document.createElement('span');meta.className='builtin-meta';const mb=document.createElement('b');mb.textContent=song.name;const ms=document.createElement('small');ms.textContent=song.desc+' · Original · Easy Wedding';meta.append(mb,ms);
+  const use=document.createElement('button');use.type='button';use.className='builtin-use';use.dataset.builtinUse='';use.textContent='Use this song';
+  use.addEventListener('click',()=>{stopBuiltinPreview();songUploadVersion++;const input=$('[data-song-upload]');if(input){input.disabled=false;input.value='';}form.elements.audioUrl.value=song.url;form.elements.audioName.value=song.name;form.elements.music.checked=true;refresh();$('#song-status').textContent=song.name+' · Built-in song selected. Guests will hear this song.';});
+  row.append(play,meta,use);host.append(row);
+ }
+ const or=document.createElement('p');or.className='builtin-or';or.textContent='— or upload your own song —';host.append(or);
+ syncBuiltinSongs();
+}}
+
+/* ---- Story & gallery photos (step 3) ----
+   Until now the three story-chapter photos and the eleven "Our Moments"
+   gallery photos could only be changed inside the collapsed advanced
+   editor, where paying customers never found them. The cards built here
+   sit in step 3 ("Photos") beside the couple photos — but they are NOT a
+   second copy of the data: an upload or removal writes the matching
+   [data-reference-path] input of the advanced editor and fires its change
+   event, so the advanced editor, the live preview, the on-device draft,
+   the account draft and Save all keep reading one single value per
+   photo. refreshPhotos() calls syncRefPhotoCards() after every change,
+   so edits made in the advanced editor reflect back here too. */
+function syncRefPhotoCards(){
+ for(const [path,card] of REF_PHOTO_CARDS){
+  const value=getReferencePath(config.reference,path)||'';
+  card.img.hidden=!value;if(value)card.img.src=value;else card.img.removeAttribute('src');
+  if(card.titleSpan){const title=(getReferencePath(config.reference,path.replace(/\.photo$/,'.title'))||'').trim();card.titleSpan.textContent=(title||card.fallbackTitle)+' — photo';}
+ }
+}
+const refUploadVersions=new Map();
+function setRefPhotoValue(path,value){
+ const input=form.querySelector('[data-reference-path="'+path+'"]');
+ if(input){input.value=value;input.dispatchEvent(new Event('change',{bubbles:true}));}
+ else refresh();
+}
+/* The same upload the advanced editor performs for these fields (same
+   endpoint, same compression, same on-device fallback), so a photo lands
+   identically whichever control the customer used. */
+async function uploadRefPhoto(path,fileInput){
+ const card=REF_PHOTO_CARDS.get(path),file=fileInput.files?.[0];if(!card||!file)return;
+ const version=(refUploadVersions.get(path)||0)+1;refUploadVersions.set(path,version);
+ fileInput.disabled=true;card.status.textContent='Uploading photograph…';
+ try{
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Choose a JPG, PNG or WebP photograph.');
+  let url;
+  if(browserOnlySession())url=await prepareLocalPhoto(file,50000);
+  else{try{const body=new FormData();body.set('file',await compressPhoto(file));const response=await fetch('/api/invitation-photos',{method:'POST',body});const result=await response.json().catch(()=>null);if(!response.ok||!result?.url)throw Error('upload-unavailable');url=result.url;}catch{url=await prepareLocalPhoto(file,50000);}}
+  if(refUploadVersions.get(path)!==version)return;
+  setRefPhotoValue(path,url);card.status.textContent='Photo uploaded. Preview updated.';
+ }catch(e){if(refUploadVersions.get(path)===version)card.status.textContent=/[<]|Unexpected token/.test(e?.message||'')?'Photo could not be added. Try a smaller JPG or PNG.':e.message;}
+ finally{fileInput.disabled=false;fileInput.value='';}
+}
+function removeRefPhoto(path){
+ const card=REF_PHOTO_CARDS.get(path);if(!card)return;
+ refUploadVersions.set(path,(refUploadVersions.get(path)||0)+1);
+ setRefPhotoValue(path,'');card.status.textContent='Photo removed.';
+}
+function buildRefPhotoCards(){
+ const make=(grid,path,labelText,fallbackTitle,helper)=>{
+  if(!grid||REF_PHOTO_CARDS.has(path))return;
+  const card=document.createElement('label');card.className='photo-upload';
+  const title=document.createElement('span');title.className='wz-label';title.textContent=labelText;
+  const img=document.createElement('img');img.alt=labelText;img.hidden=true;
+  const file=document.createElement('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';file.dataset.refUpload=path;file.setAttribute('aria-label','Upload '+labelText.toLowerCase());
+  const status=document.createElement('span');status.setAttribute('role','status');status.textContent=helper;
+  const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='Remove photo';
+  file.addEventListener('change',()=>uploadRefPhoto(path,file));
+  remove.addEventListener('click',()=>removeRefPhoto(path));
+  card.append(title,img,file,status,remove);grid.append(card);
+  REF_PHOTO_CARDS.set(path,{img,status,titleSpan:fallbackTitle?title:null,fallbackTitle});
+ };
+ REF_STORY_PATHS.forEach((path,i)=>make($('#story-photo-grid'),path,'Story chapter '+(i+1)+' — photo','Story chapter '+(i+1),'Shown beside this chapter in Our Story.'));
+ REF_GALLERY_PATHS.forEach((path,i)=>make($('#gallery-photo-grid'),path,'Gallery photo '+(i+1),null,'Shown in Our Moments on your invitation.'));
+ syncRefPhotoCards();
+}
+buildRefPhotoCards();
 
 // Design unlock payments. Prices and available gateways come from /api/pricing.
 const payState={design:null,pricing:null,addon:null,coupon:null,signup:null};
