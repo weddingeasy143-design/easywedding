@@ -75,8 +75,14 @@ const names=Object.keys(DEFAULTS).filter(k=>!['events','version','reference'].in
    other. fillForm shows the invitation's current words in the wizard;
    readForm lets whichever side the customer actually edited win. */
 let wizMirror={},advMirror={};
-const WIZ_PAIRS=[['groomDetails','groomParents'],['brideDetails','brideParents'],['groomAddress','groomAddress'],['brideAddress','brideAddress'],['message','invitationMessage'],['blessing','quote']];
-function fillForm(){for(const key of names){const field=form.elements.namedItem(key);if(!field)continue;if(key==='theme'){field.value=config.theme;}else if(key==='gallery')field.value=config.gallery.join('\n');else if(field.type==='checkbox')field.checked=config[key];else field.value=config[key]??'';}const rc=config.reference?.content;wizMirror={};if(rc)for(const [flat,ref] of WIZ_PAIRS){const v=rc[ref];if(typeof v==='string'&&v){const f=form.elements.namedItem(flat);if(f)f.value=v;wizMirror[flat]=v;}}const lh0=form.elements['lang-hi'];if(lh0)lh0.checked=(config.languages||[]).includes('hi');renderEvents();updateContact();refreshPhotos();renderReferenceEditor(form,config,()=>refresh());advMirror={};for(const [,ref] of WIZ_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advMirror[ref]=inp.value;}tuckAdvanced();}
+const WIZ_PAIRS=[['groomDetails','groomParents'],['brideDetails','brideParents'],['groomAddress','groomAddress'],['brideAddress','brideAddress'],['message','invitationMessage'],['blessing','quote'],['venueMapUrl','venueMapUrl']];
+/* The venue photograph gets the same one-value-everywhere treatment as the
+   text pairs, with its own mirror state: the step-3 "Venue photo" uploader
+   (the flat venuePhotoUrl field) and the fine-tune "Venue Photo" (reference
+   content.venuePhoto, the value the invitation is rendered from) are two
+   views of a single photograph — see the PHOTO_PAIRS loop in readForm. */
+const PHOTO_PAIRS=[['venuePhotoUrl','venuePhoto']];let wizPhotoMirror={},advPhotoMirror={};
+function fillForm(){for(const key of names){const field=form.elements.namedItem(key);if(!field)continue;if(key==='theme'){field.value=config.theme;}else if(key==='gallery')field.value=config.gallery.join('\n');else if(field.type==='checkbox')field.checked=config[key];else field.value=config[key]??'';}const rc=config.reference?.content;wizMirror={};const vmf=form.elements.namedItem('venueMapUrl');if(vmf)vmf.value=rc?.venueMapUrl||'';if(rc)for(const [flat,ref] of WIZ_PAIRS){const v=rc[ref];if(typeof v==='string'&&v){const f=form.elements.namedItem(flat);if(f)f.value=v;wizMirror[flat]=v;}}wizPhotoMirror={};if(rc)for(const [flat,ref] of PHOTO_PAIRS){const v=rc[ref],f=form.elements.namedItem(flat);if(f&&typeof v==='string'&&v&&!config[flat])f.value=v;wizPhotoMirror[flat]=f?f.value:(config[flat]??'');}const lh0=form.elements['lang-hi'];if(lh0)lh0.checked=(config.languages||[]).includes('hi');renderEvents();updateContact();refreshPhotos();renderReferenceEditor(form,config,()=>refresh());advMirror={};for(const [,ref] of WIZ_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advMirror[ref]=inp.value;}for(const [,ref] of PHOTO_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advPhotoMirror[ref]=inp.value;}tuckAdvanced();}
 /* The 150+ fine-tuning fields stay out of the way: one closed "Advanced" section at the very end. */
 function tuckAdvanced(){const c=document.getElementById('reference-editor');if(!c)return;if(!c.closest('.advanced-wrap')){const d=document.createElement('details');d.className='editor-section advanced-wrap';d.innerHTML='<summary>Fine-tune every section (advanced)<small>Story, moments, UPI QR codes and every heading</small></summary>';const inner=document.createElement('div');inner.className='section-fields';c.before(d);inner.append(c);d.append(inner);}placeFunctions();}
 /* Step 6 "The functions": the invitation's own festivities (name, date & time, dress code, photo) move out of the advanced section.
@@ -95,6 +101,23 @@ for(const [flat,ref] of WIZ_PAIRS){const fv=data[flat],av=data.reference.content
  if(typeof winner==='string'){data.reference.content[ref]=winner;data[flat]=winner;
   const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp&&inp.value!==winner)inp.value=winner;
   wizMirror[flat]=winner;advMirror[ref]=winner;}}
+/* One venue photograph, everywhere — the photo twin of the text pairs
+   above. Whichever side the customer actually changed (the step-3
+   uploader or the fine-tune "Venue Photo") wins, and the winner is
+   written into BOTH fields, so the saved and published invitation
+   carries the customer's venue photo in reference content.venuePhoto
+   itself — not only in the flat field one render path happens to
+   consult. Removing the photo on either side clears both: an explicit
+   empty stays empty and never falls back to a sample photograph. The
+   fine-tune input gets a change event so its thumbnail follows. */
+for(const [flat,ref] of PHOTO_PAIRS){const fv=data[flat],av=data.reference.content[ref];
+ const wizChanged=typeof fv==='string'&&fv!==wizPhotoMirror[flat],advChanged=typeof av==='string'&&av!==advPhotoMirror[ref];
+ if(!wizChanged&&!advChanged)continue;
+ const winner=wizChanged?fv:av;
+ data.reference.content[ref]=winner;data[flat]=winner;
+ wizPhotoMirror[flat]=winner;advPhotoMirror[ref]=winner;
+ const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp&&inp.value!==winner){inp.value=winner;inp.dispatchEvent(new Event('change',{bubbles:true}));}
+ const wf=form.elements.namedItem(flat);if(wf&&wf.value!==winner)wf.value=winner;}
 /* The gallery's first two captions are the couple themselves: when the
    couple rename themselves, their captions follow. */
 {const prevG=(config.groomName||'').trim().split(' ')[0],prevB=(config.brideName||'').trim().split(' ')[0],newG=(data.groomName||'').trim().split(' ')[0],newB=(data.brideName||'').trim().split(' ')[0],gal=data.reference.gallery;if(Array.isArray(gal)){if(prevG&&newG&&prevG!==newG&&gal[0]&&gal[0].caption===prevG)gal[0].caption=newG;if(prevB&&newB&&prevB!==newB&&gal[1]&&gal[1].caption===prevB)gal[1].caption=newB;}}
