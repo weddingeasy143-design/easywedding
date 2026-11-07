@@ -347,7 +347,7 @@ export default function RSVPForm() {
                 .filter((e) => e.enabled)
                 .sort((a, b) => a.sortOrder - b.sortOrder)
                 .map((event) => {
-                  const theme = THEME_STYLES[event.theme];
+                  const theme = THEME_STYLES[event.theme] ?? THEME_STYLES.wedding;
                   return (
                     <li key={event.id} className="flex items-start gap-3">
                       <span

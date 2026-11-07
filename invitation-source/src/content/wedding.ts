@@ -15,7 +15,7 @@ export interface WeddingEvent {
   address: string;
   description: string;
   dressCode?: string;
-  theme: "haldi" | "mehendi" | "wedding" | "reception";
+  theme: "haldi" | "mehendi" | "sangeet" | "wedding" | "reception";
   image: string;
   imageFit?: "cover" | "contain";
   /** Optional real photograph shown as a band on the event card. */
@@ -431,6 +431,11 @@ export const THEME_STYLES: Record<
     gradient: "from-emerald-300 via-green-200 to-emerald-100",
     accent: "#2E7D4F",
     soft: "#e3f4ea",
+  },
+  sangeet: {
+    gradient: "from-violet-300 via-purple-200 to-fuchsia-100",
+    accent: "#7B2D8B",
+    soft: "#f6eaf9",
   },
   wedding: {
     gradient: "from-rose-300 via-red-200 to-rose-100",

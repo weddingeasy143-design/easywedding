@@ -31,7 +31,7 @@ function EventCard({
   event: WeddingEvent;
   onDetails: (e: WeddingEvent) => void;
 }) {
-  const theme = THEME_STYLES[event.theme];
+  const theme = THEME_STYLES[event.theme] ?? THEME_STYLES.wedding;
   /* ram-mandir only (owner's order, 2026-11-05): its event cards carry a
      real photograph (events[].photo), so the illustrated motif band is
      not rendered — the photo is the card's visual. Every other design

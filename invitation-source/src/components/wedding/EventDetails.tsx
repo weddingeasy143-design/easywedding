@@ -37,7 +37,7 @@ export default function EventDetails({
     };
   }, [event, onClose]);
 
-  const theme = event ? THEME_STYLES[event.theme] : null;
+  const theme = event ? (THEME_STYLES[event.theme] ?? THEME_STYLES.wedding) : null;
 
   // "Tuesday, 24 November 2026" -> "24 November 2026 (Tuesday)"
   const prettyDate = event

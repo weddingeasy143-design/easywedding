@@ -30,6 +30,11 @@
 // included — settles below the names and never touches them).
 // After the names, the guest's own scroll is the only other motion:
 // no sway, no sparkles, no petals, no tap beats.
+// Owner's order (2026-11-07): no tap-prompt text anywhere in this
+// opening, and a CLICK on the temple scene does what the first scroll
+// did — it advances to the cover card screen (the same scroll, fired
+// by the click instead of the wheel/touch). Scrolling stays available
+// and unchanged; the click is an addition, not a new sequence.
 
 import { useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -235,6 +240,14 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
   const onRevealRef = useRef(onReveal);
   onRevealRef.current = onReveal;
 
+  // A click on the temple scene advances to the cover card — exactly
+  // the move the guest's first scroll makes (the card scrolls into
+  // view inside this Reveal's own scroll flow, and the dwell handover
+  // below takes it from there).
+  const advanceToCard = useCallback(() => {
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Hand over once the guest has scrolled the cover card into view
   // and dwelled on it briefly. Scrolling back up cancels the handover.
   useEffect(() => {
@@ -279,13 +292,19 @@ export function Reveal({ onReveal }: { onReveal: () => void }) {
         scrollbarWidth: "none",
       }}
       role="region"
-      aria-label="Ram Mandir invitation — scroll to begin"
+      aria-label="Ram Mandir invitation"
     >
       {/* ── SCREEN 1 — the temple scene alone, edge-to-edge ── */}
       <div
         className="relative w-full overflow-hidden"
-        style={{ height: "100%", scrollSnapAlign: "start" }}
+        style={{ height: "100%", scrollSnapAlign: "start", cursor: "pointer" }}
+        onClick={advanceToCard}
       >
+        {/* keyboard route to the same advance the click/scroll makes —
+            focusable but never visible (no text prompt on this design) */}
+        <button type="button" className="sr-only" onClick={advanceToCard}>
+          View the invitation cover
+        </button>
         {/* the temple DESCENDS into place — it starts raised, slightly
             farther away and tilted in 3D, then comes down and settles
             (ease-out, 1.5s). The settled artwork is composed lower in

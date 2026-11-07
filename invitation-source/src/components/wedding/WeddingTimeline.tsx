@@ -11,6 +11,7 @@ import {
   CheersIcon,
   HennaIcon,
   LampIcon,
+  MusicIcon,
   RingsIcon,
 } from "./icons";
 import Reveal from "./Reveal";
@@ -20,6 +21,7 @@ import FloralCorners from "./decor/FloralCorners";
 const EVENT_ICONS: Record<WeddingEvent["theme"], (p: { size?: number; style?: React.CSSProperties; className?: string }) => React.ReactElement> = {
   haldi: LampIcon,
   mehendi: HennaIcon,
+  sangeet: MusicIcon,
   wedding: RingsIcon,
   reception: CheersIcon,
 };
@@ -56,8 +58,8 @@ export default function WeddingTimeline() {
             />
             <ol className={`grid gap-6 sm:grid-cols-2 lg:gap-4 ${events.length >= 4 ? "lg:grid-cols-4" : events.length === 3 ? "lg:grid-cols-3" : events.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} ${events.length < 4 ? "lg:max-w-4xl lg:mx-auto" : ""}`}>
               {events.map((event) => {
-                const theme = THEME_STYLES[event.theme];
-                const Icon = EVENT_ICONS[event.theme];
+                const theme = THEME_STYLES[event.theme] ?? THEME_STYLES.wedding;
+                const Icon = EVENT_ICONS[event.theme] ?? EVENT_ICONS.wedding;
                 return (
                   <li
                     key={event.id}

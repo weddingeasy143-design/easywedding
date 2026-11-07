@@ -567,7 +567,7 @@ export default function OpeningSequence({ onOpen }: { onOpen: () => void }) {
         >
           {beat === 0 && (act ? <act.Reveal onReveal={() => setBeat(showGanesh?1:2)} /> : <SurpriseAwaits onReveal={() => setBeat(showGanesh?1:2)} />)}
           {beat === 1 && <BeatGanesh onReady={() => setGaneshReady(true)} />}
-          {beat === 2 && (act ? <act.Curtain onDone={() => setBeat(3)} autoPlay /> : <BeatCurtain onDone={() => setBeat(3)} autoPlay />)}
+          {beat === 2 && (act?.Curtain ? <act.Curtain onDone={() => setBeat(3)} autoPlay /> : <BeatCurtain onDone={() => setBeat(3)} autoPlay />)}
           {beat === 3 && <RoyalOpening onOpen={onOpen} />}
         </motion.div>
       </AnimatePresence>

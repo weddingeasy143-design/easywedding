@@ -102,6 +102,16 @@ const nameLine: Variants = {
 export default function RoyalOpening({ onOpen }: { onOpen: () => void }) {
   const reduce = useMotionPreference() ?? false;
   const guestName = useGuestName();
+  /* Owner's order (2026-11-07): the two temple designs — Mandir Darwaza
+     and Ram Mandir — carry NO "Tap to begin" prompt anywhere in their
+     openings; the artwork and the Open Invitation button speak for
+     themselves. Every other design keeps the caption exactly as is. */
+  const ewDesignId =
+    (window as any).__easyWedding?.design?.id ||
+    (window as any).__easyWedding?.config?.theme ||
+    "";
+  const noTapPrompt =
+    ewDesignId === "mandir-darwaza" || ewDesignId === "ram-mandir";
 
 
   // Preload door-reveal images so the gate animation never janks on first paint.
@@ -309,14 +319,16 @@ export default function RoyalOpening({ onOpen }: { onOpen: () => void }) {
               </span>
             </motion.div>
 
-            <motion.p
-              variants={line}
-              className="mt-3 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.22em] text-[#5e2f21]/60"
-            >
-              <SparkleIcon size={12} className="text-[#b8860b]" />
-              {SITE_TEXTS.tapToBegin}
-              <SparkleIcon size={12} className="text-[#b8860b]" />
-            </motion.p>
+            {!noTapPrompt && (
+              <motion.p
+                variants={line}
+                className="mt-3 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.22em] text-[#5e2f21]/60"
+              >
+                <SparkleIcon size={12} className="text-[#b8860b]" />
+                {SITE_TEXTS.tapToBegin}
+                <SparkleIcon size={12} className="text-[#b8860b]" />
+              </motion.p>
+            )}
             </motion.div>
           </div>
         </RoyalFrame>
