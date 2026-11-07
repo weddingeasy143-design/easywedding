@@ -1,5 +1,6 @@
 /* Easy Wedding (easywedding.in) — original design & code © 2026 Chandan Kumar Mahato. All rights reserved. Origin fingerprint: EW-ORIGIN-2026-369eafc22a98. Unauthorised copying is prohibited. */
 import {syncReferenceWedding,validReferenceDate,getReferencePath} from './reference-config.js';
+import {referenceDefaults as STUDIO_REFERENCE_DEFAULTS} from './reference-fields.js';
 import {renderReferenceEditor,readReferenceEditor} from './reference-editor.js';
 import {validateSong,prepareLocalSong} from './audio-upload.js';
 import {prepareLocalPhoto,compressPhoto,browserOnlySession} from './photo-upload.js';
@@ -69,7 +70,7 @@ if(!$('#change-design')){const a=document.createElement('a');a.id='change-design
 const fieldset=document.querySelector('.theme-fieldset');if(fieldset)fieldset.hidden=true;
 }
 lockDesign();
-function refreshPhotos(){if($('#song-status'))$('#song-status').textContent=config.audioName?(config.audioName+(config.audioUrl.startsWith('local-audio:')?' · Available on this device':isBuiltinSong(config.audioUrl)?' · Built-in song selected':' · Uploaded song selected')):'Upload your favourite wedding song.';for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const img=$('#'+key+'-preview');img.hidden=!config[key];if(config[key])img.src=config[key];else img.removeAttribute('src');}syncBuiltinSongs();syncRefPhotoCards();}
+function refreshPhotos(){if($('#song-status'))$('#song-status').textContent=config.audioName?(config.audioName+(config.audioUrl.startsWith('local-audio:')?' · Available on this device':isBuiltinSong(config.audioUrl)?' · Built-in song selected':' · Uploaded song selected')):'Upload your favourite wedding song.';for(const key of ['photoUrl','groomPhoto','bridePhoto','venuePhotoUrl']){const img=$('#'+key+'-preview');const refKey={photoUrl:'heroPhoto',groomPhoto:'groomPhoto',bridePhoto:'bridePhoto',venuePhotoUrl:'venuePhoto'}[key];const shown=config[key]||config.reference?.content?.[refKey]||'';img.hidden=!shown;if(shown)img.src=shown;else img.removeAttribute('src');}syncBuiltinSongs();syncRefPhotoCards();}
 const names=Object.keys(DEFAULTS).filter(k=>!['events','version','reference'].includes(k));
 /* The wizard fields and the invitation's own texts are mirrors of each
    other. fillForm shows the invitation's current words in the wizard;
@@ -81,8 +82,11 @@ const WIZ_PAIRS=[['groomDetails','groomParents'],['brideDetails','brideParents']
    (the flat venuePhotoUrl field) and the fine-tune "Venue Photo" (reference
    content.venuePhoto, the value the invitation is rendered from) are two
    views of a single photograph — see the PHOTO_PAIRS loop in readForm. */
-const PHOTO_PAIRS=[['venuePhotoUrl','venuePhoto']];let wizPhotoMirror={},advPhotoMirror={};
-function fillForm(){for(const key of names){const field=form.elements.namedItem(key);if(!field)continue;if(key==='theme'){field.value=config.theme;}else if(key==='gallery')field.value=config.gallery.join('\n');else if(field.type==='checkbox')field.checked=config[key];else field.value=config[key]??'';}const rc=config.reference?.content;wizMirror={};const vmf=form.elements.namedItem('venueMapUrl');if(vmf)vmf.value=rc?.venueMapUrl||'';if(rc)for(const [flat,ref] of WIZ_PAIRS){const v=rc[ref];if(typeof v==='string'&&v){const f=form.elements.namedItem(flat);if(f)f.value=v;wizMirror[flat]=v;}}wizPhotoMirror={};if(rc)for(const [flat,ref] of PHOTO_PAIRS){const v=rc[ref],f=form.elements.namedItem(flat);if(f&&typeof v==='string'&&v&&!config[flat])f.value=v;wizPhotoMirror[flat]=f?f.value:(config[flat]??'');}const lh0=form.elements['lang-hi'];if(lh0)lh0.checked=(config.languages||[]).includes('hi');renderEvents();updateContact();refreshPhotos();renderReferenceEditor(form,config,()=>refresh());advMirror={};for(const [,ref] of WIZ_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advMirror[ref]=inp.value;}for(const [,ref] of PHOTO_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advPhotoMirror[ref]=inp.value;}tuckAdvanced();}
+const PHOTO_PAIRS=[['venuePhotoUrl','venuePhoto'],['groomPhoto','groomPhoto'],['bridePhoto','bridePhoto']];let wizPhotoMirror={},advPhotoMirror={};
+const INVITATION_PHOTO_DEFAULT=STUDIO_REFERENCE_DEFAULTS?.content?.invitationPhoto||'';let heroWizMirror='',heroAdvMirror='';
+function fillForm(){/* A saved invitation can carry the customer's photographs only in the flat wizard fields: the invitation has always rendered those OVER the design's reference photographs, while the fine-tune controls initialise from the reference alone — so on an older save the controls showed the design's demo photograph while the invitation showed the customer's own. Fold the rendered (flat) winners into the reference copy once, here at load, so every control starts from the photograph the invitation actually shows. The render itself is unchanged (the flat fields still win) and nothing is invented: a side is folded only when it actually carries a photo. */
+ const frc=config.reference?.content;if(frc){if(config.venuePhotoUrl)frc.venuePhoto=config.venuePhotoUrl;if(config.groomPhoto)frc.groomPhoto=config.groomPhoto;if(config.bridePhoto)frc.bridePhoto=config.bridePhoto;if(config.photoUrl)frc.heroPhoto=config.photoUrl;}
+ for(const key of names){const field=form.elements.namedItem(key);if(!field)continue;if(key==='theme'){field.value=config.theme;}else if(key==='gallery')field.value=config.gallery.join('\n');else if(field.type==='checkbox')field.checked=config[key];else field.value=config[key]??'';}const rc=config.reference?.content;wizMirror={};const vmf=form.elements.namedItem('venueMapUrl');if(vmf)vmf.value=rc?.venueMapUrl||'';if(rc)for(const [flat,ref] of WIZ_PAIRS){const v=rc[ref];if(typeof v==='string'&&v){const f=form.elements.namedItem(flat);if(f)f.value=v;wizMirror[flat]=v;}}wizPhotoMirror={};if(rc)for(const [flat,ref] of PHOTO_PAIRS){const v=rc[ref],f=form.elements.namedItem(flat);if(f&&typeof v==='string'&&v&&!config[flat])f.value=v;wizPhotoMirror[flat]=f?f.value:(config[flat]??'');}const lh0=form.elements['lang-hi'];if(lh0)lh0.checked=(config.languages||[]).includes('hi');renderEvents();updateContact();refreshPhotos();renderReferenceEditor(form,config,()=>refresh());advMirror={};for(const [,ref] of WIZ_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advMirror[ref]=inp.value;}for(const [,ref] of PHOTO_PAIRS){const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp)advPhotoMirror[ref]=inp.value;}const hinp=form.querySelector('[data-reference-path="content.heroPhoto"]');heroWizMirror=config.photoUrl??'';heroAdvMirror=hinp?hinp.value:(config.reference?.content?.heroPhoto??'');tuckAdvanced();}
 /* The 150+ fine-tuning fields stay out of the way: one closed "Advanced" section at the very end. */
 function tuckAdvanced(){const c=document.getElementById('reference-editor');if(!c)return;if(!c.closest('.advanced-wrap')){const d=document.createElement('details');d.className='editor-section advanced-wrap';d.innerHTML='<summary>Fine-tune every section (advanced)<small>Story, moments, UPI QR codes and every heading</small></summary>';const inner=document.createElement('div');inner.className='section-fields';c.before(d);inner.append(c);d.append(inner);}placeFunctions();}
 /* Step 6 "The functions": the invitation's own festivities (name, date & time, dress code, photo) move out of the advanced section.
@@ -118,6 +122,26 @@ for(const [flat,ref] of PHOTO_PAIRS){const fv=data[flat],av=data.reference.conte
  wizPhotoMirror[flat]=winner;advPhotoMirror[ref]=winner;
  const inp=form.querySelector('[data-reference-path="content.'+ref+'"]');if(inp&&inp.value!==winner){inp.value=winner;inp.dispatchEvent(new Event('change',{bubbles:true}));}
  const wf=form.elements.namedItem(flat);if(wf&&wf.value!==winner)wf.value=winner;}
+/* The hero photograph and the couple photograph are one photograph with
+   two controls: the step-3 couple uploader writes the flat photoUrl,
+   which the invitation renders AS its hero, and the fine-tune "Hero
+   Photo" writes reference content.heroPhoto, which used to be silently
+   overridden by that same flat field (the edit never appeared). Same
+   rule as the pairs above — whichever side changed wins and both fields
+   carry the winner. One care: while the Invitation Photo still holds the
+   design's own default, the invitation page renders the couple photo
+   there by design, so when a fine-tune hero edit becomes the couple
+   photo, the invitation slot first keeps the photograph it was already
+   showing; once the customer sets their own invitation photo it is
+   entirely theirs. */
+{const hv=data.reference.content.heroPhoto,pv=data.photoUrl;
+ const wizChanged=typeof pv==='string'&&pv!==heroWizMirror,advChanged=typeof hv==='string'&&hv!==heroAdvMirror;
+ if(advChanged&&!wizChanged){
+  const cur=config.reference?.content?.invitationPhoto;
+  if(pv&&(!cur||cur===INVITATION_PHOTO_DEFAULT)&&data.reference.content.invitationPhoto===cur){data.reference.content.invitationPhoto=pv;const iinp=form.querySelector('[data-reference-path="content.invitationPhoto"]');if(iinp&&iinp.value!==pv){iinp.value=pv;iinp.dispatchEvent(new Event('change',{bubbles:true}));}}
+  data.photoUrl=hv;const wf=form.elements.namedItem('photoUrl');if(wf&&wf.value!==hv)wf.value=hv;
+ }else if(wizChanged){data.reference.content.heroPhoto=pv;const hinp2=form.querySelector('[data-reference-path="content.heroPhoto"]');if(hinp2&&hinp2.value!==pv){hinp2.value=pv;hinp2.dispatchEvent(new Event('change',{bubbles:true}));}}
+ heroWizMirror=data.photoUrl;heroAdvMirror=data.reference.content.heroPhoto;}
 /* The gallery's first two captions are the couple themselves: when the
    couple rename themselves, their captions follow. */
 {const prevG=(config.groomName||'').trim().split(' ')[0],prevB=(config.brideName||'').trim().split(' ')[0],newG=(data.groomName||'').trim().split(' ')[0],newB=(data.brideName||'').trim().split(' ')[0],gal=data.reference.gallery;if(Array.isArray(gal)){if(prevG&&newG&&prevG!==newG&&gal[0]&&gal[0].caption===prevG)gal[0].caption=newG;if(prevB&&newB&&prevB!==newB&&gal[1]&&gal[1].caption===prevB)gal[1].caption=newB;}}
