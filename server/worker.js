@@ -178,6 +178,99 @@ function deviceOf(ua){return /iPad|Tablet|SM-T|Nexus 7/i.test(ua)?'tablet':/Mobi
 const istNow=()=>new Date(Date.now()+19800000);
 const istDay=(back=0)=>new Date(Date.now()+19800000-back*86400000).toISOString().slice(0,10);
 const istStart=day=>new Date(day+'T00:00:00+05:30').toISOString();
+/* ---- Visitor Intelligence: first-party anonymous visitor analytics ----
+   Hardening rules (loophole sweep, 2026-11-07):
+   - The vid is a server-issued UUID. A client-supplied vid is only ever
+     READ as a lookup key; an unknown one is ignored, never adopted.
+   - The fingerprint may re-link ONLY a request with no known vid, and only
+     when it matches exactly one stored visitor. Two known vids never merge.
+   - Scores come from event EXISTENCE (30-day window) plus the returning
+     bonus — clicking 100 times scores the same as clicking once — and the
+     number of stored events per visitor/type/day is capped, so floods and
+     click-spam cannot manufacture hot leads. Bots never score.
+   - The raw IP is never stored or logged: only a salted SHA-256 hash. */
+const VI_TYPES=['pageview','preview','whatsapp','studio','pricing'];
+const VI_POINTS={preview:15,studio:30,pricing:25,whatsapp:40};
+const VI_TYPE_CAPS={pageview:80,preview:25,whatsapp:25,studio:25,pricing:25};
+const VI_DC_ASNS=new Set([14061,16509,14618,8075,24940,16276,9009,26496,47583,132203,396986,63949,215238,210644]);
+const VI_BOT_UA=/bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|monitor|curl|wget|python|node-fetch|axios|go-http|scrapy|semrush|ahrefs|mj12bot|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|dataforseo|yandex|duckduckbot|baiduspider|sogou|exabot/i;
+const VI_TEMPLATES=new Set(CATALOG_DESIGNS.map(d=>d.id));
+const VI_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let viReady=false,viSaltCache='';
+async function ensureVi(env){
+ if(viReady)return;viReady=true;const d=db(env);
+ await d.prepare("CREATE TABLE IF NOT EXISTS vi_visitors(vid TEXT PRIMARY KEY,fp TEXT,ip_hash TEXT,first_seen TEXT NOT NULL,last_seen TEXT NOT NULL,visits INTEGER NOT NULL DEFAULT 1,last_session TEXT,city TEXT,region TEXT,country TEXT,asn INTEGER,network TEXT,device TEXT,browser TEXT,os TEXT,screen TEXT,timezone TEXT,language TEXT,first_source TEXT NOT NULL DEFAULT 'direct',last_source TEXT NOT NULL DEFAULT 'direct',first_touch TEXT,last_touch TEXT,interest TEXT,score INTEGER NOT NULL DEFAULT 0,is_bot INTEGER NOT NULL DEFAULT 0)").run().catch(()=>{});
+ await d.prepare("CREATE TABLE IF NOT EXISTS vi_events(id INTEGER PRIMARY KEY AUTOINCREMENT,vid TEXT NOT NULL,type TEXT NOT NULL,path TEXT,template TEXT,detail TEXT,ts TEXT NOT NULL,day TEXT NOT NULL)").run().catch(()=>{});
+ for(const ix of ['CREATE INDEX IF NOT EXISTS vi_visitors_last_seen_idx ON vi_visitors(last_seen)','CREATE INDEX IF NOT EXISTS vi_visitors_score_idx ON vi_visitors(score)','CREATE INDEX IF NOT EXISTS vi_visitors_fp_idx ON vi_visitors(fp)','CREATE INDEX IF NOT EXISTS vi_events_vid_idx ON vi_events(vid, ts)','CREATE INDEX IF NOT EXISTS vi_events_day_idx ON vi_events(day, type)','CREATE INDEX IF NOT EXISTS vi_events_template_idx ON vi_events(template)'])
+  await d.prepare(ix).run().catch(()=>{});
+ await d.prepare('ALTER TABLE orders ADD COLUMN visitor_id TEXT').run().catch(()=>{});
+}
+async function viSalt(env){
+ if(viSaltCache)return viSaltCache;
+ try{
+  const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='vi_salt'").first();
+  if(row&&row.value){viSaltCache=String(row.value);return viSaltCache;}
+  const s=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  await db(env).prepare("INSERT OR IGNORE INTO site_settings(key,value) VALUES('vi_salt',?)").bind(s).run();
+  const again=await db(env).prepare("SELECT value FROM site_settings WHERE key='vi_salt'").first();
+  viSaltCache=String((again&&again.value)||s);
+ }catch{viSaltCache='ew-vi-fallback';}
+ return viSaltCache;
+}
+function viCookieVid(request){const m=/(?:^|;\s*)ew_vid=([0-9a-f-]{36})/i.exec(request.headers.get('Cookie')||'');const v=m?m[1].toLowerCase():'';return VI_UUID.test(v)?v:'';}
+function viUaParse(ua){
+ let browser='Other';
+ if(/Edg\//.test(ua))browser='Edge';else if(/OPR\/|Opera/.test(ua))browser='Opera';else if(/SamsungBrowser\//.test(ua))browser='Samsung Internet';else if(/Firefox\//.test(ua))browser='Firefox';else if(/Chrome\//.test(ua))browser='Chrome';else if(/Safari\//.test(ua)&&/Version\//.test(ua))browser='Safari';
+ let os='Other';
+ if(/Windows NT/.test(ua))os='Windows';else if(/Android/.test(ua))os='Android';else if(/iPhone|iPad|iPod/.test(ua))os='iOS';else if(/Mac OS X/.test(ua))os='macOS';else if(/Linux/.test(ua))os='Linux';
+ return{browser,os};
+}
+function viTouchSource(touch,referrer,ownHost){
+ /* One touch's source from campaign params first, then the referrer host.
+    '' means "no information" (direct visit or internal navigation). */
+ if(touch&&typeof touch==='object'){
+  const src=String(touch.utm_source||'').toLowerCase().slice(0,40);
+  if(src)return UTM_SOURCES[src]||'campaign';
+  if(touch.fbclid)return 'facebook';
+  if(touch.gclid)return 'google';
+ }
+ if(referrer){
+  try{const h=new URL(referrer).hostname.toLowerCase().replace(/^www\./,'');if(h&&h!==ownHost){const c=classifyHost(h);return c==='referral'?'other':c;}}catch{}
+ }
+ return '';
+}
+async function viRescore(env,vid){
+ const d=db(env);
+ const v=await d.prepare('SELECT visits,is_bot FROM vi_visitors WHERE vid=?').bind(vid).first();if(!v)return;
+ let score=0;
+ if(!v.is_bot){
+  if(Number(v.visits)>=2)score+=20;
+  const since=new Date(Date.now()-30*86400000).toISOString();
+  const rows=await d.prepare('SELECT DISTINCT type FROM vi_events WHERE vid=? AND ts>=?').bind(vid,since).all();
+  for(const r of rows.results||[])score+=VI_POINTS[r.type]||0;
+  score=Math.min(100,score);
+ }
+ await d.prepare('UPDATE vi_visitors SET score=? WHERE vid=?').bind(score,vid).run();
+}
+async function viBossData(env){
+ await ensureVi(env);const d=db(env);
+ const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
+ const all=async(sql,...b)=>(await d.prepare(sql).bind(...b).all()).results||[];
+ const today=istDay(),w7=istStart(istDay(6)),w7day=istDay(6);
+ const [t,s7,ret,hot,bots]=[
+  (await one("SELECT COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND date(last_seen,'+330 minutes')=?",today)).n,
+  (await one('SELECT COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=?',w7)).n,
+  (await one('SELECT COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? AND visits>=2',w7)).n,
+  (await one('SELECT COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? AND score>=60',w7)).n,
+  (await one('SELECT COUNT(*) AS n FROM vi_visitors WHERE is_bot=1 AND last_seen>=?',w7)).n];
+ return{today:t,week:s7,returning:ret,returningPct:s7?Math.round(ret/s7*100):0,hot,bots,
+  cities:await all("SELECT city,COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? AND city IS NOT NULL AND city<>'' GROUP BY city ORDER BY n DESC LIMIT 10",w7),
+  networks:await all("SELECT network,COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? AND network IS NOT NULL AND network<>'' GROUP BY network ORDER BY n DESC LIMIT 10",w7),
+  devices:await all('SELECT device,COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? GROUP BY device ORDER BY n DESC',w7),
+  sources:await all('SELECT first_source AS s,COUNT(*) AS n FROM vi_visitors WHERE is_bot=0 AND last_seen>=? GROUP BY first_source ORDER BY n DESC',w7),
+  templates:await all("SELECT template,COUNT(*) AS n FROM vi_events WHERE day>=? AND type='preview' AND template IS NOT NULL GROUP BY template ORDER BY n DESC LIMIT 10",w7day),
+  hotList:await all("SELECT v.vid,v.city,v.network,v.device,v.visits,v.last_seen,v.interest,v.first_source,v.last_source,v.score,(SELECT e.template FROM vi_events e WHERE e.vid=v.vid AND e.type='preview' GROUP BY e.template ORDER BY COUNT(*) DESC LIMIT 1) AS top_template FROM vi_visitors v WHERE v.is_bot=0 AND v.score>0 ORDER BY v.score DESC,v.last_seen DESC LIMIT 25")};
+}
 async function couponFor(env,code,amount){
  const c=String(code||'').trim().toUpperCase().slice(0,30);if(!c)return null;
  const row=await db(env).prepare('SELECT * FROM coupons WHERE code=?').bind(c).first();
@@ -410,6 +503,105 @@ export default {async fetch(request,env){
   await db(env).prepare('INSERT INTO visits(ts,day,hour,path,source,ref_host,device,country,visitor,session_start) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(new Date().toISOString(),ist.toISOString().slice(0,10),ist.getUTCHours(),p,source,start&&refHost&&refHost!==own?refHost.slice(0,80):null,deviceOf(ua),(request.cf&&request.cf.country)||null,v,start).run();
   return new Response(null,{status:204});
  }
+ /* Visitor Intelligence beacon. Public by necessity (anonymous visitors),
+    so it is defended like an open door: same-origin only (the site's CSRF
+    pattern), a strict event whitelist, tight payload + field caps, per-IP
+    and per-visitor rate limits, and identity rules that never let a caller
+    adopt or merge someone else's visitor id. Anything suspicious is
+    answered with a silent 204 and writes nothing. */
+ if(path==='/api/vi'&&request.method==='POST'){
+  const origin=request.headers.get('Origin');
+  let originOk=false;
+  if(origin){try{originOk=new URL(origin).origin===url.origin;}catch{}}
+  else{const ref=request.headers.get('Referer');if(ref){try{originOk=new URL(ref).host===url.host;}catch{}}}
+  if(!originOk)return new Response(null,{status:204});
+  await rateHit(env,'vi',request,150,60);
+  let input=null;try{input=await body(request,2500);}catch{return new Response(null,{status:204});}
+  if(!input||typeof input!=='object')return new Response(null,{status:204});
+  const type=VI_TYPES.includes(input.t)?input.t:'';
+  if(!type)return new Response(null,{status:204});
+  /* A preview only counts when it names a real design — a made-up template
+     id is dropped entirely, so it cannot farm the preview score either. */
+  if(type==='preview'&&!(typeof input.tmpl==='string'&&VI_TEMPLATES.has(input.tmpl)))return new Response(null,{status:204});
+  await ensureVi(env);const d=db(env);
+  const ua=request.headers.get('User-Agent')||'',cf=request.cf||{};
+  const ip=request.headers.get('CF-Connecting-IP')||'';
+  const ipHash=ip?await sha256hex((await viSalt(env))+':'+ip):'';
+  const nowIso=new Date().toISOString(),today=istDay(),ownHost=url.hostname.replace(/^www\./,'');
+  /* Identity: a presented vid counts only if the server issued it before. */
+  let vid=viCookieVid(request);
+  if(!vid&&typeof input.v==='string'&&VI_UUID.test(input.v))vid=input.v.toLowerCase();
+  let visitor=vid?await d.prepare('SELECT * FROM vi_visitors WHERE vid=?').bind(vid).first():null;
+  const fp=typeof input.fp==='string'&&/^[0-9a-f]{64}$/.test(input.fp)?input.fp:'';
+  if(!visitor&&!vid&&fp){
+   /* Conservative re-link: no vid was presented at all and the fingerprint
+      matches exactly one stored visitor. Two matches = no merge, ever. */
+   const m=await d.prepare('SELECT vid FROM vi_visitors WHERE fp=? LIMIT 2').bind(fp).all();
+   const rows=m.results||[];
+   if(rows.length===1){vid=rows[0].vid;visitor=await d.prepare('SELECT * FROM vi_visitors WHERE vid=?').bind(vid).first();}
+  }
+  if(!visitor&&vid){
+   /* A well-formed but unknown vid is NOT adopted (fixation guard). If it
+      carries a fingerprint that uniquely matches, fall back to that link;
+      otherwise this request starts a fresh server-issued visitor. */
+   if(fp){
+    const m=await d.prepare('SELECT vid FROM vi_visitors WHERE fp=? LIMIT 2').bind(fp).all();
+    const rows=m.results||[];
+    if(rows.length===1){vid=rows[0].vid;visitor=await d.prepare('SELECT * FROM vi_visitors WHERE vid=?').bind(vid).first();}
+   }
+   if(!visitor)vid='';
+  }
+  const isBot=(VI_BOT_UA.test(ua)||(cf.asn!=null&&VI_DC_ASNS.has(Number(cf.asn))))?1:0;
+  const sess=typeof input.sess==='string'&&/^[a-z0-9]{6,40}$/i.test(input.sess)?input.sess:'';
+  const touchSrc=viTouchSource(input.lt||input.ft,typeof input.r==='string'?input.r.slice(0,500):'',ownHost);
+  if(!visitor){
+   /* New-visitor creation cap per network per day (visitor-spam guard). */
+   if(ipHash){const c=await d.prepare("SELECT COUNT(*) AS n FROM vi_visitors WHERE ip_hash=? AND date(first_seen,'+330 minutes')=?").bind(ipHash,today).first();if(c&&c.n>=300)return new Response(null,{status:204});}
+   vid=crypto.randomUUID();
+   const parsed=viUaParse(ua);
+   const src=touchSrc||'direct';
+   await d.prepare('INSERT INTO vi_visitors(vid,fp,ip_hash,first_seen,last_seen,visits,last_session,city,region,country,asn,network,device,browser,os,screen,timezone,language,first_source,last_source,first_touch,last_touch,interest,score,is_bot) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)')
+    .bind(vid,fp||null,ipHash||null,nowIso,nowIso,1,sess||null,
+     cf.city?String(cf.city).slice(0,80):null,cf.region?String(cf.region).slice(0,80):null,cf.country?String(cf.country).slice(0,8):null,cf.asn!=null?Number(cf.asn):null,cf.asOrganization?String(cf.asOrganization).slice(0,120):null,
+     deviceOf(ua),parsed.browser,parsed.os,
+     typeof input.scr==='string'&&/^\d{2,5}x\d{2,5}$/.test(input.scr)?input.scr:null,
+     typeof input.tz==='string'?input.tz.slice(0,60):null,typeof input.lang==='string'?input.lang.slice(0,20):null,
+     src,src,
+     input.ft&&typeof input.ft==='object'?JSON.stringify(input.ft).slice(0,600):null,
+     input.lt&&typeof input.lt==='object'?JSON.stringify(input.lt).slice(0,600):null,
+     null,isBot).run();
+   visitor=await d.prepare('SELECT * FROM vi_visitors WHERE vid=?').bind(vid).first();
+  }else{
+   const newSession=sess&&visitor.last_session!==sess;
+   const parsed=viUaParse(ua);
+   await d.prepare('UPDATE vi_visitors SET last_seen=?,visits=visits+?,last_session=?,fp=COALESCE(?,fp),ip_hash=COALESCE(?,ip_hash),city=COALESCE(?,city),region=COALESCE(?,region),country=COALESCE(?,country),asn=COALESCE(?,asn),network=COALESCE(?,network),device=?,browser=?,os=?,screen=COALESCE(?,screen),timezone=COALESCE(?,timezone),language=COALESCE(?,language),last_source=?,last_touch=COALESCE(?,last_touch),interest=COALESCE(?,interest),is_bot=? WHERE vid=?')
+    .bind(nowIso,newSession?1:0,sess||visitor.last_session,
+     fp||null,ipHash||null,
+     cf.city?String(cf.city).slice(0,80):null,cf.region?String(cf.region).slice(0,80):null,cf.country?String(cf.country).slice(0,8):null,cf.asn!=null?Number(cf.asn):null,cf.asOrganization?String(cf.asOrganization).slice(0,120):null,
+     deviceOf(ua),parsed.browser,parsed.os,
+     typeof input.scr==='string'&&/^\d{2,5}x\d{2,5}$/.test(input.scr)?input.scr:null,
+     typeof input.tz==='string'?input.tz.slice(0,60):null,typeof input.lang==='string'?input.lang.slice(0,20):null,
+     touchSrc?touchSrc:visitor.last_source,
+     input.lt&&typeof input.lt==='object'?JSON.stringify(input.lt).slice(0,600):null,
+     type==='preview'&&typeof input.tmpl==='string'&&VI_TEMPLATES.has(input.tmpl)?input.tmpl:null,
+     (visitor.is_bot||isBot)?1:0,vid).run();
+   visitor.visits=Number(visitor.visits)+(newSession?1:0);visitor.is_bot=(visitor.is_bot||isBot)?1:0;
+  }
+  /* Stored-event cap per visitor/type/day: beyond it the event is dropped,
+     so repeat clicking can neither grow the table nor game the score. */
+  const cnt=await d.prepare('SELECT COUNT(*) AS n FROM vi_events WHERE vid=? AND day=? AND type=?').bind(vid,today,type).first();
+  if(!cnt||cnt.n<(VI_TYPE_CAPS[type]||25)){
+   const p=typeof input.p==='string'&&input.p.startsWith('/')?input.p.split(/[?#]/)[0].slice(0,80):null;
+   const tmpl=type==='preview'&&typeof input.tmpl==='string'&&VI_TEMPLATES.has(input.tmpl)?input.tmpl:null;
+   await d.prepare('INSERT INTO vi_events(vid,type,path,template,detail,ts,day) VALUES(?,?,?,?,?,?,?)').bind(vid,type,p,tmpl,typeof input.d==='string'?input.d.slice(0,40):null,nowIso,today).run();
+   await viRescore(env,vid);
+  }
+  /* Retention: raw events older than 90 days are pruned opportunistically
+     (visitor aggregates — visits, sources, score inputs — are kept). */
+  if(Math.random()<0.02)await d.prepare('DELETE FROM vi_events WHERE ts<?').bind(new Date(Date.now()-90*86400000).toISOString()).run().catch(()=>{});
+  const cookie='ew_vid='+vid+'; Max-Age=31536000; Path=/; SameSite=Lax'+(url.protocol==='https:'?'; Secure':'');
+  return json({vid},200,{'Set-Cookie':cookie});
+ }
  if(path==='/api/site-info'&&request.method==='GET'){
   const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
   const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null,support:SUPPORT},200,{'Cache-Control':'public, max-age=60'});
@@ -610,6 +802,14 @@ export default {async fetch(request,env){
  let authUser=await currentUser(request,env);
  const adminUser=await currentAdmin(request,env);
  if(path==='/api/session'&&request.method==='GET')return json({user:authUser?{...authUser,admin:await isAdminUser(env,authUser)}:null});
+ /* Visitor Intelligence data for /boss — handled here, before the
+    signed-in workspace gate below, because the boss session is separate
+    from the website session. The route enforces the boss check itself:
+    currentAdmin + isAdminUser, the same pair as every /api/admin route. */
+ if(path==='/api/boss/vi'&&request.method==='GET'){
+  if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
+  return json(await viBossData(env));
+ }
  if(path==='/api/auth/signup'&&request.method==='POST'){
   await rateHit(env,'signup',request,8,600);
   if(request.headers.get('Origin')!==url.origin)fail('This request must come from your wedding workspace.',403);
@@ -1221,7 +1421,11 @@ export default {async fetch(request,env){
   const order={id:crypto.randomUUID(),user_id:owner,design_id:designId,amount_paise:amount,gateway,status:'created',coupon:coupon?coupon.code:null};
   const now=new Date().toISOString();
   const phoneHash=await sha256hex(String(authUser.email).toLowerCase()+':'+phone);
-  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise,signup_name,signup_email,signup_hash,phone_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0,guestSignup?guestSignup.name:null,guestSignup?guestSignup.email:null,guestSignup?guestSignup.hash:null,phoneHash).run();
+  /* Visitor attribution: the server-issued ew_vid cookie (format-checked
+     only — no extra lookup on the money path) ties this order to the
+     anonymous visitor journey, so the boss can see which source sells. */
+  await ensureVi(env);const visitorId=viCookieVid(request);
+  await db(env).prepare('INSERT INTO orders(id,user_id,design_id,amount_paise,gateway,status,created_at,updated_at,coupon,discount_paise,signup_name,signup_email,signup_hash,phone_hash,visitor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(order.id,owner,designId,amount,gateway,'created',now,now,coupon?coupon.code:null,coupon?coupon.discount:0,guestSignup?guestSignup.name:null,guestSignup?guestSignup.email:null,guestSignup?guestSignup.hash:null,phoneHash,visitorId||null).run();
   try{
    let made;
    if(gateway==='razorpay')made=await razorpayCreate(cfg,order);
@@ -1267,7 +1471,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export','vi'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -1300,6 +1504,7 @@ export default {async fetch(request,env){
     pages:await all('SELECT path,COUNT(*) AS views,COUNT(DISTINCT visitor) AS visitors FROM visits WHERE day>=? GROUP BY path ORDER BY views DESC LIMIT 12',from),
     referrers:await all("SELECT ref_host,COUNT(*) AS sessions FROM visits WHERE day>=? AND session_start=1 AND ref_host IS NOT NULL GROUP BY ref_host ORDER BY sessions DESC LIMIT 10",from)});
   }
+  if(name==='vi')return json(await viBossData(env));
   if(name==='orders'){
    const st=q.get('status')||'',term=(q.get('q')||'').trim().toLowerCase().slice(0,60);
    let sql='SELECT o.id,o.design_id,o.amount_paise,o.discount_paise,o.coupon,o.gateway,o.status,o.created_at,COALESCE(u.email,\'deleted account\') AS email,COALESCE(u.name,\'\') AS name FROM orders o LEFT JOIN users u ON u.id=o.user_id WHERE 1=1';const bind=[];

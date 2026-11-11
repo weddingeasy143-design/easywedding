@@ -33,7 +33,7 @@ const inr=p=>'₹'+(Math.round(Number(p)||0)/100).toLocaleString('en-IN',{maximu
 const num=n=>(Number(n)||0).toLocaleString('en-IN');
 const when=iso=>{const t=new Date(iso);return isNaN(t)?'':t.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});};
 const SRC={google:'Google',facebook:'Facebook',instagram:'Instagram',whatsapp:'WhatsApp',chatgpt:'ChatGPT',ai_chat:'Other AI chats (Gemini, Claude…)',direct:'Direct / typed link',search_other:'Other search engines',youtube:'YouTube',twitter:'X / Twitter',referral:'Other websites',campaign:'Campaign links'};
-const PAGES={dashboard:'Dashboard',analytics:'Analytics',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',vendors:'Vendors',vendorbookings:'Vendor bookings & payouts',albums:'Albums & storage',settings:'Website & banner',system:'System health',music:'Preview music'};
+const PAGES={dashboard:'Dashboard',analytics:'Analytics',vi:'Visitor Intelligence',orders:'Orders',payments:'Payments',designs:'Designs & prices',addons:'Add-ons',coupons:'Coupons & offers',customers:'Customers',vendors:'Vendors',vendorbookings:'Vendor bookings & payouts',albums:'Albums & storage',settings:'Website & banner',system:'System health',music:'Preview music'};
 const istDays=n=>Array.from({length:n},(_,k)=>new Date(Date.now()+19800000-(n-1-k)*86400000).toISOString().slice(0,10));
 const hourLabel=h=>(h%12||12)+(h<12?' am':' pm');
 async function api(path,opts){const r=await fetch(path,opts);const d=await r.json().catch(()=>({}));if(!r.ok){const e=Error(d.error||'Request failed.');e.status=r.status;throw e;}return d;}
@@ -86,6 +86,20 @@ async function loadAnalytics(){
  hbars(fn,[['Visited the website',f.visitors],['Opened the design studio',f.studio],['Created an account',f.signups],['Started a payment',f.checkout],['Paid',f.paid]].map(([label,value])=>({label,value,text:num(value)+' · '+pct(value,f.visitors)})));
 }
 $('#an-days').addEventListener('change',()=>loadAnalytics().catch(handleErr));
+
+// ---- Visitor Intelligence ----
+async function loadVi(){
+ const d=await api('/api/boss/vi');
+ const k=clear($('#vi-kpis'));
+ k.append(kpi('Visitors today',num(d.today),'people, bots excluded'),kpi('Last 7 days',num(d.week),'unique visitors'),kpi('Returning',pct(d.returning,d.week),num(d.returning)+' visitors came back'),kpi('Hot visitors',num(d.hot),'score 60+ in 7 days'));
+ $('#vi-bots').textContent=d.bots?('🤖 '+num(d.bots)+' bot / datacenter visitors in the last 7 days — flagged and kept out of every number above.'):'';
+ hbars($('#vi-cities'),d.cities.map(x=>({label:x.city,value:x.n})),'No city data yet — it starts appearing as soon as people visit.');
+ hbars($('#vi-networks'),d.networks.map(x=>({label:x.network,value:x.n})),'No network data yet.');
+ hbars($('#vi-devices'),d.devices.map(x=>({label:{mobile:'📱 Mobile',desktop:'💻 Desktop',tablet:'Tablet'}[x.device]||x.device||'Unknown',value:x.n})));
+ hbars($('#vi-sources'),d.sources.map(x=>({label:SRC[x.s]||x.s,value:x.n})),'No sources yet.');
+ hbars($('#vi-templates'),d.templates.map(x=>({label:DESIGN_NAMES[x.template]||x.template,value:x.n})),'No template previews yet.');
+ clear($('#vi-hot')).append(table(['Score','City','Network','Device','Visits','Last seen','Top interest','Journey'],d.hotList.map(v=>[v.score,v.city||'—',v.network||'—',v.device||'—',v.visits,when(v.last_seen),DESIGN_NAMES[v.top_template||v.interest]||v.top_template||v.interest||'—',(SRC[v.first_source]||v.first_source)+' → '+(SRC[v.last_source]||v.last_source)]),'No engaged visitors yet — they appear here once someone previews a design, opens the studio or taps WhatsApp.'));
+}
 
 // ---- Orders ----
 async function loadOrders(){
@@ -304,7 +318,7 @@ $('#fx-form').addEventListener('submit',async e=>{
 });
 
 // ---- Routing, login, start-up ----
-const loaders={dashboard:loadDashboard,analytics:loadAnalytics,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),vendors:loadVendors,vendorbookings:loadVendorBookings,albums:loadAlbumsAdmin,settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
+const loaders={dashboard:loadDashboard,analytics:loadAnalytics,vi:loadVi,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),vendors:loadVendors,vendorbookings:loadVendorBookings,albums:loadAlbumsAdmin,settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
 function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);
