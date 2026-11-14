@@ -11,15 +11,24 @@ import {referenceDesignFor} from './reference-designs.js';
 import {DEFAULTS,normalizeConfig,readConfig,encodeConfig,invitationUrl,rsvpDestination,safeImageUrl,validDate,validTime} from './config.js';
 import {videoEmbedUrl} from './video-embed.js';
 import {createWizard,priceRow,fillPriceChips,REVIEW_STEP,DONE_STEP} from './wizard.js';
-/* Built-in song library: Bollywood-style original themes composed for Easy
-   Wedding, shipped in public/music/. They are our own compositions in a
-   Bollywood wedding style — never film songs or copied recordings. Choosing
-   one writes the same audioUrl/audioName fields an upload writes, so saving,
-   preview and publishing treat a built-in song exactly like an uploaded one.
-   The first entry is the house default. */
+/* Built-in song library: tracks supplied by the owner, shipped in
+   public/music/. Choosing one writes the same audioUrl/audioName fields an
+   upload writes, so saving, preview and publishing treat a built-in song
+   exactly like an uploaded one. The first entry is the house default. */
 const BUILTIN_SONGS=[
- {url:'/music/ew-bolly-band-baaja.mp3',name:'Band Baaja Celebration',desc:'Big baraat energy — a dhol-led wedding celebration'},
- {url:'/music/ew-bolly-dulhan-entry.mp3',name:'Dulhan Ki Entry',desc:'A grand, romantic entry theme — shehnai and strings'},
+ {url:'/music/ew-user-premium-original.mp3',name:'Romantic Wedding Special',desc:'A romantic wedding melody — soft, dreamy, made for the big entry'},
+ {url:'/music/ew-user-mehndi.mp3',name:'Romantic Wedding Special 2',desc:'A romantic wedding melody — second movement'},
+ {url:'/music/ew-user-ram-mandir.mp3',name:'Romantic Wedding Special 3',desc:'A romantic wedding melody — third movement'},
+ {url:'/music/ew-user-blush-mehraab.mp3',name:'Romantic Instrumental 1',desc:'Romantic saxophone and flute melodies — part 1'},
+ {url:'/music/ew-user-emerald-darbar.mp3',name:'Romantic Instrumental 2',desc:'Romantic saxophone and flute melodies — part 2'},
+ {url:'/music/ew-user-garden.mp3',name:'Romantic Instrumental 3',desc:'Romantic saxophone and flute melodies — part 3'},
+ {url:'/music/ew-user-haldi.mp3',name:'Romantic Instrumental 4',desc:'Romantic saxophone and flute melodies — part 4'},
+ {url:'/music/ew-user-ivory-arch.mp3',name:'Romantic Instrumental 5',desc:'Romantic saxophone and flute melodies — part 5'},
+ {url:'/music/ew-user-mandir-darwaza.mp3',name:'Romantic Instrumental 6',desc:'Romantic saxophone and flute melodies — part 6'},
+ {url:'/music/ew-user-midnight-noor.mp3',name:'Romantic Instrumental 7',desc:'Romantic saxophone and flute melodies — part 7'},
+ {url:'/music/ew-user-reception.mp3',name:'Romantic Instrumental 8',desc:'Romantic saxophone and flute melodies — part 8'},
+ {url:'/music/ew-user-royal-prestige.mp3',name:'Romantic Instrumental 9',desc:'Romantic saxophone and flute melodies — part 9'},
+ {url:'/music/ew-user-sangeet.mp3',name:'Romantic Instrumental 10',desc:'Romantic saxophone and flute melodies — part 10'},
 ];
 const isBuiltinSong=url=>typeof url==='string'&&BUILTIN_SONGS.some(s=>s.url===url);
 /* Story-chapter and gallery ("Our Moments") photo fields. Step 3 carries
@@ -51,7 +60,7 @@ const selectedTheme=new URLSearchParams(location.search).get('template');if(Obje
 {const q=new URLSearchParams(location.search);
 if(selectedTheme&&Object.hasOwn(eventThemes,selectedTheme)&&!location.hash.includes('card=')&&!q.has('demo')&&!q.has('order_id')&&!q.has('payment')){
 try{const r=await fetch('demo-configs/'+encodeURIComponent(selectedTheme)+'.json');if(r.ok){const demo=normalizeConfig(await r.json());if(demo.theme===selectedTheme){let keepDraft=false;try{const raw=localStorage.getItem(STORAGE);if(raw){const draft=normalizeConfig(JSON.parse(raw));const ownWork=(draft.groomName||'').trim()!==''||(draft.brideName||'').trim()!=='';keepDraft=draft.theme===selectedTheme&&ownWork&&JSON.stringify(draft)!==JSON.stringify(demo)&&JSON.stringify(draft)!==JSON.stringify(normalizeConfig(DEFAULTS));}}catch{}if(!keepDraft)config=demo;}}}catch{}}}
-/* A brand-new invitation starts with the house Band Baaja theme already
+/* A brand-new invitation starts with the house Romantic Wedding Special theme already
    chosen and music on — the customer can switch songs or remove it in one tap.
    Anything carrying the visitor's own work (an opened invitation link, or a
    saved draft with their own names in it) keeps exactly the song state it
