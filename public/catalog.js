@@ -35,9 +35,9 @@ export function applyPricing(doc, pricing) {
   });
   if (lowest) {
     doc.querySelectorAll('[data-offer-from]').forEach((el) => { el.textContent = rupees(lowest); });
-    /* Only call it an offer while a launch price is actually on. */
+    /* The strip always carries the plain price line (no offer wording). */
     doc.querySelectorAll('[data-offer-label]').forEach((el) => {
-      el.textContent = anyLaunch ? 'Grand opening offer — every design from' : 'Every design from';
+      el.textContent = 'Every design from';
     });
     doc.querySelectorAll('[data-offer-note]').forEach((el) => { el.hidden = !anyLaunch; });
     /* The strip exists only to announce the offer. With no launch price on
