@@ -15,7 +15,7 @@ export const percentOff = (regular, current) =>
   regular > current && current > 0 ? Math.round((regular - current) / regular * 100) : 0;
 
 /* The launch prices printed on the catalogue: used until /api/pricing answers, or if it never does. */
-export const FALLBACK_PRICES = {'premium-original': {regular: 99900, current: 79900}, ALL: {regular: 249900, current: 149900}, default: {regular: 69900, current: 59900}};
+export const FALLBACK_PRICES = {'premium-original': {regular: 99900, current: 79900}, 'mandir-darwaza': {regular: 69900, current: 1100}, 'ram-mandir': {regular: 69900, current: 1100}, ALL: {regular: 249900, current: 149900}, default: {regular: 69900, current: 59900}};
 export function priceRow(pricing, id) {
   const row = pricing && Array.isArray(pricing.designs) ? pricing.designs.find((x) => x && x.id === id && x.current > 0) : null;
   if (row) return {regular: row.regular > 0 ? row.regular : row.current, current: row.current, live: true};
