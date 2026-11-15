@@ -17,32 +17,34 @@ Easy Wedding lets an Indian couple create a cinematic, animated wedding invitati
 Payments are processed securely through Razorpay (UPI, cards and netbanking).
 
 ## Invitation designs and prices (INR, one-time per design)
-- Premium Original (Cinematic curtain & doors · 23 photos): ₹799 (regular ₹999)
-- Crimson Vows (Rose drift · royal gates): ₹599 (regular ₹699)
-- Peacock Promise (Feather sway · peacock fan): ₹599 (regular ₹699)
-- Starlit Vows (Moonlit float · starlight reveal): ₹599 (regular ₹699)
-- Golden Phere (Marigold flutter · golden curtain): ₹599 (regular ₹699)
-- Ivory Jasmine (Jasmine breeze · silk reveal): ₹399 (regular ₹499)
-- Botanical Forever (Leaf sway · garden unfold): ₹399 (regular ₹499)
-- Wisteria Vows (Wisteria cascade · violet veil): ₹399 (regular ₹499)
-- Champagne Forever (Candlelight drift · editorial reveal): ₹399 (regular ₹499)
-- Blush Lotus (Lotus bloom · petal drift): ₹399 (regular ₹499)
+- Mandir Darwaza (Golden temple doors · magical reveal): ₹11 (regular ₹699)
+- Ram Mandir (Golden Ram temple · lotus countdown): ₹11 (regular ₹699)
+- Premium Original (Cinematic curtain & doors · 23 photos): ₹11 (regular ₹999)
+- Crimson Vows (Rose drift · royal gates): ₹11 (regular ₹699)
+- Peacock Promise (Feather sway · peacock fan): ₹11 (regular ₹699)
+- Starlit Vows (Moonlit float · starlight reveal): ₹11 (regular ₹699)
+- Golden Phere (Marigold flutter · golden curtain): ₹11 (regular ₹699)
+- Ivory Jasmine (Jasmine breeze · silk reveal): ₹11 (regular ₹499)
+- Botanical Forever (Leaf sway · garden unfold): ₹11 (regular ₹499)
+- Wisteria Vows (Wisteria cascade · violet veil): ₹11 (regular ₹499)
+- Champagne Forever (Candlelight drift · editorial reveal): ₹11 (regular ₹499)
+- Blush Lotus (Lotus bloom · petal drift): ₹11 (regular ₹499)
 - Sacred Courtyard (Terracotta warmth · courtyard fold): ₹399 (regular ₹499)
-- All-Designs Wedding Pass: all 11 designs unlocked for one wedding — ₹1,199 (regular ₹1,499)
-Optional extras (for example Hindi version, PDF, photo gallery, short link) start at ₹99. Grand Opening prices are for a limited period.
+- All-Designs Wedding Pass: all 13 designs unlocked for one wedding — ₹1,199 (regular ₹1,499)
+Optional extras (for example Hindi version, PDF, photo gallery, short link) start at ₹99. Launching prices are for a limited period.
 
 ## Dashboard features
 Overview with countdown, events, budget planner with PDF export, checklist, vendors and bookings, outfit ideas, cards and posters, AI design helper, wedding profile.
 
 ## Frequently asked questions
 Q: Is Easy Wedding free?
-A: Planning is free — the workspace, budget, checklist and all 11 invitation previews cost nothing. You pay only when you publish your own invitation: at Grand Opening prices a single design is ₹399–₹799 (regular ₹499–₹999), and the All-Designs Pass is ₹1,199 (regular ₹1,499).
+A: Planning is free — the workspace, budget, checklist and all 13 invitation previews cost nothing. You pay only when you publish your own invitation: right now 12 designs are ₹11 each and one design is ₹399 (regular prices ₹499–₹999), and the All-Designs Pass is ₹1,199 (regular ₹1,499).
 
 Q: How do I pay?
 A: When you create your invitation link in the studio, pick a payment option and pay with UPI (Google Pay, PhonePe, Paytm and other UPI apps), a debit or credit card, or netbanking. Your design unlocks the moment your payment succeeds.
 
 Q: What do I get after paying?
-A: Your chosen design unlocks instantly. Create your shareable invitation link and QR code with your own photos, words and wedding song. One payment covers one design for one wedding — the All-Designs Pass covers all 11.
+A: Your chosen design unlocks instantly. Create your shareable invitation link and QR code with your own photos, words and wedding song. One payment covers one design for one wedding — the All-Designs Pass covers all 13.
 
 Q: Can I edit my invitation after paying?
 A: Yes. Edit your details any time and create a fresh link — each link holds a snapshot of your details, so make a new link after editing. Your unlocked design stays yours.
