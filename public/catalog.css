@@ -84,6 +84,8 @@ button{font:inherit;color:inherit}
 .cat-kicker{font:600 12px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--maroon);margin-bottom:6px}
 .cat-head h1{font:600 40px/1.05 var(--serif);color:var(--ink);letter-spacing:-.01em}
 .cat-lede{margin-top:10px;color:var(--muted);font-size:16px}
+.cat-hero-cta{margin-top:18px;min-height:58px;padding:10px 26px;font-size:17px;border-radius:14px;box-shadow:var(--shadow-up);white-space:normal;text-align:center}
+@media (max-width:480px){.cat-hero-cta{width:100%}}
 .cat-tri{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--maroon);color:#fff;font-size:11px;vertical-align:2px;padding-left:2px}
 .cat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .cat-card{display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:transform .25s ease,box-shadow .25s ease}
@@ -141,6 +143,8 @@ button{font:inherit;color:inherit}
 .how-num{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--maroon);color:#fff;font:700 18px/1 var(--sans);margin-bottom:10px}
 .how-steps h3{font:600 24px/1.15 var(--serif);margin-bottom:4px}
 .how-steps p{color:var(--muted)}
+.how-support{margin-top:20px;text-align:center;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;font-weight:600;color:var(--ink)}
+.how-support a{color:var(--maroon)}
 .faq-list details{background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px}
 .faq-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:14px 18px;font-weight:600;cursor:pointer;list-style:none;border-radius:12px}
 .faq-list summary::-webkit-details-marker{display:none}

@@ -35,7 +35,14 @@ if(!q0.has('id')&&!q0.has('to')&&!config.reference){
  try{const demos=await fetch('./demos.json').then(r=>r.ok?r.json():null);const demo=demos?.[config.theme];
  if(demo)config={...config,...demo.flat,reference:demo.reference};}catch{}}}
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
-const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'));
+/* The picked design's own sample reference (the same demo config the Studio
+   seeds from): the model needs it to tell "still the design's sample photo"
+   apart from "a photograph the customer chose", so a customer's couple
+   photo can take the sample couple's place everywhere it was shown. Any
+   failure keeps the previous behaviour — the generic defaults still apply. */
+let designReference=null;
+try{const dc=await fetch('../demo-configs/'+encodeURIComponent(config.theme)+'.json').then(r=>r.ok?r.json():null);if(dc?.theme===config.theme)designReference=dc.reference||null;}catch{}
+const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'),designReference);
 let audio=config.audioUrl;
 if(audio.startsWith('local-audio:')){try{audio=(await withTimeout(resolveSong(audio),AUDIO_WAIT_MS,{url:''})).url||'';}catch{audio='';}}
 model.site.music={aartiUrl:'',weddingUrl:'',universalUrl:audio,universalEnabled:config.music&&!!audio,universalVolume:.55,universalFadeIn:2,universalFadeOut:1,universalTrimStart:0,universalTrimEnd:0};

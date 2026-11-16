@@ -167,6 +167,38 @@ observer.observe(document.documentElement,{childList:true,subtree:true});
 tick();
 setTimeout(()=>observer.disconnect(),30000);
 
+// 5. Viral loop: every published invitation and every public demo ends with
+//    a quiet "Made with Easy Wedding" strip inviting the guest to create
+//    their own invitation, starting with a free demo. The Studio editing
+//    preview never carries it: that is the render framed by the Studio page
+//    itself, or any render carrying the wm=1 preview mark.
+function inStudioPreview(){
+ if(new URLSearchParams(location.search).get('wm')==='1')return true;
+ if(window.self!==window.top){try{if(/^\/studio(\/|\?|#|$)/.test(window.top.location.pathname+window.top.location.search))return true;}catch{}}
+ return false;
+}
+function mountBrandStrip(){
+ if(document.getElementById('ew-made-with'))return true;
+ if(inStudioPreview())return true;
+ if(!document.body)return false;
+ const s=document.createElement('footer');
+ s.id='ew-made-with';
+ s.setAttribute('aria-label','Made with Easy Wedding');
+ s.style.cssText='background:#f7ecd9;border-top:1px solid #e3cf9f;padding:20px 16px 26px;text-align:center;';
+ const studioHref='/studio'+(config&&config.theme?'?template='+encodeURIComponent(config.theme):'');
+ s.innerHTML='<p style="margin:0 0 10px;font:600 11px/1.4 system-ui,sans-serif;letter-spacing:.26em;color:#9a7b2d;text-transform:uppercase">Made with Easy Wedding</p>'
+  +'<a href="'+studioHref+'" style="display:inline-block;background:#571c24;color:#fff7e8;border:1px solid #c9a24b;border-radius:999px;padding:11px 22px;font:600 14px/1.3 system-ui,sans-serif;text-decoration:none">Create your own invitation — start with a FREE demo</a>'
+  +'<p style="margin:10px 0 0;font:13px/1.5 Georgia,serif;color:#6b5138">easywedding.in</p>';
+ document.body.append(s);
+ return true;
+}
+// The film section (above) is appended to <body> too and may land after the
+// strip; the strip must stay the very last thing on the page.
+function keepBrandStripLast(){
+ const s=document.getElementById('ew-made-with');
+ if(s&&document.body&&document.body.lastElementChild!==s)document.body.append(s);
+}
+
 // 3. Personal invitations: if this visit carries a guest token, greet the
 //    guest by name ("Dear {name}") and record the opening for the couple.
 // 4. Extra Language (Hindi): if the couple enabled Hindi, guests can switch
@@ -232,7 +264,7 @@ function mountLangToggle(){
  document.body.append(b);
  return true;
 }
-let greetDone=false,langDone=false,translateQueued=false;
+let greetDone=false,langDone=false,brandDone=false,translateQueued=false;
 function queueTranslate(){
  if(!hindiOn||translateQueued)return;translateQueued=true;
  requestAnimationFrame(()=>{translateQueued=false;if(hindiOn)translateDom();});
@@ -250,6 +282,8 @@ const observer2=new MutationObserver(()=>{
  hideEmbeddedChrome();
  if(!greetDone)greetDone=mountGreeting();
  if(!langDone)langDone=mountLangToggle();
+ if(!brandDone)brandDone=mountBrandStrip();
+ keepBrandStripLast();
  queueTranslate();
 });
 observer2.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
