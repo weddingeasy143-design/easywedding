@@ -21,9 +21,10 @@ setTimeout(()=>{
 let config=readConfig(location);
 /* A public preview (a visitor looking at a design before buying) shows a finished sample: sample couple, sample photographs and the preview music the owner chose in the admin console.
    A real invitation (#card=…, ?id=…, ?to=…) is never touched. */
+let bossPreviewMusic=null;
 if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
  config=withSample(config,location.href);
- try{const info=await withTimeout(fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()),AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)config={...config,audioUrl:new URL(info.previewMusic.url,location.href).href,music:true};}catch{}
+ try{const info=await withTimeout(fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()),AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)bossPreviewMusic=new URL(info.previewMusic.url,location.href).href;}catch{}
 }
 const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
 /* A preview that carries no invitation of its own (direct design previews,
@@ -34,6 +35,16 @@ const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invi
 if(!q0.has('id')&&!q0.has('to')&&!config.reference){
  try{const demos=await fetch('./demos.json').then(r=>r.ok?r.json():null);const demo=demos?.[config.theme];
  if(demo)config={...config,...demo.flat,reference:demo.reference};}catch{}}}
+/* Demo music (owner's rule, 2026-11-16): every public design demo plays ONE
+   track — the boss's preview music when one is set, otherwise the site's own
+   demo track — whichever design is being shown. This runs after the demo
+   library merge above so it wins over each design's own song in demos only.
+   A real invitation never reaches here (the sample-preview guard excludes
+   #card, ?id and ?to), so a finished card keeps the design's own song, and
+   whatever song the customer chose stays exactly as it was. */
+if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
+ config={...config,audioUrl:bossPreviewMusic||'/music/ew-demo-reel.mp3',music:true};
+}
 const design=referenceDesignFor(config.theme),params=new URLSearchParams(location.search);
 /* The picked design's own sample reference (the same demo config the Studio
    seeds from): the model needs it to tell "still the design's sample photo"
