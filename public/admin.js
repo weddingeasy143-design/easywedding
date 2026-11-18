@@ -111,11 +111,12 @@ $('#ord-csv').addEventListener('click',()=>{const esc=v=>'"'+String(v??'').repla
 
 // ---- Payments, designs & add-ons (one shared state + one Save) ----
 function priceTable(target,rows){
- const t=el('table','ad-table');const hr=el('tr');for(const h of ['Name','Regular ₹','Launching ₹','Offer on'])hr.append(el('th',null,h));t.append(hr);
+ const t=el('table','ad-table');const hr=el('tr');for(const h of ['Name','Regular ₹','Launching ₹','Offer on','Show on site'])hr.append(el('th',null,h));t.append(hr);
  for(const p of rows){const tr=el('tr');tr.dataset.priceRow=p.design_id;tr.append(el('td',null,DESIGN_NAMES[p.design_id]||p.design_id));
   const mk=(key,v)=>{const i=document.createElement('input');i.type='number';i.min='0';i.step='1';i.dataset.p=key;i.value=Math.round(v/100);const td=el('td');td.append(i);return td;};
   const act=document.createElement('input');act.type='checkbox';act.dataset.p='active';act.checked=!!p.launch_active;const tdA=el('td');tdA.append(act);
-  tr.append(mk('regular',p.regular_paise),mk('launch',p.launch_paise),tdA);t.append(tr);}
+  const vis=document.createElement('input');vis.type='checkbox';vis.dataset.p='visible';vis.checked=p.visible!==0;const tdV=el('td');tdV.append(vis);
+  tr.append(mk('regular',p.regular_paise),mk('launch',p.launch_paise),tdA,tdV);t.append(tr);}
  const w=el('div','ad-scroll');w.append(t);clear(target).append(w);}
 function renderPayments(){
  const wrap=clear($('#gateway-cards'));for(const id of GATEWAY_ORDER){const g=payState.gateways.find(x=>x.gateway===id);if(g)wrap.append(gatewayCard(g));}
@@ -123,7 +124,7 @@ function renderPayments(){
  priceTable($('#prices-table'),prices.filter(p=>!p.design_id.startsWith('addon-')));priceTable($('#addons-table'),prices.filter(p=>p.design_id.startsWith('addon-')));}
 async function ensurePayments(){payState=await api('/api/admin/payments');renderPayments();}
 function collect(){const gateways=[...document.querySelectorAll('.ewp-card')].map(card=>{const get=n=>card.querySelector('[data-g="'+n+'"]');const out={gateway:card.dataset.gateway,enabled:get('enabled').checked,mode:get('mode').value,key_id:get('key_id').value.trim()};out['key_'+'secret']=get('secret').value;const cv=get('client_version');if(cv)out.client_version=cv.value.trim();const wu=get('webhook_username');if(wu)out.webhook_username=wu.value.trim();const ws=get('webhook_secret');if(ws)out['webhook_'+'secret']=ws.value;const wp=get('webhook_password');if(wp)out['webhook_'+'password']=wp.value;return out;});
- const prices=[...document.querySelectorAll('[data-price-row]')].map(row=>({design_id:row.dataset.priceRow,regular:Number(row.querySelector('[data-p="regular"]').value),launch:Number(row.querySelector('[data-p="launch"]').value),launch_active:row.querySelector('[data-p="active"]').checked}));
+ const prices=[...document.querySelectorAll('[data-price-row]')].map(row=>({design_id:row.dataset.priceRow,regular:Number(row.querySelector('[data-p="regular"]').value),launch:Number(row.querySelector('[data-p="launch"]').value),launch_active:row.querySelector('[data-p="active"]').checked,visible:row.querySelector('[data-p="visible"]').checked}));
  return {gateways,prices};}
 document.addEventListener('click',async e=>{const btn=e.target.closest('.save-all');if(!btn)return;const out=document.querySelectorAll('.save-status');const say=m=>out.forEach(s=>s.textContent=m);const payload=collect();
  if(payload.prices.some(p=>!Number.isFinite(p.regular)||!Number.isFinite(p.launch))){say('Please check the prices — every box needs a number.');return;}

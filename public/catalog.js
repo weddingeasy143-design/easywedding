@@ -16,12 +16,22 @@ export function applyPricing(doc, pricing) {
   let lowest = 0;
   let anyLaunch = false;
   pricing.designs.forEach((row) => {
-    if (!row || typeof row.id !== 'string' || !(row.current > 0)) return;
+    if (!row || typeof row.id !== 'string') return;
+    const card = doc.querySelector('[data-design="' + row.id.replace(/["\\]/g, '') + '"]');
+    /* The owner's "Show on site" switch (Designs & prices in /boss): a hidden
+       design's card leaves the catalogue and the offer maths. The
+       data-owner-hidden marker lets the catalogue search honour the same
+       switch — it must never bring a hidden card back. */
+    if (row.visible === false) {
+      if (card) { card.hidden = true; card.setAttribute('data-owner-hidden', '1'); }
+      return;
+    }
+    if (card && card.hasAttribute('data-owner-hidden')) { card.hidden = false; card.removeAttribute('data-owner-hidden'); }
+    if (!(row.current > 0)) return;
     if (row.id !== 'ALL') {
       if (!lowest || row.current < lowest) lowest = row.current;
       if (row.launchActive) anyLaunch = true;
     }
-    const card = doc.querySelector('[data-design="' + row.id.replace(/["\\]/g, '') + '"]');
     if (!card) return;
     const off = percentOff(row.regular, row.current);
     const set = (selector, text, show = true) => card.querySelectorAll(selector).forEach((el) => {

@@ -205,6 +205,20 @@ async function ensureVi(env){
   await d.prepare(ix).run().catch(()=>{});
  await d.prepare('ALTER TABLE orders ADD COLUMN visitor_id TEXT').run().catch(()=>{});
 }
+/* Design visibility — the "Show on site" switch in Designs & prices. A
+   `visible` column on prices, auto-added the same way the VI tables are;
+   default 1, so every design shows exactly as before until the owner turns
+   one off. Hiding stops public display and NEW sales only — invitations
+   already created (and their owners' studio access) are never touched. */
+let designVisReady=false;
+async function ensureDesignVisibility(env){
+ if(designVisReady)return;designVisReady=true;
+ await db(env).prepare('ALTER TABLE prices ADD COLUMN visible INTEGER NOT NULL DEFAULT 1').run().catch(()=>{});
+}
+async function hiddenDesigns(env){
+ await ensureDesignVisibility(env);
+ try{const rows=await db(env).prepare('SELECT design_id FROM prices WHERE visible=0').all();return new Set((rows.results||[]).map(r=>r.design_id));}catch{return new Set();}
+}
 async function viSalt(env){
  if(viSaltCache)return viSaltCache;
  try{
@@ -417,6 +431,7 @@ async function finishAdminLogin(env,owner){
 }
 export default {async fetch(request,env){
  const url=new URL(request.url),path=url.pathname;
+ await ensureDesignVisibility(env);
  const maint=await maintenanceState(env);
  if(maint.on){
   if(path==='/__open'){
@@ -432,6 +447,16 @@ export default {async fetch(request,env){
    if(path.startsWith('/api/'))return json({error:'Easy Wedding is opening very soon.'},503);
    return new Response(MAINTENANCE_HTML,{status:200,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
   }
+ }
+ /* Owner-hidden designs: the public design page and the sample preview stop
+    serving — visitors land on the catalogue instead. Real invitations are
+    never gated: they arrive with ?id= / ?to= or a #card= hash (a hash never
+    reaches the server), never as a bare template preview. */
+ if(request.method==='GET'){
+  const designPage=path.match(/^\/design\/([a-z0-9-]+?)(\.html)?\/?$/);
+  const previewSlug=(path==='/reference/render.html'||path==='/invite')&&!url.searchParams.has('id')&&!url.searchParams.has('to')?url.searchParams.get('template'):null;
+  const gatedSlug=designPage?designPage[1]:(previewSlug||null);
+  if(gatedSlug&&(await hiddenDesigns(env)).has(gatedSlug))return new Response(null,{status:302,headers:{'Location':'/#pricing','X-EW-Origin':EW_ORIGIN}});
  }
  if(request.method==='GET'&&/^\/[a-z0-9][a-z0-9-]{2,40}$/.test(path)){
   try{const row=await db(env).prepare('SELECT invitation_id FROM short_links WHERE slug=?').bind(path.slice(1)).first();if(row)return new Response(null,{status:302,headers:{'Location':'/invite?id='+row.invitation_id,'X-EW-Origin':EW_ORIGIN}});}catch{}
@@ -627,9 +652,9 @@ export default {async fetch(request,env){
   return json({code:c.code,discount:c.discount,final:c.final,current:amount});
  }
  if(path==='/api/pricing'&&request.method==='GET'){
-  const rows=await db(env).prepare('SELECT design_id,regular_paise,launch_paise,launch_active FROM prices ORDER BY regular_paise DESC').all();
+  const rows=await db(env).prepare('SELECT design_id,regular_paise,launch_paise,launch_active,visible FROM prices ORDER BY regular_paise DESC').all();
   const ready=[];for(const g of GATEWAYS)if(usable(await gatewayRow(env,g).catch(()=>null)))ready.push(g);
-  const mapped=(rows.results||[]).map(r=>({id:r.design_id,regular:r.regular_paise,launch:r.launch_paise,current:r.launch_active?r.launch_paise:r.regular_paise,launchActive:!!r.launch_active}));
+  const mapped=(rows.results||[]).map(r=>({id:r.design_id,regular:r.regular_paise,launch:r.launch_paise,current:r.launch_active?r.launch_paise:r.regular_paise,launchActive:!!r.launch_active,visible:r.visible!==0}));
   return json({designs:mapped.filter(x=>!x.id.startsWith('addon-')),addons:mapped.filter(x=>x.id.startsWith('addon-')),gateways:ready});
  }
  /* The catalogue itself — design/add-on names, styles and artwork (server/catalog.js
@@ -1515,6 +1540,7 @@ export default {async fetch(request,env){
   if(!/^[6-9]\d{9}$/.test(phone))fail('Please enter a valid 10-digit mobile number.');
   const price=await db(env).prepare('SELECT * FROM prices WHERE design_id=?').bind(designId).first();
   if(!price||!GATEWAYS.includes(gateway))fail('Please choose a design and a payment option.');
+  if(price.visible===0)fail('This design is not on sale right now. Please choose another design.');
   await rateHit(env,'checkout',request,20,600);
   const ownedList=await entitledDesigns(env,owner);
   const alreadyOwned=ownedList.includes(designId)||(ownedList.includes('ALL')&&!designId.startsWith('addon-'))||(designId==='addon-personal'&&ownedList.includes('ALL'));
@@ -1974,7 +2000,7 @@ export default {async fetch(request,env){
     if(!p||typeof p.design_id!=='string')continue;
     const reg=Math.round(Number(p.regular)*100),launch=Math.round(Number(p.launch)*100);
     if(!Number.isFinite(reg)||!Number.isFinite(launch)||reg<0||launch<0||reg>100000000||launch>100000000)continue;
-    await db(env).prepare('UPDATE prices SET regular_paise=?,launch_paise=?,launch_active=? WHERE design_id=?').bind(reg,launch,p.launch_active?1:0,p.design_id).run();
+    await db(env).prepare('UPDATE prices SET regular_paise=?,launch_paise=?,launch_active=?,visible=COALESCE(?,visible) WHERE design_id=?').bind(reg,launch,p.launch_active?1:0,typeof p.visible==='boolean'?(p.visible?1:0):null,p.design_id).run();
    }
    await audit(env,adminUser,'payments_or_prices_update','payments',(input?.gateways||[]).length+' gateway row(s) · '+(input?.prices||[]).length+' price row(s)');
    return json({saved:true});

@@ -365,6 +365,7 @@ async function initAddons(){
  window.__ewEnt=ewEntitlements;
  list.replaceChildren();
  for(const a of (pricing?.addons||[])){
+  if(a.visible===false&&!ewOwns(a.id))continue;
   const card=document.createElement('div');card.className='addon-card';
   const info=document.createElement('div');const h=document.createElement('strong');h.textContent=ADDON_NAMES[a.id]||a.id;const p=document.createElement('p');p.textContent=ADDON_DESCS[a.id]||'';info.append(h,p);
   const right=document.createElement('div');right.className='addon-buy';
@@ -508,7 +509,26 @@ function updatePrices(){
  if(!isOwner()){const pay=$('#share-bottom');if(pay)pay.textContent='Make it yours · '+chip.now+' →';}
  const bar=$('#pb-pay');if(bar)bar.textContent='Make it yours · '+chip.now;
 }
-if(typeof fetch==='function')fetch('/api/pricing').then(r=>r.ok?r.json():null).then(d=>{if(d){payPricing=d;updatePrices();}}).catch(()=>{});
+/* The owner's "Show on site" switch (Designs & prices in /boss): a hidden
+   design leaves the template picker and cannot be started new. Owners keep
+   full access to designs they already bought — their invitations keep
+   working — and an invitation opened from a link (#card=) is never moved. */
+async function applyStudioVisibility(d){
+ if(!d||!Array.isArray(d.designs))return;
+ const hidden=new Set(d.designs.filter(r=>r&&r.visible===false).map(r=>r.id));
+ if(!hidden.size)return;
+ let owned=window.__ewEnt;
+ if(!owned){try{const r=await fetch('/api/entitlements');if(r.ok){const j=await r.json();owned=j.admin?['ALL']:(j.designs||[]);}}catch{}}
+ owned=owned||[];
+ const mine=id=>owned.includes('ALL')||owned.includes(id);
+ if(hidden.has(config.theme)&&!mine(config.theme)&&!location.hash.includes('card=')){
+  if(selectedTheme===config.theme){location.replace('/#pricing');return;}
+  const firstVisible=Object.keys(eventThemes).find(k=>!hidden.has(k));
+  if(firstVisible){config=normalizeConfig({...config,theme:firstVisible});fillForm();refresh(false);}
+ }
+ document.querySelectorAll('#theme-options .theme-card').forEach(card=>{const v=card.querySelector('input')?.value;if(v&&hidden.has(v)&&!mine(v)&&v!==config.theme)card.hidden=true;});
+}
+if(typeof fetch==='function')fetch('/api/pricing').then(r=>r.ok?r.json():null).then(d=>{if(d){payPricing=d;updatePrices();applyStudioVisibility(d);}}).catch(()=>{});
 form.addEventListener('change',event=>{if(event.target.name==='theme')updatePrices();});
 
 // ---- Review summary (step 8) ----

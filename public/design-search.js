@@ -180,10 +180,15 @@
       document.querySelectorAll('.cat-section .cat-pass, .cat-section .cat-note')
     );
 
+    /* The owner's "Show on site" switch (set by catalog.js from /api/pricing)
+       outranks search: a card carrying data-owner-hidden is never brought
+       back by searching, clearing or the suggestion panel. */
+    function ownerHidden(el) { return el.hasAttribute('data-owner-hidden'); }
+
     function restore() {
-      designs.forEach(function (d) { d.el.hidden = false; });
+      designs.forEach(function (d) { d.el.hidden = ownerHidden(d.el); });
       originalOrder.forEach(function (el) { grid.appendChild(el); });
-      extras.forEach(function (el) { el.hidden = false; });
+      extras.forEach(function (el) { el.hidden = ownerHidden(el); });
       if (panel) panel.hidden = true;
       if (status) status.textContent = '';
     }
@@ -194,7 +199,8 @@
       var words = tokenize(query).filter(function (t) { return t.length > 1; });
       if (!words.length) { restore(); return; }
 
-      var scored = designs.map(function (d) {
+      var pool = designs.filter(function (d) { return !ownerHidden(d.el); });
+      var scored = pool.map(function (d) {
         var matched = 0, total = 0;
         words.forEach(function (q) {
           var s = scoreWord(q, d);
@@ -213,10 +219,16 @@
       extras.forEach(function (el) { el.hidden = true; });
 
       if (!results.length) {
-        /* Suggestion mode: popular designs stay visible, never a blank page. */
+        /* Suggestion mode: popular designs stay visible, never a blank page.
+           Owner-hidden popular designs drop out; if all three are hidden,
+           the first visible designs take their place. */
+        var popularIds = POPULAR.filter(function (id) {
+          return pool.some(function (d) { return d.id === id; });
+        });
+        if (!popularIds.length) popularIds = pool.slice(0, 3).map(function (d) { return d.id; });
         var popular = {};
-        POPULAR.forEach(function (id) { popular[id] = true; });
-        designs.forEach(function (d) { d.el.hidden = !popular[d.id]; });
+        popularIds.forEach(function (id) { popular[id] = true; });
+        designs.forEach(function (d) { d.el.hidden = ownerHidden(d.el) || !popular[d.id]; });
         originalOrder.forEach(function (el) { grid.appendChild(el); });
         if (panelQuery) panelQuery.textContent = '\u201C' + query + '\u201D';
         if (panel) panel.hidden = false;
@@ -227,7 +239,7 @@
       if (panel) panel.hidden = true;
       var keep = {};
       results.forEach(function (r) { keep[r.d.id] = true; });
-      designs.forEach(function (d) { d.el.hidden = !keep[d.id]; });
+      designs.forEach(function (d) { d.el.hidden = ownerHidden(d.el) || !keep[d.id]; });
       results.forEach(function (r) { grid.appendChild(r.d.el); });
       if (status) {
         status.textContent = results.length === 1
