@@ -345,6 +345,10 @@ const GROUP_URL=/^https:\/\/groups\.google\.com\/(g\/[A-Za-z0-9_.-]+|forum\/[A-Z
 const TESTING_URL=/^https:\/\/play\.google\.com\/apps\/(testing|internaltest)\/[A-Za-z0-9_.\/-]+$/;
 const PLAY_URL=/^https:\/\/play\.google\.com\/store\/apps\/details\?id=[A-Za-z0-9_.]+(&[A-Za-z0-9_.=%&-]*)?$/;
 async function previewMusicRow(env){try{const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='preview_music'").first();return row?JSON.parse(row.value):null;}catch{return null;}}
+/* Third-party tracking IDs (GA4 / Clarity / Meta Pixel), editable in /boss and
+   stored as one JSON row. A value that does not match its service's ID shape
+   is treated as unset, so a typo can never inject a foreign script. */
+async function trackingIds(env){const none={ga4Id:'',clarityId:'',metaPixelId:''};try{const raw=await siteSetting(env,'tracking');const v=raw?JSON.parse(raw):null;if(!v)return none;const clean=(x,p)=>typeof x==='string'&&p.test(x.trim())?x.trim():'';return{ga4Id:clean(v.ga4Id,/^G-[A-Z0-9-]{4,24}$/i),clarityId:clean(v.clarityId,/^[a-z0-9]{6,24}$/i),metaPixelId:clean(v.metaPixelId,/^\d{5,24}$/)};}catch{return none;}}
 /* Feature settings, all editable in /boss and stored in site_settings.
    The defaults below are only fallbacks for a database that has not been
    migrated yet — the live values always come from the settings rows. */
@@ -364,8 +368,15 @@ async function albumShape(env,row,full=true){
  if(row.storage==='permanent'&&!row.share_token){row.share_token=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,'0')).join('');await db(env).prepare('UPDATE albums SET share_token=? WHERE id=?').bind(row.share_token,row.id).run().catch(()=>{});}
  const photos=full?(await db(env).prepare('SELECT id,position,caption FROM album_photos WHERE album_id=? ORDER BY position,id').bind(row.id).all()).results||[]:[];
  const expired=row.storage!=='permanent'&&row.expires_at&&row.expires_at<new Date().toISOString();
- return {id:row.id,title:row.title,partner1:row.partner1||'',partner2:row.partner2||'',weddingDate:row.wedding_date||'',storage:row.storage,expired:!!expired,expiresAt:row.expires_at||null,isPublic:!!row.is_public,shareToken:row.storage==='permanent'&&row.is_public?row.share_token:null,shareUrl:row.storage==='permanent'&&row.is_public&&row.share_token?'/album?s='+row.share_token:null,storagePricePaise:row.storage_price_paise,storageOrderId:row.storage_order_id||null,hasSharePin:!!row.share_pin_hash,createdAt:row.created_at,photos:photos.map(p=>({id:p.id,position:p.position,caption:p.caption||'',url:'/api/album-photo/'+p.id}))};
+ /* Guest photos (migration 0018): wrapped so an unmigrated database just
+    reports guest mode off instead of breaking every album response. */
+ let pendingGuestCount=0;
+ try{const pc=await db(env).prepare("SELECT COUNT(*) AS n FROM guest_photos WHERE album_id=? AND status='pending'").bind(row.id).first();pendingGuestCount=pc?.n||0;}catch(e){/* guest photos not migrated yet */}
+ return {id:row.id,title:row.title,partner1:row.partner1||'',partner2:row.partner2||'',weddingDate:row.wedding_date||'',storage:row.storage,expired:!!expired,expiresAt:row.expires_at||null,isPublic:!!row.is_public,shareToken:row.storage==='permanent'&&row.is_public?row.share_token:null,shareUrl:row.storage==='permanent'&&row.is_public&&row.share_token?'/album?s='+row.share_token:null,storagePricePaise:row.storage_price_paise,storageOrderId:row.storage_order_id||null,hasSharePin:!!row.share_pin_hash,guestEnabled:!!row.guest_enabled,guestUrl:row.guest_enabled&&row.guest_token?'/album-add?g='+row.guest_token:null,pendingGuestCount,createdAt:row.created_at,photos:photos.map(p=>({id:p.id,position:p.position,caption:p.caption||'',url:'/api/album-photo/'+p.id}))};
 }
+/* The shared-album payload also carries the guest "add photos" link when
+   the couple has switched guest photos on for this album. */
+async function sharedAlbumShape(env,row){const shaped=await albumShape(env,row);if(row.guest_enabled&&row.guest_token)shaped.guestAddUrl='/album-add?g='+row.guest_token;return shaped;}
 async function vendorShape(env,row,cats,withPrivate=false){
  const photos=(await db(env).prepare('SELECT id,position FROM vendor_photos WHERE vendor_id=? ORDER BY position,id').bind(row.id).all()).results||[];
  const cat=(cats||[]).find(c=>c.id===row.category);
@@ -604,7 +615,7 @@ export default {async fetch(request,env){
  }
  if(path==='/api/site-info'&&request.method==='GET'){
   const row=await db(env).prepare("SELECT value FROM site_settings WHERE key='banner'").first();let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}
-  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null,support:SUPPORT},200,{'Cache-Control':'public, max-age=60'});
+  const pm=await previewMusicRow(env),links=await appLinks(env);return json({playStore:links.playStore||null,groupUrl:links.testerOn&&links.groupUrl?links.groupUrl:null,testingUrl:links.testerOn&&links.testingUrl?links.testingUrl:null,testerUrl:links.testerOn&&links.testerUrl?links.testerUrl:null,banner:b&&b.on&&b.text?{text:String(b.text).slice(0,200)}:null,previewMusic:pm?.id?{url:'/api/preview-music?v='+encodeURIComponent(pm.id),name:String(pm.name||'').slice(0,120)}:null,support:SUPPORT,tracking:await trackingIds(env)},200,{'Cache-Control':'public, max-age=60'});
  }
  if(path==='/api/coupon/check'&&request.method==='POST'){
   await rateHit(env,'coupon',request,30,600);
@@ -718,7 +729,7 @@ export default {async fetch(request,env){
   const row=await db(env).prepare("SELECT * FROM albums WHERE share_token=? AND storage='permanent' AND is_public=1").bind(token).first();
   if(!row)fail('Album not found.',404);
   if(row.share_pin_hash&&!(await albumPinOk(request,row)))return json({pinRequired:true,album:{title:row.title,partner1:row.partner1||'',partner2:row.partner2||''}});
-  return json({album:await albumShape(env,row)});
+  return json({album:await sharedAlbumShape(env,row)});
  }
  if(path.startsWith('/api/albums/shared/')&&path.endsWith('/unlock')&&request.method==='POST'){
   const token=path.slice('/api/albums/shared/'.length,path.length-'/unlock'.length);if(!/^[a-f0-9]{32,64}$/.test(token))fail('Album not found.',404);
@@ -729,7 +740,66 @@ export default {async fetch(request,env){
   const input=await body(request,2000);
   const pin=typeof input?.pin==='string'?input.pin.trim():'';
   if(!/^\d{4}$/.test(pin)||!safeEq(await sha256hex(pin+':'+row.id),row.share_pin_hash))fail('That PIN did not work. Please check the 4 digits and try again.',401);
-  return json({ok:true,album:await albumShape(env,row)},200,{'Set-Cookie':albumPinCookieName(row.id)+'='+await albumPinProof(row)+'; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Lax'});
+  return json({ok:true,album:await sharedAlbumShape(env,row)},200,{'Set-Cookie':albumPinCookieName(row.id)+'='+await albumPinProof(row)+'; Path=/; Max-Age=43200; HttpOnly; Secure; SameSite=Lax'});
+ }
+ /* Guest photo album: anyone holding the couple's guest link may add
+    photos, but a photo joins the album only after the couple approves it
+    (see the owner routes in the /api/albums block below). Every guest-table
+    read is wrapped so a database that has not run migration 0018 yet
+    answers 404/empty here instead of breaking unrelated routes. */
+ if(path.startsWith('/api/guest-album/')&&request.method==='GET'){
+  const token=path.slice('/api/guest-album/'.length);if(!/^[a-f0-9]{32,64}$/.test(token))fail('Album not found.',404);
+  let row=null;try{row=await db(env).prepare('SELECT title,partner1,partner2 FROM albums WHERE guest_token=? AND guest_enabled=1').bind(token).first();}catch(e){row=null;}
+  if(!row)fail('Album not found.',404);
+  return json({album:{title:row.title,partner1:row.partner1||'',partner2:row.partner2||''}});
+ }
+ if(path.startsWith('/api/guest-album/')&&path.endsWith('/photos')&&request.method==='POST'){
+  const token=path.slice('/api/guest-album/'.length,path.length-'/photos'.length);if(!/^[a-f0-9]{32,64}$/.test(token))fail('Album not found.',404);
+  await rateHit(env,'guestupload',request,30,600);
+  let album=null;try{album=await db(env).prepare('SELECT id FROM albums WHERE guest_token=? AND guest_enabled=1').bind(token).first();}catch(e){album=null;}
+  if(!album)fail('Album not found.',404);
+  if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
+  if(Number(request.headers.get('Content-Length'))>64*1024*1024)fail('Those photos are too large together. Please add fewer at a time.',413);
+  const data=await request.formData();
+  const files=data.getAll('files').filter(f=>f&&typeof f!=='string');
+  if(!files.length)fail('Choose at least one photo to add.');
+  if(files.length>6)fail('You can add up to 6 photos at a time.');
+  const guestName=String(data.get('name')||'').trim().slice(0,70);
+  let pending=0;
+  try{const pc=await db(env).prepare("SELECT COUNT(*) AS n FROM guest_photos WHERE album_id=? AND status='pending'").bind(album.id).first();pending=pc?.n||0;}
+  catch(e){fail('Album not found.',404);}
+  if(pending+files.length>100)fail('This album already has many photos waiting for the couple’s approval. Please try again later.');
+  /* Validate everything before storing anything, so a bad file in the
+     middle never leaves a half-finished batch behind. */
+  const ready=[];
+  for(const file of files){
+   if(!['image/jpeg','image/png','image/webp'].includes(file.type))fail('Photos must be JPG, PNG or WebP images.');
+   if(file.size>10*1024*1024)fail('Each photo must be smaller than 10 MB.');
+   if(file.size<12)fail('That file is not a valid image.');
+   const bytes=new Uint8Array(await file.arrayBuffer());
+   const valid=file.type==='image/jpeg'?bytes[0]===255&&bytes[1]===216:file.type==='image/png'?bytes[0]===137&&bytes[1]===80&&bytes[2]===78:bytes[0]===82&&bytes[1]===73&&bytes[8]===87&&bytes[9]===69;
+   if(!valid)fail('That file is not a valid image.');
+   ready.push({type:file.type,bytes});
+  }
+  let count=0;
+  for(const item of ready){
+   const gid=crypto.randomUUID(),key='albums/'+album.id+'/guest/'+gid;
+   await env.BUCKET.put(key,item.bytes,{httpMetadata:{contentType:item.type}});
+   await db(env).prepare("INSERT INTO guest_photos(id,album_id,r2_key,guest_name,status,created_at) VALUES(?,?,?,?, 'pending',?)").bind(gid,album.id,key,guestName||null,new Date().toISOString()).run();
+   count++;
+  }
+  return json({ok:true,count},201);
+ }
+ /* A guest photo file is visible only to the album's owner — they are the
+    one who must approve or reject it. Everyone else gets a plain 404. */
+ if(path.startsWith('/api/guest-photo/')&&request.method==='GET'){
+  const id=path.slice('/api/guest-photo/'.length);if(!/^[0-9a-f-]{36}$/.test(id))fail('Photo not found.',404);
+  let photo=null;try{photo=await db(env).prepare('SELECT g.r2_key AS k,a.user_id AS uid FROM guest_photos g JOIN albums a ON a.id=g.album_id WHERE g.id=?').bind(id).first();}catch(e){photo=null;}
+  if(!photo)fail('Photo not found.',404);
+  const u=await currentUser(request,env);
+  if(!u||u.id!==photo.uid)fail('Photo not found.',404);
+  const object=await env.BUCKET?.get(photo.k);if(!object)fail('Photo not found.',404);
+  return new Response(object.body,{headers:{'Content-Type':object.httpMetadata?.contentType||'image/webp','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','X-EW-Origin':EW_ORIGIN}});
  }
  /* Album photos: public only for a public permanent album; otherwise the
     album's owner (or the admin) with a session. */
@@ -1109,6 +1179,7 @@ export default {async fetch(request,env){
     const keys=(await db(env).prepare('SELECT r2_key FROM album_photos WHERE album_id=?').bind(album.id).all()).results||[];
     for(const k of keys)await env.BUCKET?.delete(k.r2_key).catch(()=>{});
     await db(env).prepare('DELETE FROM album_photos WHERE album_id=?').bind(album.id).run();
+    try{const gkeys=(await db(env).prepare('SELECT r2_key FROM guest_photos WHERE album_id=?').bind(album.id).all()).results||[];for(const k of gkeys)await env.BUCKET?.delete(k.r2_key).catch(()=>{});await db(env).prepare('DELETE FROM guest_photos WHERE album_id=?').bind(album.id).run();}catch(e){/* guest photos not migrated yet */}
     await db(env).prepare('DELETE FROM albums WHERE id=?').bind(album.id).run();
     return json({ok:true});
    }
@@ -1188,6 +1259,39 @@ export default {async fetch(request,env){
     await db(env).prepare('UPDATE orders SET gateway_order_id=?,updated_at=? WHERE id=?').bind(made.gateway_order_id,new Date().toISOString(),order.id).run();
     return json({orderId:order.id,...made.payload},201);
    }catch(e){await db(env).prepare("UPDATE orders SET status='failed',updated_at=? WHERE id=?").bind(new Date().toISOString(),order.id).run();throw e;}
+  }
+  /* Guest photos: the couple switches the guest link on/off, reviews what
+     guests sent, and approves (photo joins the album) or rejects (file is
+     deleted) each one. Nothing a guest uploads is ever public on its own. */
+  if(parts.length===4&&parts[3]==='guest-toggle'&&request.method==='POST'){
+   const input=await body(request,2000);
+   const enabled=input?.enabled===true;
+   try{
+    let token=album.guest_token||null;
+    if(enabled&&!token)token=[...crypto.getRandomValues(new Uint8Array(24))].map(x=>x.toString(16).padStart(2,'0')).join('');
+    await db(env).prepare('UPDATE albums SET guest_enabled=?,guest_token=COALESCE(guest_token,?),updated_at=? WHERE id=?').bind(enabled?1:0,token,new Date().toISOString(),album.id).run();
+   }catch(e){fail('Guest photos are not available yet.',404);}
+   const row=await db(env).prepare('SELECT * FROM albums WHERE id=?').bind(album.id).first();return json({album:await albumShape(env,row)});
+  }
+  if(parts.length===4&&parts[3]==='guest-photos'&&request.method==='GET'){
+   let rows=[];try{rows=(await db(env).prepare("SELECT id,guest_name,status,album_photo_id,created_at FROM guest_photos WHERE album_id=? ORDER BY (status='pending') DESC,created_at DESC LIMIT 300").bind(album.id).all()).results||[];}catch(e){rows=[];}
+   return json({photos:rows.map(r=>({id:r.id,guestName:r.guest_name||'',status:r.status,albumPhotoId:r.album_photo_id||null,createdAt:r.created_at,thumbUrl:'/api/guest-photo/'+r.id}))});
+  }
+  if(parts.length===6&&parts[3]==='guest-photos'&&(parts[5]==='approve'||parts[5]==='reject')&&request.method==='POST'){
+   let gp=null;try{gp=await db(env).prepare('SELECT * FROM guest_photos WHERE id=? AND album_id=?').bind(parts[4],album.id).first();}catch(e){gp=null;}
+   if(!gp)fail('Guest photo not found.',404);
+   if(parts[5]==='reject'){
+    await env.BUCKET?.delete(gp.r2_key).catch(()=>{});
+    await db(env).prepare('DELETE FROM guest_photos WHERE id=?').bind(gp.id).run();
+    return json({ok:true});
+   }
+   if(gp.status==='approved'&&gp.album_photo_id)return json({ok:true,albumPhotoId:gp.album_photo_id});
+   const pid=crypto.randomUUID();
+   const pos=((await db(env).prepare('SELECT COALESCE(MAX(position),-1) AS m FROM album_photos WHERE album_id=?').bind(album.id).first())?.m??-1)+1;
+   await db(env).prepare('INSERT INTO album_photos(id,album_id,r2_key,position,caption,created_at) VALUES(?,?,?,?,?,?)').bind(pid,album.id,gp.r2_key,pos,gp.guest_name?'By '+gp.guest_name:'',new Date().toISOString()).run();
+   await db(env).prepare("UPDATE guest_photos SET status='approved',album_photo_id=? WHERE id=?").bind(pid,gp.id).run();
+   await db(env).prepare('UPDATE albums SET updated_at=? WHERE id=?').bind(new Date().toISOString(),album.id).run();
+   return json({ok:true,albumPhotoId:pid});
   }
   fail('Not found.',404);
  }
@@ -1471,7 +1575,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','pending','coupons','banner','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export','vi'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','tracking','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export','vi'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -1619,6 +1723,18 @@ export default {async fetch(request,env){
   if(name==='banner'){
    if(request.method==='GET'){const row=await one("SELECT value FROM site_settings WHERE key='banner'");let b=null;try{b=row?.value?JSON.parse(row.value):null;}catch{}return json({on:!!b?.on,text:b?.text||''});}
    if(request.method==='PUT'){const input=await body(request,2000),text=String(input?.text||'').trim().slice(0,160),on=!!input?.on&&!!text;await d.prepare("INSERT INTO site_settings(key,value) VALUES('banner',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({on,text})).run();return json({on,text});}
+   fail('Not found.',404);
+  }
+  if(name==='tracking'){
+   if(request.method==='GET')return json(await trackingIds(env));
+   if(request.method==='PUT'){
+    const input=await body(request,2000);
+    const clean=(x,p,msg)=>{const s=typeof x==='string'?x.trim():'';if(!s)return '';if(!p.test(s))fail(msg);return s;};
+    const t={ga4Id:clean(input?.ga4Id,/^G-[A-Z0-9-]{4,24}$/i,'GA4 Measurement ID looks wrong — it should look like G-XXXXXXXXXX.'),clarityId:clean(input?.clarityId,/^[a-z0-9]{6,24}$/i,'Microsoft Clarity project ID looks wrong.'),metaPixelId:clean(input?.metaPixelId,/^\d{5,24}$/,'Meta Pixel ID should be numbers only.')};
+    await d.prepare("INSERT INTO site_settings(key,value) VALUES('tracking',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(t)).run();
+    await audit(env,adminUser,'tracking_update','settings','GA4 '+(t.ga4Id?'set':'off')+' · Clarity '+(t.clarityId?'set':'off')+' · Pixel '+(t.metaPixelId?'set':'off'));
+    return json(t);
+   }
    fail('Not found.',404);
   }
   if(name==='features'){

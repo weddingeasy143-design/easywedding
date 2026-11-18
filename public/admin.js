@@ -201,8 +201,10 @@ let cuTimer;$('#cu-q').addEventListener('input',()=>{clearTimeout(cuTimer);cuTim
  $('#reset-form').addEventListener('submit',async e=>{e.preventDefault();const status=$('#reset-status');status.textContent='Creating…';try{const d=await send('/api/admin/reset-password',{email:$('#reset-email').value},'POST');status.textContent='New password for '+$('#reset-email').value+': '+d.temporaryPassword+' — send it to them now; it is not shown again.';e.target.reset();}catch(err){status.textContent=err.message;}});}
 
 // ---- Settings & system ----
-async function loadSettings(){const [s,b,l]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner'),api('/api/admin/launch')]);siteOpen=s.open;paintSite();launchOn=!!l.active;paintLaunch();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;}
+async function loadSettings(){const [s,b,l]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner'),api('/api/admin/launch')]);siteOpen=s.open;paintSite();launchOn=!!l.active;paintLaunch();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;loadTracking().catch(()=>{});}
+async function loadTracking(){const t=await api('/api/admin/tracking');$('#tr-ga4').value=t.ga4Id||'';$('#tr-clarity').value=t.clarityId||'';$('#tr-pixel').value=t.metaPixelId||'';}
 $('#banner-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#bn-status');st.textContent='Saving…';try{const d=await send('/api/admin/banner',{text:$('#bn-text').value,on:$('#bn-on').checked});$('#bn-on').checked=d.on;st.textContent=d.on?'Saved — the banner is live on the homepage (refreshes within a minute).':'Saved — the banner is hidden.';}catch(err){st.textContent=err.message;}});
+$('#tr-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#tr-status');st.textContent='Saving…';try{const d=await send('/api/admin/tracking',{ga4Id:$('#tr-ga4').value,clarityId:$('#tr-clarity').value,metaPixelId:$('#tr-pixel').value});$('#tr-ga4').value=d.ga4Id||'';$('#tr-clarity').value=d.clarityId||'';$('#tr-pixel').value=d.metaPixelId||'';st.textContent='Saved — the live site now uses these IDs (each one loads only after a visitor accepts cookies).';}catch(err){st.textContent=err.message;}});
 async function loadSystem(){
  const d=await api('/api/admin/system'),ok=(v,yes,no)=>badge(v?yes:no,v?'on':'off');
  const row=(label,node)=>{const r=el('div','ad-sys');r.append(el('span',null,label));r.append(node);return r;};
@@ -319,15 +321,20 @@ $('#fx-form').addEventListener('submit',async e=>{
 
 // ---- Routing, login, start-up ----
 const loaders={dashboard:loadDashboard,analytics:loadAnalytics,vi:loadVi,orders:loadOrders,payments:ensurePayments,designs:ensurePayments,addons:ensurePayments,coupons:loadCoupons,customers:()=>Promise.all([loadPending(),loadCustomers()]),vendors:loadVendors,vendorbookings:loadVendorBookings,albums:loadAlbumsAdmin,settings:()=>Promise.all([loadSettings(),loadApplinks()]),music:loadMusic,system:loadSystem};
-function handleErr(e){if(e&&(e.status===401||e.status===403)){location.reload();return;}console.error(e);}
+/* Owner's rule: signing out — or finding the session gone — forgets the
+   page the console was on. The sign-in screen, and the landing after
+   signing in again, are always the Dashboard, never the last page.
+   replaceState is silent: no hashchange fires, no history entry is added. */
+function forgetLastPage(){try{history.replaceState(null,'','#/dashboard');}catch{}}
+function handleErr(e){if(e&&(e.status===401||e.status===403)){forgetLastPage();location.reload();return;}console.error(e);}
 function route(){let p=location.hash.replace(/^#\/?/,'')||'dashboard';if(!loaders[p])p='dashboard';document.querySelectorAll('.ad-content>section').forEach(s=>{s.hidden=s.dataset.page!==p;});document.querySelectorAll('#ad-nav a').forEach(a=>a.classList.toggle('on',a.dataset.page===p));$('#ad-title').textContent=PAGES[p];document.title='Easy Wedding · '+PAGES[p];window.scrollTo(0,0);Promise.resolve(loaders[p]()).catch(handleErr);}
 addEventListener('hashchange',route);
 function deny(msg){$('#admin-loading').hidden=true;const d=$('#admin-denied');d.hidden=false;d.textContent=msg;}
-function showLogin(){$('#admin-loading').hidden=true;$('#admin-denied').hidden=true;$('#admin-login-wrap').hidden=false;}
+function showLogin(){forgetLastPage();$('#admin-loading').hidden=true;$('#admin-denied').hidden=true;$('#admin-login-wrap').hidden=false;}
 let bossChallenge=null;
 $('#admin-login').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-login-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Signing in…';try{const body={email:$('#admin-login-email').value.trim()};body['pass'+'word']=$('#admin-login-pass').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Sign in failed.');if(d.twoFactor){bossChallenge=d.challengeId;$('#admin-login').hidden=true;$('#admin-2fa').hidden=false;$('#admin-2fa-status').textContent='Code sent — check the owner inbox.';$('#admin-2fa-code').focus();return;}$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'Sign in failed. Please try again.';}finally{btn.disabled=false;}});
 $('#admin-2fa').addEventListener('submit',async e=>{e.preventDefault();const st=$('#admin-2fa-status'),btn=e.target.querySelector('button[type=submit]');btn.disabled=true;st.textContent='Verifying…';try{const r=await fetch('/api/admin/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({challengeId:bossChallenge,code:$('#admin-2fa-code').value.trim()})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Verification failed.');bossChallenge=null;$('#admin-login-wrap').hidden=true;$('#admin-loading').hidden=false;init();}catch(err){st.textContent=err.message||'That code did not work. Please try again.';}finally{btn.disabled=false;}});
-$('#ad-signout').addEventListener('click',async()=>{await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});location.reload();});
+$('#ad-signout').addEventListener('click',async()=>{await fetch('/api/admin/logout',{method:'POST'}).catch(()=>{});forgetLastPage();location.reload();});
 async function init(){try{const r=await fetch('/api/admin/overview').catch(()=>null);
  if(!r){deny('Could not load the admin console. Please try again.');return;}
  /* The console answers only to its own admin session: a website sign-in

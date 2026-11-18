@@ -28,7 +28,7 @@ test('cinematic motion stack is fully self-hosted (no external API/CDN)',async()
  const found=new Set();
  for(const f of ownFiles)for(const m of (await readFile('public/'+f,'utf8')).matchAll(/https?:\/\/[a-zA-Z0-9.-]+/g))found.add(m[0]);
  const own=[...found].sort();
- const allowed=['http://www.w3.org','https://chatgpt.com','https://checkout.razorpay.com','https://easywedding.in','https://gemini.google.com','https://groups.google.com','https://play.google.com','https://schema.org','https://sdk.cashfree.com','https://wa.me','https://www.canva.com','https://www.facebook.com','https://www.google.com','https://www.instagram.com','https://www.manyavar.com','https://www.youtube-nocookie.com'].sort();
+ const allowed=['http://www.w3.org','https://chatgpt.com','https://checkout.razorpay.com','https://connect.facebook.net','https://easywedding.in','https://gemini.google.com','https://groups.google.com','https://play.google.com','https://schema.org','https://sdk.cashfree.com','https://wa.me','https://www.canva.com','https://www.clarity.ms','https://www.facebook.com','https://www.google.com','https://www.googletagmanager.com','https://www.instagram.com','https://www.manyavar.com','https://www.youtube-nocookie.com'].sort();
  assert.deepEqual(own,allowed,'no new external host may appear in our own sources without review');
  assert.ok(!(await readFile('public/invite.html','utf8')).includes('<iframe'),'invitation ships no embedded external content');
 });
