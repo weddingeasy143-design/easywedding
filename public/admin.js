@@ -110,18 +110,20 @@ let ordTimer;$('#ord-q').addEventListener('input',()=>{clearTimeout(ordTimer);or
 $('#ord-csv').addEventListener('click',()=>{const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const lines=[['Date','Name','Email','Design','Amount (INR)','Discount (INR)','Coupon','Gateway','Status','Order id'].map(esc).join(',')];for(const o of lastOrders)lines.push([o.created_at,o.name,o.email,DESIGN_NAMES[o.design_id]||o.design_id,o.amount_paise/100,(o.discount_paise||0)/100,o.coupon||'',o.gateway,o.status,o.id].map(esc).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.download='easy-wedding-orders.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});
 
 // ---- Payments, designs & add-ons (one shared state + one Save) ----
-function priceTable(target,rows){
- const t=el('table','ad-table');const hr=el('tr');for(const h of ['Name','Regular ₹','Launching ₹','Offer on','Show on site'])hr.append(el('th',null,h));t.append(hr);
+function priceTable(target,rows,opts){
+ const t=el('table','ad-table');const hr=el('tr');for(const h of ['Name','Regular ₹','Launching ₹','Offer on','Show on site',...((opts&&opts.githubDelete)?['GitHub']:[])])hr.append(el('th',null,h));t.append(hr);
  for(const p of rows){const tr=el('tr');tr.dataset.priceRow=p.design_id;tr.append(el('td',null,DESIGN_NAMES[p.design_id]||p.design_id));
   const mk=(key,v)=>{const i=document.createElement('input');i.type='number';i.min='0';i.step='1';i.dataset.p=key;i.value=Math.round(v/100);const td=el('td');td.append(i);return td;};
   const act=document.createElement('input');act.type='checkbox';act.dataset.p='active';act.checked=!!p.launch_active;const tdA=el('td');tdA.append(act);
   const vis=document.createElement('input');vis.type='checkbox';vis.dataset.p='visible';vis.checked=p.visible!==0;const tdV=el('td');tdV.append(vis);
-  tr.append(mk('regular',p.regular_paise),mk('launch',p.launch_paise),tdA,tdV);t.append(tr);}
+  tr.append(mk('regular',p.regular_paise),mk('launch',p.launch_paise),tdA,tdV);
+  if(opts&&opts.githubDelete){const tdG=el('td');const del=el('button','ad-btn sm danger','Delete from GitHub');del.type='button';del.addEventListener('click',()=>deleteDesignFromGitHub(p.design_id));tdG.append(del);tr.append(tdG);}
+  t.append(tr);}
  const w=el('div','ad-scroll');w.append(t);clear(target).append(w);}
 function renderPayments(){
  const wrap=clear($('#gateway-cards'));for(const id of GATEWAY_ORDER){const g=payState.gateways.find(x=>x.gateway===id);if(g)wrap.append(gatewayCard(g));}
  const prices=[...payState.prices].sort((a,b)=>DESIGN_ORDER.indexOf(a.design_id)-DESIGN_ORDER.indexOf(b.design_id));
- priceTable($('#prices-table'),prices.filter(p=>!p.design_id.startsWith('addon-')));priceTable($('#addons-table'),prices.filter(p=>p.design_id.startsWith('addon-')));}
+ priceTable($('#prices-table'),prices.filter(p=>!p.design_id.startsWith('addon-')),{githubDelete:true});priceTable($('#addons-table'),prices.filter(p=>p.design_id.startsWith('addon-')));}
 async function ensurePayments(){payState=await api('/api/admin/payments');renderPayments();}
 function collect(){const gateways=[...document.querySelectorAll('.ewp-card')].map(card=>{const get=n=>card.querySelector('[data-g="'+n+'"]');const out={gateway:card.dataset.gateway,enabled:get('enabled').checked,mode:get('mode').value,key_id:get('key_id').value.trim()};out['key_'+'secret']=get('secret').value;const cv=get('client_version');if(cv)out.client_version=cv.value.trim();const wu=get('webhook_username');if(wu)out.webhook_username=wu.value.trim();const ws=get('webhook_secret');if(ws)out['webhook_'+'secret']=ws.value;const wp=get('webhook_password');if(wp)out['webhook_'+'password']=wp.value;return out;});
  const prices=[...document.querySelectorAll('[data-price-row]')].map(row=>({design_id:row.dataset.priceRow,regular:Number(row.querySelector('[data-p="regular"]').value),launch:Number(row.querySelector('[data-p="launch"]').value),launch_active:row.querySelector('[data-p="active"]').checked,visible:row.querySelector('[data-p="visible"]').checked}));
@@ -202,10 +204,38 @@ let cuTimer;$('#cu-q').addEventListener('input',()=>{clearTimeout(cuTimer);cuTim
  $('#reset-form').addEventListener('submit',async e=>{e.preventDefault();const status=$('#reset-status');status.textContent='Creating…';try{const d=await send('/api/admin/reset-password',{email:$('#reset-email').value},'POST');status.textContent='New password for '+$('#reset-email').value+': '+d.temporaryPassword+' — send it to them now; it is not shown again.';e.target.reset();}catch(err){status.textContent=err.message;}});}
 
 // ---- Settings & system ----
-async function loadSettings(){const [s,b,l]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner'),api('/api/admin/launch')]);siteOpen=s.open;paintSite();launchOn=!!l.active;paintLaunch();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;loadTracking().catch(()=>{});}
+async function loadSettings(){const [s,b,l]=await Promise.all([api('/api/admin/site'),api('/api/admin/banner'),api('/api/admin/launch')]);siteOpen=s.open;paintSite();launchOn=!!l.active;paintLaunch();$('#bn-text').value=b.text||'';$('#bn-on').checked=!!b.on;loadTracking().catch(()=>{});loadGitHub().catch(()=>{});}
 async function loadTracking(){const t=await api('/api/admin/tracking');$('#tr-ga4').value=t.ga4Id||'';$('#tr-clarity').value=t.clarityId||'';$('#tr-pixel').value=t.metaPixelId||'';}
 $('#banner-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#bn-status');st.textContent='Saving…';try{const d=await send('/api/admin/banner',{text:$('#bn-text').value,on:$('#bn-on').checked});$('#bn-on').checked=d.on;st.textContent=d.on?'Saved — the banner is live on the homepage (refreshes within a minute).':'Saved — the banner is hidden.';}catch(err){st.textContent=err.message;}});
 $('#tr-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#tr-status');st.textContent='Saving…';try{const d=await send('/api/admin/tracking',{ga4Id:$('#tr-ga4').value,clarityId:$('#tr-clarity').value,metaPixelId:$('#tr-pixel').value});$('#tr-ga4').value=d.ga4Id||'';$('#tr-clarity').value=d.clarityId||'';$('#tr-pixel').value=d.metaPixelId||'';st.textContent='Saved — the live site now uses these IDs (each one loads only after a visitor accepts cookies).';}catch(err){st.textContent=err.message;}});
+
+// ---- GitHub publishing: one-click ZIP upload + template delete ----
+let ghConnected=false;
+function paintGh(){const s=$('#gh-state');if(!s)return;s.textContent=ghConnected?'GitHub connected: weddingeasy143-design/easywedding (branch main). One-click upload and template delete are on.':'GitHub not connected — paste a fine-grained token below and press Save token.';}
+async function loadGitHub(){const d=await api('/api/admin/github');ghConnected=!!d.connected;paintGh();}
+$('#gh-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#gh-status'),tok=$('#gh-token').value.trim();if(!tok){st.textContent='Paste the token first — the box is empty.';return;}st.textContent='Saving…';try{const d=await send('/api/admin/github',{token:tok});ghConnected=!!d.connected;$('#gh-token').value='';paintGh();st.textContent='Token saved. Press “Test connection” to check it can see and write to the repo.';}catch(err){st.textContent=err.message;}});
+$('#gh-test').addEventListener('click',async()=>{const st=$('#gh-status');st.textContent='Testing…';try{const d=await send('/api/admin/github/test',{},'POST');st.textContent='Connection OK — repo '+d.repo+' found.'+(d.canWrite?' It also has write (publish) permission.':' The repo is visible, but write permission is not confirmed — the token needs Contents: Read and write.');}catch(err){st.textContent=err.message;}});
+$('#gh-clear').addEventListener('click',async()=>{if(!confirm('Remove the saved GitHub token? One-click upload and template delete will stop working until a token is saved again.'))return;const st=$('#gh-status');st.textContent='Removing…';try{const d=await send('/api/admin/github',{clear:true});ghConnected=!!d.connected;paintGh();st.textContent='Token removed.';}catch(err){st.textContent=err.message;}});
+$('#gh-upload-form').addEventListener('submit',async e=>{e.preventDefault();const st=$('#gh-up-status'),file=$('#gh-zip').files[0];if(!file){st.textContent='Choose a .zip file first.';return;}
+ st.textContent='Uploading '+file.name+' — files are being committed to GitHub one by one, keep this page open…';
+ try{const r=await fetch('/api/admin/github/upload?name='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/zip'},body:file});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Upload failed.');
+  $('#gh-zip').value='';st.textContent='Published ✓ '+d.count+' file(s) from '+file.name+' are on GitHub — the site goes live on its own in a minute or two.';}catch(err){st.textContent=err.message||'Upload failed. Please try again.';}});
+async function deleteDesignFromGitHub(slug){
+ const st=$('#design-gh-status'),name=DESIGN_NAMES[slug]||slug;
+ try{const g=await api('/api/admin/github');ghConnected=!!g.connected;paintGh();}catch{}
+ if(!ghConnected){if(st)st.textContent='GitHub is not connected yet — connect it under Website & banner → “GitHub publishing”, then try again.';return;}
+ if(!confirm('Delete the “'+name+'” template from GitHub, permanently?\n\nThis removes its design page, its demo data and its own artwork folder from the repo, and takes the design off the demo list. The design is also switched off on the site right away (Show on site = off), so it stops selling immediately.\n\nInvitations customers already made with this design keep working. Shared files are never touched.\n\nThis cannot be undone from here — the template only comes back if its package is uploaded again.'))return;
+ const typed=prompt('To confirm the permanent delete, type the design code exactly: '+slug);
+ if(typed===null)return;
+ if(typed.trim()!==slug){if(st)st.textContent='Delete cancelled — the code typed did not match '+slug+'.';return;}
+ if(st)st.textContent='Deleting “'+name+'” from GitHub…';
+ try{
+  const d=await send('/api/admin/github/delete-design',{design:slug},'POST');
+  if(payState&&payState.prices){const row=payState.prices.find(p=>p.design_id===slug);if(row)row.visible=0;}
+  const tr=document.querySelector('[data-price-row="'+slug+'"]');if(tr){const vis=tr.querySelector('[data-p="visible"]');if(vis)vis.checked=false;}
+  if(st)st.textContent='Done — “'+name+'” is off the site and '+d.deleted.length+' file(s) were removed from GitHub'+(d.demosEntryRemoved?', and its demo entry was removed too.':'.')+((d.warnings||[]).length?' Note: '+d.warnings.join(' '):'')+' The live site updates on its own in a minute or two.';
+ }catch(err){if(st)st.textContent=err.message||'Delete failed. Please try again.';}
+}
 async function loadSystem(){
  const d=await api('/api/admin/system'),ok=(v,yes,no)=>badge(v?yes:no,v?'on':'off');
  const row=(label,node)=>{const r=el('div','ad-sys');r.append(el('span',null,label));r.append(node);return r;};

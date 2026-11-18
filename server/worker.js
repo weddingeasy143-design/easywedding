@@ -3,6 +3,7 @@ import {validAudioHeader,AUDIO_TYPES} from '../public/audio-upload.js';
 import {exportAccountZip,eraseAccountData} from './account-data.js';
 import {inviteProgress} from './invite-progress.js';
 import {catalogPayload,SUPPORT,CATALOG_DESIGNS} from './catalog.js';
+import {GH_LABEL,GH_BRANCH,unzipZip,ghGetRepo,ghGetFile,ghPutFile,ghDeleteFile,ghListFiles} from './github.js';
 const EW_ORIGIN='EW-ORIGIN-2026-369eafc22a98';
 /* Sign-in lifetime, the owner's rule: 15 quiet minutes brings a warning
    with a 2-minute countdown on screen (auth.js), and no answer signs the
@@ -362,6 +363,12 @@ async function previewMusicRow(env){try{const row=await db(env).prepare("SELECT 
 /* Third-party tracking IDs (GA4 / Clarity / Meta Pixel), editable in /boss and
    stored as one JSON row. A value that does not match its service's ID shape
    is treated as unset, so a typo can never inject a foreign script. */
+/* GitHub publishing token for one-click /boss uploads and template
+   deletes. Stored in site_settings like the gateway keys; only ever read
+   server-side — GET answers carry "connected: true/false", never the
+   token itself, and it is kept out of audit details and error text. */
+async function ghToken(env){try{const raw=await siteSetting(env,'github');const v=raw?JSON.parse(raw):null;return v&&typeof v.token==='string'&&v.token?v.token:null;}catch{return null;}}
+async function ghCfg(env){const token=await ghToken(env);if(!token)return null;return{token,base:String(env.GH_API_BASE||'https://api.github.com').replace(/\/+$/,'')};}
 async function trackingIds(env){const none={ga4Id:'',clarityId:'',metaPixelId:''};try{const raw=await siteSetting(env,'tracking');const v=raw?JSON.parse(raw):null;if(!v)return none;const clean=(x,p)=>typeof x==='string'&&p.test(x.trim())?x.trim():'';return{ga4Id:clean(v.ga4Id,/^G-[A-Z0-9-]{4,24}$/i),clarityId:clean(v.clarityId,/^[a-z0-9]{6,24}$/i),metaPixelId:clean(v.metaPixelId,/^\d{5,24}$/)};}catch{return none;}}
 /* Feature settings, all editable in /boss and stored in site_settings.
    The defaults below are only fallbacks for a database that has not been
@@ -1601,7 +1608,7 @@ export default {async fetch(request,env){
   return finish();
  }
  // ---- Admin console API (owner only) ----
- if(['overview','analytics','orders','customers','pending','coupons','banner','tracking','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export','vi'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
+ if(['overview','analytics','orders','customers','pending','coupons','banner','tracking','github','system','music','applinks','features','vendors','albums','vendorbookings','payouts','reviews','audit','export','vi'].some(n=>path==='/api/admin/'+n||path.startsWith('/api/admin/'+n+'/'))){
   if(!await isAdminUser(env,adminUser))fail('Admin access only.',403);
   const d=db(env),q=url.searchParams,seg=path.split('/').filter(Boolean),name=seg[2];
   const one=async(sql,...b)=>d.prepare(sql).bind(...b).first();
@@ -1760,6 +1767,118 @@ export default {async fetch(request,env){
     await d.prepare("INSERT INTO site_settings(key,value) VALUES('tracking',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(t)).run();
     await audit(env,adminUser,'tracking_update','settings','GA4 '+(t.ga4Id?'set':'off')+' · Clarity '+(t.clarityId?'set':'off')+' · Pixel '+(t.metaPixelId?'set':'off'));
     return json(t);
+   }
+   fail('Not found.',404);
+  }
+  if(name==='github'){
+   /* One-click publishing: ZIP upload → GitHub commits → auto-deploy, and
+      template delete → files removed from GitHub. Safety rules are strict
+      and validated BEFORE anything is sent: repo-relative paths only,
+      inside public/ server/ drizzle/ scripts/ qa/, no traversal, no
+      secret-looking files, size caps. Every step is audit-logged and a
+      mid-way failure stops and names the exact file it stopped on. */
+   const GH_FOLDERS=['public/','server/','drizzle/','scripts/','qa/'];
+   const GH_MAX_ZIP=25*1024*1024,GH_MAX_FILE=5*1024*1024,GH_MAX_TOTAL=80*1024*1024,GH_MAX_FILES=300;
+   const secretLike=p=>{const b=p.split('/').pop()||'';return /^\.env($|\.)/i.test(b)||/secret/i.test(b)||/credential/i.test(b)||/\.(key|pem|p12|pfx)$/i.test(b)||/^id_(rsa|dsa|ecdsa|ed25519)/i.test(b);};
+   if(request.method==='GET'&&!seg[3])return json({connected:!!(await ghToken(env)),repo:GH_LABEL,branch:GH_BRANCH});
+   if(request.method==='PUT'&&!seg[3]){
+    const input=await body(request,4000);
+    if(input?.clear===true){await d.prepare("DELETE FROM site_settings WHERE key='github'").run();await audit(env,adminUser,'github_token_removed',GH_LABEL,'');return json({connected:false,repo:GH_LABEL,branch:GH_BRANCH});}
+    const token=typeof input?.token==='string'?input.token.trim():'';
+    if(!/^(github_pat_[A-Za-z0-9_]{20,255}|ghp_[A-Za-z0-9]{20,255})$/.test(token))fail('That does not look like a GitHub token — a fine-grained token starts with "github_pat_". Paste the full token, with no spaces around it.');
+    await setSiteSetting(env,'github',JSON.stringify({token}));
+    await audit(env,adminUser,'github_token_saved',GH_LABEL,'token saved (value never logged)');
+    return json({connected:true,repo:GH_LABEL,branch:GH_BRANCH});
+   }
+   if(seg[3]==='test'&&request.method==='POST'){
+    const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — save a token in the box above.',400);
+    try{
+     const repo=await ghGetRepo(cfg);
+     const canWrite=!!(repo&&repo.permissions&&repo.permissions.push);
+     await audit(env,adminUser,'github_test_ok',GH_LABEL,'repo visible · write '+(canWrite?'yes':'not confirmed'));
+     return json({ok:true,repo:repo.full_name||GH_LABEL,defaultBranch:repo.default_branch||GH_BRANCH,canWrite,private:!!repo.private});
+    }catch(e){await audit(env,adminUser,'github_test_failed',GH_LABEL,String(e&&e.message||'error').slice(0,200));fail(e&&e.message?e.message:'GitHub test failed.',502);}
+   }
+   if(seg[3]==='upload'&&request.method==='POST'){
+    const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — uploads need a saved token.',400);
+    const zipName=String(q.get('name')||'package.zip').split(/[\\/]/).pop().replace(/[^\w.\- ]+/g,'').slice(0,80)||'package.zip';
+    const buf=await request.arrayBuffer();
+    if(!buf.byteLength)fail('The ZIP file is empty — choose the file again.');
+    if(buf.byteLength>GH_MAX_ZIP)fail('This ZIP is too large ('+(buf.byteLength/1048576).toFixed(1)+' MB) — the limit is 25 MB. Split the package into smaller ZIPs and upload them one by one.',413);
+    let entries;try{entries=await unzipZip(new Uint8Array(buf));}catch(e){fail(e.message||'ZIP khul nahi paya.');}
+    const files=entries.filter(e=>!e.dir);
+    /* Validate EVERYTHING before the first commit goes out. */
+    const problems=[];
+    if(!files.length)problems.push('No files were found inside the ZIP.');
+    if(files.length>GH_MAX_FILES)problems.push('The ZIP holds '+files.length+' files — the limit is '+GH_MAX_FILES+' per upload.');
+    let total=0;
+    for(const f of files){
+     total+=f.data.length;
+     if(f.path.includes('\\')){problems.push('"'+f.path+'" — backslash paths are not accepted; the whole upload was stopped.');continue;}
+     if(f.path.startsWith('/')||f.path.split('/').some(s=>s==='..'||s==='.'||s==='')){problems.push('"'+f.path+'" — unsafe path (a .., . or empty segment); the whole upload was stopped.');continue;}
+     if(!GH_FOLDERS.some(pre=>f.path.startsWith(pre))){problems.push('"'+f.path+'" — only files under '+GH_FOLDERS.join(', ')+' can be uploaded; the whole upload was stopped.');continue;}
+     if(secretLike(f.path)){problems.push('"'+f.path+'" — this looks like a secret file (.env / key / secret); such files are never uploaded. The whole upload was stopped.');continue;}
+     if(f.data.length>GH_MAX_FILE){problems.push('"'+f.path+'" is '+(f.data.length/1048576).toFixed(1)+' MB — the limit is 5 MB per file.');continue;}
+    }
+    if(total>GH_MAX_TOTAL)problems.push('The files add up to '+(total/1048576).toFixed(1)+' MB — the limit is 80 MB per upload.');
+    if(problems.length){await audit(env,adminUser,'github_upload_rejected',zipName,problems[0].slice(0,280));fail(problems.slice(0,4).join(' '),400);}
+    files.sort((a,b)=>a.path<b.path?-1:1);
+    const message='Boss upload: '+zipName+' ('+files.length+' files)';
+    const done=[];
+    for(const f of files){
+     try{
+      const existing=await ghGetFile(cfg,f.path);
+      await ghPutFile(cfg,f.path,f.data,message,existing?existing.sha:undefined);
+      done.push(f.path);
+     }catch(e){
+      await audit(env,adminUser,'github_upload_failed',zipName,'stopped at '+f.path+' after '+done.length+' of '+files.length+' files');
+      fail('Upload stopped at "'+f.path+'" — '+(e&&e.message?e.message:'GitHub error')+' Before that, '+done.length+' file(s) went live'+(done.length?': '+done.slice(0,6).join(', ')+(done.length>6?', …':''):'')+'. Fix the cause and upload the same ZIP again — finished files will simply update and the rest will follow.',502);
+     }
+    }
+    await audit(env,adminUser,'github_upload',zipName,files.length+' files: '+files.slice(0,5).map(f=>f.path).join(', ')+(files.length>5?', …':''));
+    return json({uploaded:done,count:done.length,repo:GH_LABEL,branch:GH_BRANCH});
+   }
+   if(seg[3]==='delete-design'&&request.method==='POST'){
+    const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — deleting needs a saved token.',400);
+    const input=await body(request,2000);
+    const slug=typeof input?.design==='string'?input.design.trim():'';
+    if(!/^[a-z0-9-]{2,60}$/.test(slug)||!CATALOG_DESIGNS.some(x=>x.id===slug))fail('Design not recognised — only the listed templates can be deleted this way.');
+    const name=(CATALOG_DESIGNS.find(x=>x.id===slug)||{}).name||slug;
+    /* Step 1: hide on the site right away, so the design is off sale even
+       before the GitHub deploy lands. */
+    await ensureDesignVisibility(env);
+    await d.prepare('UPDATE prices SET visible=0 WHERE design_id=?').bind(slug).run().catch(()=>{});
+    await audit(env,adminUser,'github_design_hidden',slug,name+' hidden on site (visible=0)');
+    /* Step 2: collect the design's own files from the repo tree. Shared
+       files (landing page cards, the shared renderer) are never touched —
+       visible=0 already hides the design everywhere on the site. */
+    let tree;try{tree=await ghListFiles(cfg);}catch(e){fail('The design is now hidden on the site, but the GitHub file list could not be loaded — '+(e&&e.message?e.message:'GitHub error')+' Check the token and try again.',502);}
+    const targets=tree.filter(f=>f.path==='public/design/'+slug+'.html'||f.path==='public/demo-configs/'+slug+'.json'||f.path.startsWith('public/assets/'+slug+'/'));
+    const deleted=[];const message='Boss delete design: '+slug;
+    for(const f of targets){
+     try{await ghDeleteFile(cfg,f.path,f.sha,message);deleted.push(f.path);}
+     catch(e){
+      await audit(env,adminUser,'github_design_delete_failed',slug,'deleted '+deleted.length+' of '+targets.length+', stopped at '+f.path);
+      fail('Delete stopped at "'+f.path+'" — '+(e&&e.message?e.message:'GitHub error')+' So far '+deleted.length+' file(s) were removed from GitHub'+(deleted.length?': '+deleted.slice(0,6).join(', ')+(deleted.length>6?', …':''):'')+'. The design is already hidden on the site. Try again to remove the remaining files.',502);
+     }
+    }
+    /* Step 3: take the design out of the demo library (demos.json). */
+    let demosRemoved=false;const warnings=[];
+    try{
+     const demosFile=await ghGetFile(cfg,'public/reference/demos.json');
+     if(!demosFile)warnings.push('demos.json was not found in the repo — the demo-entry step was skipped.');
+     else{
+      let demos=null;try{demos=JSON.parse(new TextDecoder().decode(demosFile.bytes));}catch{demos=null;}
+      if(!demos||typeof demos!=='object')warnings.push('demos.json could not be read — the demo-entry step was skipped.');
+      else if(Object.prototype.hasOwnProperty.call(demos,slug)){
+       delete demos[slug];
+       await ghPutFile(cfg,'public/reference/demos.json',new TextEncoder().encode(JSON.stringify(demos,null,1)+'\n'),message+' (demo data)',demosFile.sha);
+       demosRemoved=true;
+      }
+     }
+    }catch(e){warnings.push('demos.json could not be updated ('+(e&&e.message?e.message:'GitHub error')+') — the design files are removed; run this delete once more to finish the demo-entry step.');}
+    await audit(env,adminUser,'github_design_delete',slug,deleted.length+' files removed · demos entry '+(demosRemoved?'removed':'not present'));
+    return json({design:slug,name,hidden:true,deleted,demosEntryRemoved:demosRemoved,warnings,repo:GH_LABEL});
    }
    fail('Not found.',404);
   }
