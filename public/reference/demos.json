@@ -4136,6 +4136,78 @@
           "isCover": false,
           "sortOrder": 2,
           "src": "/reference/assets/mandir-gal3.webp"
+        },
+        {
+          "caption": "The Groom",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-3",
+          "isCover": false,
+          "sortOrder": 3,
+          "src": "/reference/assets/mandir-groom.webp"
+        },
+        {
+          "caption": "The Bride",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-4",
+          "isCover": false,
+          "sortOrder": 4,
+          "src": "/reference/assets/mandir-bride.webp"
+        },
+        {
+          "caption": "Together",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-5",
+          "isCover": false,
+          "sortOrder": 5,
+          "src": "/reference/assets/mandir-right.webp"
+        },
+        {
+          "caption": "Blessed moments",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-6",
+          "isCover": false,
+          "sortOrder": 6,
+          "src": "/reference/assets/mandir-story2.webp"
+        },
+        {
+          "caption": "The Venue",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-7",
+          "isCover": false,
+          "sortOrder": 7,
+          "src": "/reference/assets/mandir-venue.webp"
+        },
+        {
+          "caption": "On the temple steps",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-8",
+          "isCover": false,
+          "sortOrder": 8,
+          "src": "/reference/assets/mandir-extra1.webp"
+        },
+        {
+          "caption": "The varmala",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-9",
+          "isCover": false,
+          "sortOrder": 9,
+          "src": "/reference/assets/mandir-extra2.webp"
+        },
+        {
+          "caption": "Forever begins",
+          "fit": "contain",
+          "focus": "50,50",
+          "id": "gallery-10",
+          "isCover": false,
+          "sortOrder": 10,
+          "src": "/reference/assets/mandir-extra3.webp"
         }
       ],
       "sagun": {

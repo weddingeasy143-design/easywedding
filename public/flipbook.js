@@ -65,7 +65,7 @@
         el.classList.toggle('turned', i < cur);
         el.style.zIndex = i < cur ? String(i + 1) : String(leafEls.length - i + 1);
       });
-      count.textContent = cur === 0 ? 'Cover' : cur >= leafEls.length ? 'Back cover' : 'Page ' + cur + ' of ' + leafEls.length;
+      count.textContent = cur === 0 ? 'Cover' : cur >= leafEls.length ? 'Back cover' : cur > photos.length ? 'Final page' : 'Page ' + cur + ' of ' + photos.length;
       prevBtn.disabled = cur === 0 || flipping;
       nextBtn.disabled = cur >= leafEls.length || flipping;
       book.classList.toggle('fb-open', cur > 0 && cur < leafEls.length);
