@@ -44,6 +44,83 @@ if (dialog) {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
+  /* Speed (2026-11-19): warm the preview's heavy files before the tap.
+     Measured on a slow phone connection, one preview click used to download
+     ~3 MB in a strict sequence (the app bundle twice, then four data files
+     one after another, then the first pictures). The bundle, the data files
+     and the design's first picture are now prefetched at the lowest priority
+     when a design card is seen, hovered or touched, so the tap itself mostly
+     waits for the app to run. Shared files warm once; each design's own
+     files warm once per design. Data-saver and 2G connections are skipped. */
+  const GATE_IMAGE = {
+    'mandir-darwaza': 'assets/mandir-darwaza/doors-closed.webp',
+    'ram-mandir': 'assets/ram-mandir/hero-scene.webp'
+  };
+  const frugal = !!(navigator.connection &&
+    (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || '')));
+  const warmedDesigns = new Set();
+  let sharedWarmed = false;
+  let warmingStopped = false;
+  function prefetch(href) {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    document.head.append(link);
+  }
+  function warmPreview(id) {
+    if (warmingStopped || frugal || !id) return;
+    if (!sharedWarmed) {
+      sharedWarmed = true;
+      ['reference/entry.js', 'reference/source-app.js',
+       'reference/source-data.json', 'reference/demos.json'].forEach(prefetch);
+    }
+    if (warmedDesigns.has(id)) return;
+    warmedDesigns.add(id);
+    prefetch('reference/render.html?template=' + id);
+    prefetch('demo-configs/' + id + '.json');
+    if (GATE_IMAGE[id]) prefetch(GATE_IMAGE[id]);
+  }
+  const warmFromEvent = (event) => {
+    const trigger = event.target.closest && event.target.closest('[data-preview]');
+    if (trigger) warmPreview(trigger.dataset.preview);
+  };
+  ['pointerover', 'touchstart', 'focusin'].forEach((type) =>
+    document.addEventListener(type, warmFromEvent, { passive: true }));
+  /* A card the visitor keeps looking at (visible ~1 s) warms its own design
+     too; a card that merely scrolls past does not. Only ONE card dwells at a
+     time (the first unwarm​ed one on screen, in catalog order): warming
+     several cards together was measured to backfire on slow connections —
+     the prefetch queue was still downloading at tap time and competed with
+     the preview itself. All warming stops the moment a preview opens. */
+  let cardWatcher = null;
+  let dwellEl = null;
+  let dwellTimer = null;
+  function cancelDwell() {
+    if (dwellTimer) { clearTimeout(dwellTimer); dwellTimer = null; }
+    dwellEl = null;
+  }
+  function stopWarming() {
+    warmingStopped = true;
+    cancelDwell();
+    if (cardWatcher) { cardWatcher.disconnect(); cardWatcher = null; }
+  }
+  if ('IntersectionObserver' in window && !frugal) {
+    cardWatcher = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const el = entry.target;
+        const id = el.dataset.preview || el.dataset.warmId;
+        if (!id) return;
+        if (entry.isIntersecting) {
+          if (!dwellEl && !warmedDesigns.has(id)) {
+            dwellEl = el;
+            dwellTimer = setTimeout(() => { dwellEl = null; dwellTimer = null; warmPreview(id); }, 900);
+          }
+        } else if (dwellEl === el) cancelDwell();
+      });
+    }, { rootMargin: '100px' });
+    document.querySelectorAll('[data-preview]').forEach((el) => cardWatcher.observe(el));
+  }
+
   function press(el, doc) {
     /* The invitation app reacts to pointer presses, not a bare .click().
        Events are built with the frame's own constructors: ones made in this
@@ -166,6 +243,7 @@ if (dialog) {
   });
 
   function openPreview(design) {
+    stopWarming();
     title.textContent = design.name;
     makeLink.href = '/studio?template=' + design.id;
     if (loading) loading.hidden = false;
@@ -175,7 +253,9 @@ if (dialog) {
     requestAnimationFrame(fitPreview);
     frame.src = 'reference/render.html?template=' + design.id;
     stopAutoplay();
-    pollTimer = setInterval(tick, 900);
+    /* 250 ms (was 900): the loader overlay used to linger up to ~0.9 s after
+       the invitation was already on screen behind it. */
+    pollTimer = setInterval(tick, 250);
   }
 
   if (strip) Object.values(referenceDesigns).forEach((design, index) => {
@@ -211,6 +291,10 @@ if (dialog) {
     hint.textContent = 'Tap to play';
 
     button.append(figure, name, hint);
+    button.dataset.warmId = design.id;
+    if (cardWatcher) cardWatcher.observe(button);
+    button.addEventListener('pointerenter', () => warmPreview(design.id));
+    button.addEventListener('focus', () => warmPreview(design.id));
     button.addEventListener('click', () => openPreview(design));
     strip.append(button);
   });

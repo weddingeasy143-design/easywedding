@@ -21,20 +21,30 @@ setTimeout(()=>{
 let config=readConfig(location);
 /* A public preview (a visitor looking at a design before buying) shows a finished sample: sample couple, sample photographs and the preview music the owner chose in the admin console.
    A real invitation (#card=…, ?id=…, ?to=…) is never touched. */
+const bootParams=new URLSearchParams(location.search);
+const sampleBoot=isSamplePreview(location)&&!bootParams.has('id')&&!bootParams.has('to');
+if(sampleBoot)config=withSample(config,location.href);
+/* Speed (2026-11-19): the four boot downloads below are independent of each
+   other, so they now start together and are applied in the exact order they
+   were always awaited in. On a slow phone connection the old one-after-another
+   chain alone cost several seconds before the invitation app could start. */
+const seedPromise=fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
+seedPromise.catch(()=>{});
+const siteInfoPromise=sampleBoot?fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()).catch(()=>null):null;
+const demosPromise=(!bootParams.has('id')&&!bootParams.has('to')&&!config.reference)?fetch('./demos.json').then(r=>r.ok?r.json():null).catch(()=>null):null;
+const designConfigPromise=fetch('../demo-configs/'+encodeURIComponent(config.theme)+'.json').then(r=>r.ok?r.json():null).catch(()=>null);
 let bossPreviewMusic=null;
-if(isSamplePreview(location)&&!new URLSearchParams(location.search).has('id')&&!new URLSearchParams(location.search).has('to')){
- config=withSample(config,location.href);
- try{const info=await withTimeout(fetch('/api/site-info',{credentials:'omit'}).then(r=>r.json()),AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)bossPreviewMusic=new URL(info.previewMusic.url,location.href).href;}catch{}
+if(sampleBoot){
+ try{const info=await withTimeout(siteInfoPromise,AUDIO_WAIT_MS,null);if(info?.previewMusic?.url)bossPreviewMusic=new URL(info.previewMusic.url,location.href).href;}catch{}
 }
-const seed=await fetch('./source-data.json').then(r=>{if(!r.ok)throw Error('Invitation data unavailable');return r.json()});
+const seed=await seedPromise;
 /* A preview that carries no invitation of its own (direct design previews,
    feature previews) shows that design's own sample couple — its names, dates,
    story, events and gallery — loaded from the demo library. Real invitations
    (an id, a guest token, or a saved reference of their own) are never touched. */
-{const q0=new URLSearchParams(location.search);
-if(!q0.has('id')&&!q0.has('to')&&!config.reference){
- try{const demos=await fetch('./demos.json').then(r=>r.ok?r.json():null);const demo=demos?.[config.theme];
- if(demo)config={...config,...demo.flat,reference:demo.reference};}catch{}}}
+if(demosPromise){
+ try{const demos=await demosPromise;const demo=demos?.[config.theme];
+ if(demo)config={...config,...demo.flat,reference:demo.reference};}catch{}}
 /* Demo music (owner's rule, 2026-11-16): every public design demo plays ONE
    track — the boss's preview music when one is set, otherwise the site's own
    demo track — whichever design is being shown. This runs after the demo
@@ -52,7 +62,11 @@ const design=referenceDesignFor(config.theme),params=new URLSearchParams(locatio
    photo can take the sample couple's place everywhere it was shown. Any
    failure keeps the previous behaviour — the generic defaults still apply. */
 let designReference=null;
-try{const dc=await fetch('../demo-configs/'+encodeURIComponent(config.theme)+'.json').then(r=>r.ok?r.json():null);if(dc?.theme===config.theme)designReference=dc.reference||null;}catch{}
+try{let dc=await designConfigPromise;
+/* The early download used the theme known at boot; if the demo merge above
+   ever pointed at another theme, fetch that one the original way. */
+if(dc&&dc.theme!==config.theme)dc=await fetch('../demo-configs/'+encodeURIComponent(config.theme)+'.json').then(r=>r.ok?r.json():null);
+if(dc?.theme===config.theme)designReference=dc.reference||null;}catch{}
 const model=invitationModel(config,seed,new URL('../invite',location.href),params.get('id'),designReference);
 let audio=config.audioUrl;
 if(audio.startsWith('local-audio:')){try{audio=(await withTimeout(resolveSong(audio),AUDIO_WAIT_MS,{url:''})).url||'';}catch{audio='';}}

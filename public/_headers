@@ -25,3 +25,13 @@
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 /share/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+# Invitation renderer (speed pass, 2026-11-19): a returning visitor's browser
+# used to re-download the whole ~3 MB preview on every open because nothing
+# under /reference/ had a cache rule. The artwork files carry content-hashed
+# names, so they can be kept for a week like the other asset folders; the
+# code and data files get a short 10-minute cache (quietly refreshed in the
+# background after that) so repeat opens are fast but updates land quickly.
+/reference/*
+  Cache-Control: public, max-age=600, stale-while-revalidate=3600
+/reference/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
