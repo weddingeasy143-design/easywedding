@@ -39,7 +39,14 @@ async function inflateRaw(bytes) {
  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-export async function unzipZip(input) {
+export async function unzipZip(input, limits) {
+ /* Decompression-bomb guard: the central directory declares every
+    entry's unpacked size up front, so oversized entries are refused
+    BEFORE anything is inflated. Callers pass their own caps; the
+    defaults stay generous for any other future caller. */
+ const maxEntry = limits && limits.maxEntryBytes > 0 ? limits.maxEntryBytes : 100 * 1024 * 1024;
+ const maxEntries = limits && limits.maxEntries > 0 ? limits.maxEntries : 2000;
+ const maxTotal = limits && limits.maxTotalBytes > 0 ? limits.maxTotalBytes : 400 * 1024 * 1024;
  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
  const td = new TextDecoder();
@@ -52,8 +59,9 @@ export async function unzipZip(input) {
  const count = dv.getUint16(eocd + 10, true);
  const cdSize = dv.getUint32(eocd + 12, true), cdOff = dv.getUint32(eocd + 16, true);
  if (count === 0xffff || cdSize === 0xffffffff || cdOff === 0xffffffff) throw new Error('ZIP64 archives are not supported — re-zip the files normally.');
+ if (count > maxEntries) throw new Error('The ZIP holds ' + count + ' entries — the limit is ' + maxEntries + '.');
  const out = [];
- let p = cdOff;
+ let p = cdOff, totalRaw = 0;
  for (let n = 0; n < count; n++) {
   if (p + 46 > bytes.length || dv.getUint32(p, true) !== 0x02014b50) throw new Error('The ZIP archive is damaged (bad central directory).');
   const flags = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true);
@@ -70,6 +78,9 @@ export async function unzipZip(input) {
   const dataStart = localOff + 30 + lNameLen + lExtraLen;
   const comp = bytes.subarray(dataStart, dataStart + compSize);
   if (comp.length !== compSize) throw new Error('The ZIP archive is damaged (truncated entry "' + name + '").');
+  if (rawSize > maxEntry) throw new Error('"' + name + '" unpacks to ' + (rawSize / 1048576).toFixed(1) + ' MB — the limit is ' + Math.round(maxEntry / 1048576) + ' MB per file.');
+  totalRaw += rawSize;
+  if (totalRaw > maxTotal) throw new Error('The ZIP unpacks to more than ' + Math.round(maxTotal / 1048576) + ' MB in total — split the package into smaller ZIPs.');
   let data;
   if (method === 0) data = new Uint8Array(comp);
   else if (method === 8) { try { data = await inflateRaw(comp); } catch { throw new Error('Could not unpack "' + name + '" — the ZIP entry is damaged.'); } }
@@ -95,7 +106,9 @@ async function gh(cfg, method, path, payload) {
    : res.status === 404 ? ' The repo or file was not found — the token must have access to this repo (' + GH_LABEL + ').'
    : res.status === 403 || res.status === 429 ? ' GitHub refused just now (permission or rate limit). Check that the token has Contents: Read and write.'
    : '';
-  throw new GhError(res.status, 'GitHub error (' + res.status + ')' + (data && data.message ? ': ' + String(data.message).slice(0, 160) : '') + '.' + hint);
+  /* GitHub's own error text is never forwarded: it can carry repo and
+     account detail. The status plus our own hint is all the boss sees. */
+  throw new GhError(res.status, 'GitHub error (' + res.status + ').' + hint);
  }
  return data;
 }

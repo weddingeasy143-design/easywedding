@@ -430,13 +430,13 @@ async function finishAdminLogin(env,owner){
   await db(env).prepare('DELETE FROM admin_login_codes WHERE email=?').bind(owner.email).run();
   await db(env).prepare('INSERT INTO admin_login_codes(id,email,code_hash,expires_at,attempts,created_at) VALUES(?,?,?,?,0,?)').bind(id,owner.email,await sha256hex(code+':'+owner.email),nowS+600,nowS).run();
   const sent=await sendMail(env,{to:owner.email,subject:'Your Easy Wedding boss sign-in code',text:'Your one-time Easy Wedding boss sign-in code is '+code+'.\n\nIt expires in 10 minutes. If you did not try to sign in just now, ignore this email and consider changing your boss password.'});
-  if(!sent.ok){await db(env).prepare('DELETE FROM admin_login_codes WHERE id=?').bind(id).run().catch(()=>{});fail('Two-step sign-in is switched on, but the code email could not be sent ('+sent.reason+'). Email delivery is not configured on the server yet. To get back in: open Cloudflare → D1 → the Easy Wedding database → site_settings and delete the boss_2fa row (or set it to off), then sign in and set up email before switching it on again.',503);}
+  if(!sent.ok){await db(env).prepare('DELETE FROM admin_login_codes WHERE id=?').bind(id).run().catch(()=>{});fail('Two-step sign-in is switched on, but the code email could not be sent. Email delivery is not configured on the server yet. To get back in: open Cloudflare → D1 → the Easy Wedding database → site_settings and delete the boss_2fa row (or set it to off), then sign in and set up email before switching it on again.',503);}
   return json({ok:true,twoFactor:true,challengeId:id});
  }
  await rotateSessions(env,owner.id,'admin');
  return json({user:{id:owner.id,email:owner.email,name:owner.name,admin:true}},200,{'Set-Cookie':adminCookie(await startSession(env,owner.id,'admin'),SESSION_COOKIE_AGE)});
 }
-export default {async fetch(request,env){
+async function handleRequest(request,env){
  const url=new URL(request.url),path=url.pathname;
  await ensureDesignVisibility(env);
  const maint=await maintenanceState(env);
@@ -671,7 +671,9 @@ export default {async fetch(request,env){
  }
  if(path.startsWith('/api/payments/webhook/')&&request.method==='POST'){
   const g=path.slice('/api/payments/webhook/'.length);if(!GATEWAYS.includes(g)||g==='payu')fail('Not found.',404);
+  await rateHit(env,'webhook',request,600,60);
   const raw=await request.text();
+  if(raw.length>262144)fail('Too large.',413);
   const cfg=await gatewayRow(env,g);if(!cfg)fail('Not found.',404);
   const extra=extraOf(cfg);
   if(g==='razorpay'){
@@ -966,7 +968,7 @@ export default {async fetch(request,env){
   if(!row){await noteLoginFail(env,email);await hashPassword(password,'AAAAAAAAAAAAAAAAAAAAAA==',100000);fail('Email or password is incorrect.',401);}
   if(!await verifyPassword(password,row.password_hash)){await noteLoginFail(env,email);fail('Email or password is incorrect.',401);}
   const ownerEmail=await adminEmail(env);
-  if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail(env.ADMIN_EMAIL&&env.ADMIN_PASSWORD?'This account does not have admin access. Please sign in with the admin account.':'This account does not have admin access. The ADMIN_EMAIL and ADMIN_PASSWORD secrets are not set on the server: add them in Cloudflare → Workers → easy-wedding → Settings → Variables and Secrets (type Secret), then sign in with that email.',403);
+  if(!ownerEmail||row.email.toLowerCase()!==ownerEmail)fail('This account does not have admin access. Please sign in with the admin account.',403);
   return await finishAdminLogin(env,row);
  }
  // Boss two-step login, step 2: the emailed 6-digit code. Challenges live
@@ -1782,6 +1784,7 @@ export default {async fetch(request,env){
    const secretLike=p=>{const b=p.split('/').pop()||'';return /^\.env($|\.)/i.test(b)||/secret/i.test(b)||/credential/i.test(b)||/\.(key|pem|p12|pfx)$/i.test(b)||/^id_(rsa|dsa|ecdsa|ed25519)/i.test(b);};
    if(request.method==='GET'&&!seg[3])return json({connected:!!(await ghToken(env)),repo:GH_LABEL,branch:GH_BRANCH});
    if(request.method==='PUT'&&!seg[3]){
+    await rateHit(env,'ghub',request,30,600);
     const input=await body(request,4000);
     if(input?.clear===true){await d.prepare("DELETE FROM site_settings WHERE key='github'").run();await audit(env,adminUser,'github_token_removed',GH_LABEL,'');return json({connected:false,repo:GH_LABEL,branch:GH_BRANCH});}
     const token=typeof input?.token==='string'?input.token.trim():'';
@@ -1792,6 +1795,7 @@ export default {async fetch(request,env){
    }
    if(seg[3]==='test'&&request.method==='POST'){
     const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — save a token in the box above.',400);
+    await rateHit(env,'ghubtest',request,10,600);
     try{
      const repo=await ghGetRepo(cfg);
      const canWrite=!!(repo&&repo.permissions&&repo.permissions.push);
@@ -1801,11 +1805,13 @@ export default {async fetch(request,env){
    }
    if(seg[3]==='upload'&&request.method==='POST'){
     const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — uploads need a saved token.',400);
+    await rateHit(env,'ghub',request,30,600);
     const zipName=String(q.get('name')||'package.zip').split(/[\\/]/).pop().replace(/[^\w.\- ]+/g,'').slice(0,80)||'package.zip';
+    if(Number(request.headers.get('Content-Length'))>GH_MAX_ZIP+1024*1024)fail('This ZIP is too large — the limit is 25 MB. Split the package into smaller ZIPs and upload them one by one.',413);
     const buf=await request.arrayBuffer();
     if(!buf.byteLength)fail('The ZIP file is empty — choose the file again.');
     if(buf.byteLength>GH_MAX_ZIP)fail('This ZIP is too large ('+(buf.byteLength/1048576).toFixed(1)+' MB) — the limit is 25 MB. Split the package into smaller ZIPs and upload them one by one.',413);
-    let entries;try{entries=await unzipZip(new Uint8Array(buf));}catch(e){fail(e.message||'ZIP khul nahi paya.');}
+    let entries;try{entries=await unzipZip(new Uint8Array(buf),{maxEntryBytes:GH_MAX_FILE,maxEntries:GH_MAX_FILES,maxTotalBytes:GH_MAX_TOTAL});}catch(e){fail(e.message||'ZIP khul nahi paya.');}
     const files=entries.filter(e=>!e.dir);
     /* Validate EVERYTHING before the first commit goes out. */
     const problems=[];
@@ -1840,6 +1846,7 @@ export default {async fetch(request,env){
    }
    if(seg[3]==='delete-design'&&request.method==='POST'){
     const cfg=await ghCfg(env);if(!cfg)fail('Connect GitHub first — deleting needs a saved token.',400);
+    await rateHit(env,'ghub',request,30,600);
     const input=await body(request,2000);
     const slug=typeof input?.design==='string'?input.design.trim():'';
     if(!/^[a-z0-9-]{2,60}$/.test(slug)||!CATALOG_DESIGNS.some(x=>x.id===slug))fail('Design not recognised — only the listed templates can be deleted this way.');
@@ -1901,7 +1908,7 @@ export default {async fetch(request,env){
     if(typeof input?.bossTwoFactor==='boolean'&&input.bossTwoFactor!==twoFactor){
      if(input.bossTwoFactor){
       const sent=await sendMail(env,{to:adminUser.email,subject:'Easy Wedding two-step login — test email',text:'Email delivery works. Boss two-step login can now be switched on in /boss: after your password, a 6-digit code will be emailed to this address.'});
-      if(!sent.ok)fail('Two-step login was NOT switched on: the test email could not be sent ('+sent.reason+'). Set up email delivery first (RESEND_API_KEY + MAIL_FROM, or MAIL_WEBHOOK_URL), then try again.',400);
+      if(!sent.ok)fail('Two-step login was NOT switched on: the test email could not be sent. Set up email delivery first, then try again.',400);
       twoFactor=true;
      }else twoFactor=false;
     }
@@ -2163,10 +2170,11 @@ export default {async fetch(request,env){
   if(request.method==='PUT'){const c=await body(request,250000);if(!c||!bounded(c.partner1,70)||!bounded(c.partner2,70))fail('Invalid invitation.');await db(env).prepare('INSERT INTO studio_drafts(owner,data,updated_at) VALUES(?,?,?) ON CONFLICT(owner) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').bind(owner,JSON.stringify(c),new Date().toISOString()).run();return json({saved:true});}
  }
  if(path==='/api/invitation-audio'&&request.method==='POST'){
+  await rateHit(env,'upload',request,180,600);
   if(!env.BUCKET)fail('Song storage is unavailable.',503);const max=20*1024*1024;if(Number(request.headers.get('Content-Length'))>max+1024*1024)fail('Choose a song under 20 MB.',413);const data=await request.formData(),file=data.get('file');const types=['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/ogg','audio/mp4','audio/x-m4a'];if(!file||typeof file==='string'||!types.includes(file.type)||file.size<12||file.size>max)fail('Choose an MP3, WAV, OGG or M4A song under 20 MB.');const bytes=new Uint8Array(await file.arrayBuffer()),header=new TextDecoder().decode(bytes.slice(0,16));if(!validAudioHeader(bytes.slice(0,16),file.type))fail('That file is not a supported audio recording.');const id=crypto.randomUUID(),key='invitation-audio/'+id;await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:file.type}});try{await db(env).prepare('INSERT INTO assets(id,owner,filename,mime,size,created_at) VALUES(?,?,?,?,?,?)').bind(id,owner,file.name.slice(0,150),file.type,file.size,new Date().toISOString()).run();}catch(e){await env.BUCKET.delete(key);throw e;}return json({id,url:'/api/invitation-audio/'+id,name:file.name},201);
  }
  if((path==='/api/assets'||path==='/api/exports'||path==='/api/invitation-photos'||path==='/api/videos')&&request.method==='POST'){
-  if(path==='/api/assets')await rateHit(env,'upload',request,180,600);
+  await rateHit(env,'upload',request,180,600);
   const isPDF=path==='/api/exports',isInvitation=path==='/api/invitation-photos',isVideo=path==='/api/videos',maxBytes=(isVideo?20:8)*1024*1024;
   if(!env.BUCKET)fail('Photo storage is unavailable. Please try again.',503);
   if(Number(request.headers.get('Content-Length'))>maxBytes+1024*1024)fail(isVideo?'Choose a video smaller than 20 MB.':'Choose an image smaller than 8 MB.',413);
@@ -2182,4 +2190,39 @@ export default {async fetch(request,env){
  }
  return json({error:'Not found.'},404);
  }catch(e){if(!e.status)console.error('Wedding request failed',path,e.message);return json({error:e.status?e.message:'We could not save or load your wedding data. Your current input is still on this page. Please try again.'},e.status||503);}
+}
+/* Security safety net (2026-11 hardening round): EVERY response leaving
+   this worker — API JSON, error answers, the maintenance page, redirects,
+   receipts and files served from storage — leaves with the full security
+   header set. Handlers choose their own headers first; this only fills
+   the gaps, so a deliberate handler choice is never overridden. API
+   answers are data, not documents: they may never be framed and get a
+   locked-down CSP. Worker-made HTML (the maintenance page) gets a fitted
+   CSP of its own; static pages keep the fitted CSP in public/_headers. */
+const PERMISSIONS_POLICY='camera=(), microphone=(), geolocation=(), usb=(), interest-cohort=()';
+function secureResponse(response,path){
+ try{
+  const isApi=path.startsWith('/api/');
+  const out=new Response(response.body,response);
+  const h=out.headers;
+  if(typeof response.headers.getSetCookie==='function'){
+   const cookies=response.headers.getSetCookie();
+   if(cookies.length>1){h.delete('Set-Cookie');for(const c of cookies)h.append('Set-Cookie',c);}
+  }
+  if(!h.has('X-Content-Type-Options'))h.set('X-Content-Type-Options','nosniff');
+  if(!h.has('X-Frame-Options'))h.set('X-Frame-Options',isApi?'DENY':'SAMEORIGIN');
+  if(!h.has('Referrer-Policy'))h.set('Referrer-Policy',isApi?'no-referrer':'strict-origin-when-cross-origin');
+  if(!h.has('Strict-Transport-Security'))h.set('Strict-Transport-Security','max-age=31536000; includeSubDomains');
+  if(!h.has('Permissions-Policy'))h.set('Permissions-Policy',PERMISSIONS_POLICY);
+  if(!h.has('Content-Security-Policy')){
+   const ct=h.get('Content-Type')||'';
+   if(isApi&&ct.includes('application/json'))h.set('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
+   else if(ct.includes('text/html'))h.set('Content-Security-Policy',isApi?"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'":"default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  }
+  return out;
+ }catch{return response;}
+}
+export default {async fetch(request,env){
+ let path='/';try{path=new URL(request.url).pathname;}catch{}
+ return secureResponse(await handleRequest(request,env),path);
 }};
