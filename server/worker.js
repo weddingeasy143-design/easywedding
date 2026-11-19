@@ -559,6 +559,11 @@ async function handleRequest(request,env){
   else{const ref=request.headers.get('Referer');if(ref){try{originOk=new URL(ref).host===url.host;}catch{}}}
   if(!originOk)return new Response(null,{status:204});
   await rateHit(env,'vi',request,150,60);
+  /* Long-window cap on top of the per-minute burst limit above: at most
+     300 beacons per IP per 10 minutes, so a bot cannot flood the visitor
+     ledger with fake journeys even at a slow, steady pace. A real visit
+     sends only a handful of beacons, so people never reach this. */
+  await rateHit(env,'vi10',request,300,600);
   let input=null;try{input=await body(request,2500);}catch{return new Response(null,{status:204});}
   if(!input||typeof input!=='object')return new Response(null,{status:204});
   const type=VI_TYPES.includes(input.t)?input.t:'';
