@@ -8,7 +8,7 @@
       haldi=yellow, mor=peacock ...). A query word matches a design when it
       lands in the same group as any of the design's words.
    3. No empty page — when nothing matches, the popular designs stay on
-      screen under a "Ye designs aapko pasand aa sakte hain" panel with a
+      screen under a "You may also like these designs" panel with a
       spelling hint and a reset button. */
 (function () {
   'use strict';
@@ -243,8 +243,8 @@
       results.forEach(function (r) { grid.appendChild(r.d.el); });
       if (status) {
         status.textContent = results.length === 1
-          ? '1 design mila — \u201C' + query + '\u201D ke liye'
-          : results.length + ' designs mile — \u201C' + query + '\u201D ke liye';
+          ? '1 design found for \u201C' + query + '\u201D'
+          : results.length + ' designs found for \u201C' + query + '\u201D';
       }
     }
 

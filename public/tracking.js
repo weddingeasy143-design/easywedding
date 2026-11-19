@@ -114,7 +114,7 @@
       bar.setAttribute('aria-label', 'Cookie consent');
       bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9990;background:#fff8ea;border-top:2px solid #75152e;color:#4a1522;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;font:14px/1.45 system-ui,sans-serif;box-shadow:0 -4px 18px rgba(74,21,34,.18)';
       const text = document.createElement('span');
-      text.textContent = 'Hum aapke anubhav ko behtar banane ke liye cookies use karte hain.';
+      text.textContent = 'We use cookies to improve your experience and to understand how our website is used.';
       const accept = document.createElement('button');
       accept.type = 'button';
       accept.textContent = 'Accept';
